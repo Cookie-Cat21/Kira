@@ -63,9 +63,17 @@ export default function ChatMessage({
 
         {/* Product cards carousel */}
         {message.products && message.products.length > 0 && (
-          <div className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4">
+          <div
+            role="list"
+            aria-label={`${message.products.length} product suggestions`}
+            className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4"
+          >
             {message.products.map((product, i) => (
-              <div key={product.id} style={{ animationDelay: `${i * 0.07}s` }}>
+              <div
+                key={product.id}
+                role="listitem"
+                style={{ animationDelay: `${i * 0.07}s` }}
+              >
                 <ProductCard
                   product={product}
                   cart={cart}

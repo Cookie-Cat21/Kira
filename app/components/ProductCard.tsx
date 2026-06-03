@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { KiraProduct, CartItem } from "@/types";
 import { ShoppingCart, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const inCart = cart.some((i) => i.product.id === product.id);
   const qty = cart.find((i) => i.product.id === product.id)?.quantity ?? 0;
+  const [imgError, setImgError] = useState(false);
 
   const formattedPrice = new Intl.NumberFormat("en-LK", {
     style: "currency",
@@ -30,12 +32,13 @@ export default function ProductCard({
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-pop-in border border-kira-border shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
       <div className="aspect-square bg-[#f7f5fc] overflow-hidden relative">
-        {product.image ? (
+        {product.image && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image}
             alt={product.name}
             className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-3xl text-kira-muted">
