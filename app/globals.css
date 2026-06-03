@@ -1,16 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-kira-base: #0d1424;
-  --color-kira-surface: #16203a;
-  --color-kira-surface-2: #1c2840;
-  --color-kira-border: #263049;
-  --color-kira-accent: #f4845f;
-  --color-kira-gold: #f5a623;
-  --color-kira-text: #ede8e0;
-  --color-kira-muted: #6e7d94;
-  --color-kira-bubble-user: #1c2840;
-  --color-kira-bubble-kira: #192033;
+  /* Kapruka brand anchors */
+  --color-kap-purple: #402970;
+  --color-kap-yellow: #f8da08;
+
+  /* Kira dark-mode surface scale (deep purple base) */
+  --color-kira-base: #0e0920;
+  --color-kira-surface: #1a1035;
+  --color-kira-surface-2: #231647;
+  --color-kira-surface-3: #2d1d57;
+  --color-kira-border: #3a2468;
+  --color-kira-border-bright: #5a3a9e;
+
+  /* Accents */
+  --color-kira-yellow: #f8da08;
+  --color-kira-yellow-soft: #f8da0818;
+  --color-kira-purple-bright: #7c4fc4;
+  --color-kira-purple-dim: #402970;
+
+  /* Text */
+  --color-kira-text: #f0ecff;
+  --color-kira-text-2: #c4b8e8;
+  --color-kira-muted: #7d6fa8;
+
+  /* Bubbles */
+  --color-kira-bubble-kira: #1a1035;
+  --color-kira-bubble-user: #402970;
 
   --font-display: var(--font-dm-serif);
   --font-sans: var(--font-jakarta);
@@ -19,8 +35,8 @@
 html,
 body {
   height: 100%;
-  background-color: #0d1424;
-  color: #ede8e0;
+  background-color: #0e0920;
+  color: #f0ecff;
 }
 
 * {
@@ -34,30 +50,34 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #263049;
+  background: #3a2468;
   border-radius: 2px;
 }
 
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 1; }
+}
+
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.92); }
+  60%  { transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .animate-fade-up {
-  animation: fade-up 0.35s ease forwards;
+  animation: fade-up 0.3s ease forwards;
 }
 
 .animate-blink {
   animation: blink 1.2s ease-in-out infinite;
+}
+
+.animate-pop-in {
+  animation: pop-in 0.25s ease forwards;
 }

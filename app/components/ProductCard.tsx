@@ -25,9 +25,9 @@ export default function ProductCard({
   }).format(product.price);
 
   return (
-    <div className="bg-kira-surface border border-kira-border rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-fade-up">
+    <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-pop-in shadow-lg shadow-black/30">
       {/* Product image */}
-      <div className="aspect-square bg-kira-surface-2 overflow-hidden">
+      <div className="aspect-square bg-gray-50 overflow-hidden relative">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -36,31 +36,36 @@ export default function ProductCard({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-kira-muted text-3xl">
+          <div className="w-full h-full flex items-center justify-center text-3xl bg-purple-50">
             🛍️
           </div>
+        )}
+        {product.category && (
+          <span className="absolute top-2 left-2 text-[10px] font-semibold bg-kap-purple text-white px-2 py-0.5 rounded-full">
+            {product.category}
+          </span>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-3 flex flex-col gap-2 flex-1">
-        <p className="text-kira-text text-sm font-medium leading-tight line-clamp-2">
+      <div className="p-3 flex flex-col gap-1.5 flex-1 bg-white">
+        <p className="text-gray-800 text-xs font-semibold leading-tight line-clamp-2">
           {product.name}
         </p>
-        <p className="text-kira-accent font-semibold text-sm">{formattedPrice}</p>
+        <p className="text-kap-purple font-bold text-sm">{formattedPrice}</p>
 
         {deliveryCity && (
-          <p className="text-xs text-emerald-400">
+          <p className="text-[10px] text-emerald-600 font-medium">
             ✓ Delivers to {deliveryCity}
           </p>
         )}
 
         <button
           onClick={() => onAddToCart(product)}
-          className={`mt-auto w-full text-xs font-semibold py-1.5 rounded-lg transition-colors ${
+          className={`mt-auto w-full text-xs font-bold py-1.5 rounded-lg transition-all ${
             inCart
-              ? "bg-kira-accent/20 text-kira-accent border border-kira-accent/30"
-              : "bg-kira-accent text-white hover:bg-kira-accent/90"
+              ? "bg-kap-purple/10 text-kap-purple border border-kap-purple/30"
+              : "bg-kira-yellow text-gray-900 hover:brightness-95 active:scale-95"
           }`}
         >
           {inCart ? `In cart (${qty})` : "Add to cart"}
