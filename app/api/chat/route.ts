@@ -5,9 +5,9 @@ import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
 import type { ChatRequest, ChatResponse, KiraProduct } from "@/types";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-// Primary: llama-3.3-70b-versatile (better quality, 12k TPM / 100k TPD free)
-// Fallback: llama-3.1-8b-instant (separate quota, faster, use when primary is rate-limited)
-const MODEL = "llama-3.1-8b-instant";
+// llama-3.3-70b-versatile: best quality, but 12k TPM / 100k TPD free-tier limits
+// meta-llama/llama-4-scout-17b-16e-instruct: Llama 4, agentic tool use, separate quota
+const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const MAX_TOOL_ROUNDS = 5;
 
 export async function POST(req: NextRequest) {
@@ -123,7 +123,10 @@ export async function POST(req: NextRequest) {
 
       // Done — no more tool calls
       if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
-        finalText = msg.content ?? "";
+        const raw = msg.content ?? "";
+        // Weaker models sometimes leak raw <function=...> blobs into content.
+        // Strip them so they never reach the UI.
+        finalText = raw.replace(/<function=[^>]+>[\s\S]*?<\/function>/g, "").trim();
         break;
       }
 
