@@ -5,7 +5,9 @@ import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
 import type { ChatRequest, ChatResponse, KiraProduct } from "@/types";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const MODEL = "llama-3.3-70b-versatile";
+// Primary: llama-3.3-70b-versatile (better quality, 12k TPM / 100k TPD free)
+// Fallback: llama-3.1-8b-instant (separate quota, faster, use when primary is rate-limited)
+const MODEL = "llama-3.1-8b-instant";
 const MAX_TOOL_ROUNDS = 5;
 
 export async function POST(req: NextRequest) {
