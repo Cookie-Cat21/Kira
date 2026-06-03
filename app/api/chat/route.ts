@@ -5,7 +5,16 @@ import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
 import type { ChatRequest, KiraProduct } from "@/types";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// Free-tier model cascade. We use the warmest/most capable model first, then
+// fall back on rate-limit (429) so a demo NEVER hard-fails under load:
+//   1. Llama 3.3 70B — best personality, but a low 100k tokens/day free budget
+//   2. Llama 4 Scout — middle ground, generous 30k TPM headroom
+//   3. Llama 3.1 8B — highest free limits, last-resort so it always answers
+const MODELS = [
+  "llama-3.3-70b-versatile",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "llama-3.1-8b-instant",
+];
 const MAX_TOOL_ROUNDS = 6;
 
 // Cache the MCP tool list across requests so we skip the listTools() round-trip
@@ -174,6 +183,7 @@ export async function POST(req: NextRequest) {
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
         let payLink: string | undefined;
+        let modelIndex = 0; // advances through MODELS on rate-limit
 
         const JSON_FORMAT_TOOLS = [
           "kapruka_search_products",
@@ -280,7 +290,7 @@ export async function POST(req: NextRequest) {
 
           try {
             response = await groq.chat.completions.create({
-              model: MODEL,
+              model: MODELS[modelIndex],
               messages: currentMessages,
               tools: tools.length > 0 ? tools : undefined,
               tool_choice: tools.length > 0 ? "auto" : undefined,
@@ -291,6 +301,13 @@ export async function POST(req: NextRequest) {
               status?: number;
               error?: { code?: string; failed_generation?: string };
             };
+            // Rate-limited on this model — drop to the next model in the
+            // cascade and retry this same round (nothing has been mutated yet).
+            if (apiErr?.status === 429 && modelIndex < MODELS.length - 1) {
+              modelIndex++;
+              round--;
+              continue;
+            }
             if (
               apiErr?.status === 400 &&
               apiErr?.error?.code === "tool_use_failed" &&

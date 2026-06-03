@@ -280,6 +280,8 @@ export default function KiraChat() {
         {cartCount > 0 ? (
           <button
             onClick={() => setCartOpen((o) => !o)}
+            aria-label={`${cartOpen ? "Close" : "Open"} cart — ${cartCount} item${cartCount === 1 ? "" : "s"}, total LKR ${cartTotal.toLocaleString()}`}
+            aria-expanded={cartOpen}
             className={cn(
               "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
               cartBounce ? "scale-110" : "scale-100"
@@ -295,12 +297,16 @@ export default function KiraChat() {
 
       {/* ── Cart drawer ────────────────────────────────────────────── */}
       {cartOpen && cartCount > 0 && (
-        <div className="shrink-0 bg-white border-b border-kira-border px-4 py-3 animate-fade-up shadow-sm z-10">
+        <div
+          role="region"
+          aria-label="Your cart"
+          className="shrink-0 bg-white border-b border-kira-border px-4 py-3 animate-fade-up shadow-sm z-10"
+        >
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] uppercase tracking-widest font-semibold text-kira-muted">
               Your cart
             </p>
-            <button onClick={() => setCartOpen(false)}>
+            <button onClick={() => setCartOpen(false)} aria-label="Close cart">
               <X className="w-3.5 h-3.5 text-kira-muted hover:text-kira-text" />
             </button>
           </div>
@@ -325,7 +331,12 @@ export default function KiraChat() {
       )}
 
       {/* ── Messages ───────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 dot-grid">
+      <main
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation with Kira"
+        className="flex-1 overflow-y-auto px-4 py-4 dot-grid"
+      >
         {messages.map((msg) => (
           <div key={msg.id}>
             {/* Thinking summary above each Kira reply */}
