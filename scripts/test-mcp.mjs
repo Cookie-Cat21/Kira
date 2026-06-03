@@ -1,8 +1,6 @@
 /**
- * Phase 0 MCP exploration script.
+ * Phase 0 MCP exploration script — uses real Kapruka tool names.
  * Run: node scripts/test-mcp.mjs
- *
- * Tests: list tools → search products → get delivery quote → (optionally) create order
  */
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -10,56 +8,74 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 const MCP_URL = "https://mcp.kapruka.com/mcp";
 
+async function call(client, tool, args) {
+  const result = await client.callTool({ name: tool, arguments: args });
+  return result.content;
+}
+
 async function main() {
   console.log("Connecting to Kapruka MCP...\n");
-
-  const client = new Client(
-    { name: "kira-test", version: "1.0.0" },
-    { capabilities: { tools: {} } }
-  );
-
+  const client = new Client({ name: "kira-test", version: "1.0.0" });
   const transport = new StreamableHTTPClientTransport(new URL(MCP_URL));
   await client.connect(transport);
-
   console.log("Connected.\n");
 
   // 1. List tools
-  console.log("=== Available Tools ===");
   const { tools } = await client.listTools();
-  tools.forEach((t) => {
-    console.log(`  ${t.name}: ${t.description ?? "(no description)"}`);
-  });
+  console.log("=== Available Tools ===");
+  tools.forEach((t) => console.log(`  ${t.name}`));
   console.log();
 
   // 2. Search products
-  console.log("=== Search: 'chocolate' ===");
-  const searchResult = await client.callTool({
-    name: "search_products",
-    arguments: { query: "chocolate", limit: 4 },
+  console.log("=== Search: birthday cake (JSON) ===");
+  const search = await call(client, "kapruka_search_products", {
+    q: "birthday cake",
+    limit: 3,
+    response_format: "json",
   });
-  console.log(JSON.stringify(searchResult.content, null, 2));
+  const searchData = JSON.parse(search[0].text);
+  console.log("Total results:", searchData.results?.length);
+  if (searchData.results?.[0]) {
+    const p = searchData.results[0];
+    console.log("First product:", {
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      image_url: p.image_url,
+      url: p.url,
+      in_stock: p.in_stock,
+    });
+  }
   console.log();
 
-  // 3. Get categories
-  console.log("=== Categories ===");
-  const catResult = await client.callTool({
-    name: "get_categories",
-    arguments: {},
+  // 3. Categories
+  console.log("=== Top-level Categories ===");
+  const cats = await call(client, "kapruka_list_categories", {
+    depth: 1,
+    response_format: "json",
   });
-  console.log(JSON.stringify(catResult.content, null, 2));
+  const catData = JSON.parse(cats[0].text);
+  catData.categories?.slice(0, 8).forEach((c) => console.log(`  ${c.name}`));
   console.log();
 
-  // 4. Delivery quote to Kandy
-  console.log("=== Delivery quote: Kandy ===");
-  const deliveryResult = await client.callTool({
-    name: "get_delivery_quote",
-    arguments: { city: "Kandy" },
+  // 4. Delivery check
+  console.log("=== Delivery to Kandy ===");
+  const delivery = await call(client, "kapruka_check_delivery", {
+    city: "Kandy",
+    response_format: "json",
   });
-  console.log(JSON.stringify(deliveryResult.content, null, 2));
+  const delivData = JSON.parse(delivery[0].text);
+  console.log({
+    city: delivData.city,
+    available: delivData.available,
+    rate: delivData.rate,
+    currency: delivData.currency,
+    checked_date: delivData.checked_date,
+  });
   console.log();
 
   await client.close();
-  console.log("Done. Check above for data shapes to refine TypeScript types.");
+  console.log("✓ All tools confirmed working. Update extractProducts/extractPayLink with real field names.");
 }
 
 main().catch((err) => {

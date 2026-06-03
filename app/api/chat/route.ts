@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
         const toolResult = await callMcpTool(mcpClient, toolName, toolArgs);
         const resultText = JSON.stringify(toolResult.content);
 
-        if (toolName === "search_products" || toolName === "get_categories") {
+        if (
+          toolName === "kapruka_search_products" ||
+          toolName === "kapruka_list_categories"
+        ) {
           try {
             collectedProducts.push(...extractProducts(JSON.parse(resultText)));
           } catch {
@@ -107,7 +110,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (toolName === "create_order") {
+        if (toolName === "kapruka_create_order") {
           try {
             payLink = extractPayLink(JSON.parse(resultText));
           } catch {
@@ -145,45 +148,67 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function extractProducts(data: unknown): KiraProduct[] {
-  if (!data || typeof data !== "object") return [];
+// Real Kapruka MCP response shapes (verified against live API 2026-06-03)
+// kapruka_search_products returns: { results: [...], next_cursor, applied_filters }
+// Each result: { id, name, summary, price: { amount, currency }, image_url, url, in_stock, category: { name } }
+// kapruka_create_order returns: { checkout_url, order_ref, summary: { grand_total, currency }, expires_at }
 
-  const obj = data as Record<string, unknown>;
-  const candidates =
-    (obj.products as unknown[]) ??
-    (obj.results as unknown[]) ??
-    (obj.items as unknown[]) ??
-    (Array.isArray(data) ? data : []);
+function extractProducts(data: unknown): KiraProduct[] {
+  // MCP returns an array of content blocks: [{ type: "text", text: "..." }]
+  // We may receive the parsed inner JSON or the outer content array
+  let inner = data;
+  if (Array.isArray(data)) {
+    const textBlock = (data as { type: string; text: string }[]).find(
+      (b) => b.type === "text"
+    );
+    if (textBlock) {
+      try {
+        inner = JSON.parse(textBlock.text);
+      } catch {
+        return [];
+      }
+    }
+  }
+
+  if (!inner || typeof inner !== "object") return [];
+  const obj = inner as Record<string, unknown>;
+  const candidates = (obj.results as unknown[]) ?? (Array.isArray(inner) ? inner : []);
 
   return candidates
     .slice(0, 4)
     .map((item) => {
       const p = item as Record<string, unknown>;
+      const priceObj = p.price as { amount?: number; currency?: string } | undefined;
+      const catObj = p.category as { name?: string } | undefined;
       return {
-        id: String(p.id ?? p.productId ?? Math.random()),
-        name: String(p.name ?? p.title ?? "Product"),
-        price: Number(p.price ?? p.unitPrice ?? 0),
-        currency: String(p.currency ?? "LKR"),
-        image:
-          (p.image as string | undefined) ??
-          (p.imageUrl as string | undefined),
-        category: p.category as string | undefined,
-        url:
-          (p.url as string | undefined) ??
-          (p.productUrl as string | undefined),
+        id: String(p.id ?? Math.random()),
+        name: String(p.name ?? "Product"),
+        price: Number(priceObj?.amount ?? 0),
+        currency: priceObj?.currency ?? "LKR",
+        image: p.image_url as string | undefined,
+        category: catObj?.name as string | undefined,
+        url: p.url as string | undefined,
       };
     })
-    .filter((p) => p.name !== "Product" || p.price > 0);
+    .filter((p) => p.price > 0);
 }
 
 function extractPayLink(data: unknown): string | undefined {
-  if (!data || typeof data !== "object") return undefined;
-  const obj = data as Record<string, unknown>;
-  return (
-    (obj.payLink as string) ??
-    (obj.paymentUrl as string) ??
-    (obj.pay_link as string) ??
-    (obj.checkoutUrl as string) ??
-    undefined
-  );
+  let inner = data;
+  if (Array.isArray(data)) {
+    const textBlock = (data as { type: string; text: string }[]).find(
+      (b) => b.type === "text"
+    );
+    if (textBlock) {
+      try {
+        inner = JSON.parse(textBlock.text);
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  if (!inner || typeof inner !== "object") return undefined;
+  const obj = inner as Record<string, unknown>;
+  // Real field: checkout_url (verified from kapruka_create_order schema)
+  return (obj.checkout_url as string) ?? undefined;
 }
