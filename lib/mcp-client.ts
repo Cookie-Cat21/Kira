@@ -4,10 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 const KAPRUKA_MCP_URL = "https://mcp.kapruka.com/mcp";
 
 export async function createMcpClient(): Promise<Client> {
-  const client = new Client(
-    { name: "kira", version: "1.0.0" },
-    { capabilities: { tools: {} } }
-  );
+  const client = new Client({ name: "kira", version: "1.0.0" });
 
   const transport = new StreamableHTTPClientTransport(
     new URL(KAPRUKA_MCP_URL)

@@ -1,7 +1,13 @@
 "use client";
 
+/**
+ * ChatMessage — inspired by jakobhoeg/chat-bubble on 21st.dev
+ * Clean bubbles: Kira on left (lavender bg), user on right (Kapruka purple).
+ */
+
 import ProductCard from "./ProductCard";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
   message: KiraMessage;
@@ -18,27 +24,34 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
 
+  /* ── User bubble ─────────────────────────────────────────────── */
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
-        <div className="bg-kira-bubble-user text-kira-text rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%] text-sm leading-relaxed">
+        <div className="bg-kap-purple text-white rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%] text-sm leading-relaxed shadow-sm">
           {message.content}
         </div>
       </div>
     );
   }
 
+  /* ── Kira bubble ─────────────────────────────────────────────── */
   return (
-    <div className="flex items-end gap-2 mb-4 animate-fade-up">
-      {/* Kira avatar */}
-      <div className="w-7 h-7 rounded-full bg-kap-purple flex items-center justify-center shrink-0 text-xs text-kira-yellow font-bold shadow-md shadow-kap-purple/40">
+    <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
+      {/* Avatar */}
+      <div className="w-7 h-7 rounded-full bg-kap-purple flex items-center justify-center shrink-0 text-xs text-kap-yellow shadow-sm">
         ✦
       </div>
 
       <div className="flex flex-col gap-3 max-w-[88%]">
         {/* Text bubble */}
         {message.content && (
-          <div className="bg-kira-bubble-kira border border-kira-border text-kira-text rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed">
+          <div
+            className={cn(
+              "bg-kira-bubble-kira border border-kira-border text-kira-text",
+              "rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm"
+            )}
+          >
             {message.content}
           </div>
         )}
@@ -47,10 +60,7 @@ export default function ChatMessage({
         {message.products && message.products.length > 0 && (
           <div className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4">
             {message.products.map((product, i) => (
-              <div
-                key={product.id}
-                style={{ animationDelay: `${i * 0.07}s` }}
-              >
+              <div key={product.id} style={{ animationDelay: `${i * 0.07}s` }}>
                 <ProductCard
                   product={product}
                   cart={cart}
@@ -62,13 +72,13 @@ export default function ChatMessage({
           </div>
         )}
 
-        {/* Pay link */}
+        {/* Pay link CTA */}
         {message.payLink && (
           <a
             href={message.payLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-kira-yellow text-gray-900 text-sm font-bold px-5 py-3 rounded-xl text-center hover:brightness-95 transition-all active:scale-95 shadow-md shadow-kira-yellow/20"
+            className="bg-kap-yellow text-gray-900 text-sm font-bold px-5 py-3 rounded-xl text-center hover:brightness-95 transition-all active:scale-95 shadow-sm"
           >
             Complete payment →
           </a>
