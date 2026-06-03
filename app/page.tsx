@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ShoppingCart, X } from "lucide-react";
+import { ShoppingCart, X, ListTodo } from "lucide-react";
 import ChatMessage from "./components/ChatMessage";
 import TypingIndicator from "./components/TypingIndicator";
+import AgentPlan from "./components/ui/agent-plan";
 import {
   ChatInput,
   ChatInputTextArea,
@@ -49,6 +50,7 @@ export default function KiraChat() {
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -149,20 +151,36 @@ export default function KiraChat() {
           </span>
         </div>
 
-        {cartCount > 0 ? (
+        <div className="flex items-center gap-2">
+          {/* Plan toggle */}
           <button
-            onClick={() => setCartOpen((o) => !o)}
+            onClick={() => setPlanOpen((o) => !o)}
             className={cn(
-              "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
-              cartBounce ? "scale-110" : "scale-100"
+              "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
+              planOpen
+                ? "bg-kap-purple text-white border-kap-purple"
+                : "bg-white text-kira-muted border-kira-border hover:border-kap-purple/40 hover:text-kap-purple"
             )}
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
+            <ListTodo className="w-3.5 h-3.5" />
+            Plan
           </button>
-        ) : (
-          <span className="text-kira-muted text-xs">Free delivery available ✓</span>
-        )}
+
+          {cartCount > 0 ? (
+            <button
+              onClick={() => setCartOpen((o) => !o)}
+              className={cn(
+                "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
+                cartBounce ? "scale-110" : "scale-100"
+              )}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" />
+              {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
+            </button>
+          ) : (
+            <span className="text-kira-muted text-xs">Free delivery ✓</span>
+          )}
+        </div>
       </header>
 
       {/* ── Cart drawer ────────────────────────────────────────────── */}
@@ -193,6 +211,13 @@ export default function KiraChat() {
           >
             Checkout →
           </button>
+        </div>
+      )}
+
+      {/* ── Agent plan panel ───────────────────────────────────────── */}
+      {planOpen && (
+        <div className="shrink-0 border-b border-kira-border bg-white px-4 py-3 max-h-72 overflow-y-auto animate-fade-up z-10 shadow-sm">
+          <AgentPlan />
         </div>
       )}
 
