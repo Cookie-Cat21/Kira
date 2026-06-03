@@ -10,7 +10,7 @@ import {
   ChatInputSubmit,
 } from "./components/ui/chat-input";
 import { getContextualGreeting } from "@/lib/kira-prompt";
-import type { KiraMessage, CartItem, KiraProduct, ChatResponse } from "@/types";
+import type { KiraMessage, CartItem, KiraProduct } from "@/types";
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = [
@@ -45,11 +45,13 @@ export default function KiraChat() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
   const thinkingStartRef = useRef<number>(0);
+  const streamingMsgIdRef = useRef<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +86,20 @@ export default function KiraChat() {
       setMessages((prev) => [...prev, userMsg]);
       setInput("");
       setIsLoading(true);
+      setIsStreaming(false);
+      streamingMsgIdRef.current = null;
       thinkingStartRef.current = Date.now();
+
+      if (!deliveryCity) {
+        const m = trimmed.match(
+          /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i
+        );
+        if (m) {
+          // Title-case so cards read "Delivers to Colombo", not "colombo"
+          const city = m[1].replace(/\b\w/g, (c) => c.toUpperCase());
+          setDeliveryCity(city);
+        }
+      }
 
       try {
         const history = [...messages, userMsg]
@@ -96,41 +111,150 @@ export default function KiraChat() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: history, cart, deliveryCity }),
         });
-        if (!res.ok) throw new Error("API error");
-        const data: ChatResponse = await res.json();
+        if (!res.ok || !res.body) throw new Error("API error");
 
-        if (!deliveryCity) {
-          const m = trimmed.match(
-            /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i
-          );
-          if (m) setDeliveryCity(m[1]);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() ?? "";
+
+          for (const part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            try {
+              const payload = JSON.parse(part.slice(6)) as {
+                t: string;
+                v?: unknown;
+              };
+
+              if (payload.t === "token") {
+                if (!streamingMsgIdRef.current) {
+                  // First token — create the reply bubble and hide ThinkingLive
+                  const msgId = `kira-${Date.now()}`;
+                  streamingMsgIdRef.current = msgId;
+                  setIsStreaming(true);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: msgId,
+                      role: "assistant",
+                      content: payload.v as string,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                } else {
+                  const id = streamingMsgIdRef.current;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, content: m.content + (payload.v as string) }
+                        : m
+                    )
+                  );
+                }
+              } else if (payload.t === "products") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, products: payload.v as KiraProduct[] }
+                        : m
+                    )
+                  );
+              } else if (payload.t === "payLink") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, payLink: payload.v as string }
+                        : m
+                    )
+                  );
+              } else if (payload.t === "done") {
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? {
+                            ...m,
+                            thinkingMs: Date.now() - thinkingStartRef.current,
+                          }
+                        : m
+                    )
+                  );
+                } else {
+                  // done fired with no tokens — server sent empty response
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `kira-${Date.now()}`,
+                      role: "assistant",
+                      content: "Aiyo, something went wrong. Try again?",
+                      timestamp: Date.now(),
+                      thinkingMs: Date.now() - thinkingStartRef.current,
+                    },
+                  ]);
+                }
+                setIsLoading(false);
+                setIsStreaming(false);
+              } else if (payload.t === "error") {
+                const errMsg =
+                  (payload.v as string) ||
+                  "Aiyo, something went wrong. Try again?";
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === id ? { ...m, content: errMsg } : m))
+                  );
+                } else {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `err-${Date.now()}`,
+                      role: "assistant",
+                      content: errMsg,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                }
+                setIsLoading(false);
+                setIsStreaming(false);
+              }
+            } catch {
+              /* malformed SSE chunk — skip */
+            }
+          }
         }
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `kira-${Date.now()}`,
-            role: "assistant",
-            content: data.message,
-            products: data.products,
-            payLink: data.payLink,
-            timestamp: Date.now(),
-            thinkingMs: Date.now() - thinkingStartRef.current,
-          },
-        ]);
       } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            role: "assistant",
-            content: "Aiyo, something went wrong on my end. Try again?",
-            timestamp: Date.now(),
-            thinkingMs: Date.now() - thinkingStartRef.current,
-          },
-        ]);
+        const errMsg = "Aiyo, something went wrong on my end. Try again?";
+        const id = streamingMsgIdRef.current;
+        if (id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: errMsg } : m))
+          );
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `err-${Date.now()}`,
+              role: "assistant",
+              content: errMsg,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       } finally {
         setIsLoading(false);
+        setIsStreaming(false);
       }
     },
     [messages, cart, deliveryCity, isLoading]
@@ -216,7 +340,7 @@ export default function KiraChat() {
             />
           </div>
         ))}
-        {isLoading && <ThinkingLive />}
+        {isLoading && !isStreaming && <ThinkingLive />}
         <div ref={bottomRef} />
       </main>
 
