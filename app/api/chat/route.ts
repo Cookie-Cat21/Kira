@@ -1,13 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { KIRA_SYSTEM_PROMPT } from "@/lib/kira-prompt";
 import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
 import type { ChatRequest, ChatResponse, KiraProduct } from "@/types";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = "llama-3.3-70b-versatile";
 const MAX_TOOL_ROUNDS = 5;
 
 export async function POST(req: NextRequest) {
@@ -17,12 +15,10 @@ export async function POST(req: NextRequest) {
     const body: ChatRequest = await req.json();
     const { messages, cart, deliveryCity } = body;
 
-    // Build cart context for the system prompt
     const cartContext =
       cart.length > 0
         ? `\n\nCurrent cart: ${cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ")}`
         : "";
-
     const deliveryContext = deliveryCity
       ? `\nDelivery city: ${deliveryCity}`
       : "";
@@ -31,110 +27,107 @@ export async function POST(req: NextRequest) {
     mcpClient = await createMcpClient();
     const mcpTools = await listMcpTools(mcpClient);
 
-    // Convert MCP tools to Anthropic tool format
-    const tools: Anthropic.Tool[] = mcpTools.map((tool) => ({
-      name: tool.name,
-      description: tool.description ?? "",
-      input_schema: (tool.inputSchema as Anthropic.Tool["input_schema"]) ?? {
-        type: "object",
-        properties: {},
-      },
-    }));
+    // Convert MCP tools to OpenAI/Groq format
+    const tools: Groq.Chat.Completions.ChatCompletionTool[] = mcpTools.map(
+      (tool) => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description ?? "",
+          parameters: (tool.inputSchema as Record<string, unknown>) ?? {
+            type: "object",
+            properties: {},
+          },
+        },
+      })
+    );
 
-    // Agentic loop
-    let currentMessages: Anthropic.MessageParam[] = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Build message history — system prompt is a separate message for Groq
+    type GroqMessage = Groq.Chat.Completions.ChatCompletionMessageParam;
+
+    let currentMessages: GroqMessage[] = [
+      {
+        role: "system",
+        content: KIRA_SYSTEM_PROMPT + cartContext + deliveryContext,
+      },
+      ...messages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+    ];
 
     let finalText = "";
     const collectedProducts: KiraProduct[] = [];
     let payLink: string | undefined;
 
+    // Agentic loop
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: KIRA_SYSTEM_PROMPT + cartContext + deliveryContext,
+      const response = await groq.chat.completions.create({
+        model: MODEL,
         messages: currentMessages,
-        tools,
+        tools: tools.length > 0 ? tools : undefined,
+        tool_choice: tools.length > 0 ? "auto" : undefined,
+        max_tokens: 1024,
       });
 
-      if (response.stop_reason === "end_turn") {
-        for (const block of response.content) {
-          if (block.type === "text") {
-            finalText = block.text;
-          }
-        }
+      const choice = response.choices[0];
+      const msg = choice.message;
+
+      // Done — no more tool calls
+      if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
+        finalText = msg.content ?? "";
         break;
       }
 
-      if (response.stop_reason === "tool_use") {
-        const assistantMessage: Anthropic.MessageParam = {
-          role: "assistant",
-          content: response.content,
-        };
-        currentMessages.push(assistantMessage);
+      // Add assistant message (with tool_calls) to history
+      currentMessages.push({
+        role: "assistant",
+        content: msg.content,
+        tool_calls: msg.tool_calls,
+      });
 
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      // Execute all tool calls in this round
+      for (const toolCall of msg.tool_calls) {
+        const toolName = toolCall.function.name;
+        let toolArgs: Record<string, unknown> = {};
+        try {
+          toolArgs = JSON.parse(toolCall.function.arguments || "{}");
+        } catch {
+          // malformed args, proceed with empty
+        }
 
-        for (const block of response.content) {
-          if (block.type === "text" && block.text) {
-            finalText = block.text;
-          }
+        const toolResult = await callMcpTool(mcpClient, toolName, toolArgs);
+        const resultText = JSON.stringify(toolResult.content);
 
-          if (block.type === "tool_use") {
-            const toolResult = await callMcpTool(
-              mcpClient,
-              block.name,
-              block.input as Record<string, unknown>
-            );
-
-            const resultText = JSON.stringify(toolResult.content);
-
-            // Extract products from search results
-            if (
-              block.name === "search_products" ||
-              block.name === "get_categories"
-            ) {
-              try {
-                const parsed = JSON.parse(resultText);
-                const products = extractProducts(parsed);
-                collectedProducts.push(...products);
-              } catch {
-                // non-JSON result, skip extraction
-              }
-            }
-
-            // Extract pay link from create_order result
-            if (block.name === "create_order") {
-              try {
-                const parsed = JSON.parse(resultText);
-                payLink = extractPayLink(parsed);
-              } catch {
-                // skip
-              }
-            }
-
-            toolResults.push({
-              type: "tool_result",
-              tool_use_id: block.id,
-              content: resultText,
-            });
+        if (toolName === "search_products" || toolName === "get_categories") {
+          try {
+            collectedProducts.push(...extractProducts(JSON.parse(resultText)));
+          } catch {
+            /* skip */
           }
         }
 
-        currentMessages.push({ role: "user", content: toolResults });
+        if (toolName === "create_order") {
+          try {
+            payLink = extractPayLink(JSON.parse(resultText));
+          } catch {
+            /* skip */
+          }
+        }
+
+        currentMessages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: resultText,
+        });
       }
     }
 
-    const responsePayload: ChatResponse = {
+    return NextResponse.json({
       message: finalText,
       products: collectedProducts.length > 0 ? collectedProducts : undefined,
       payLink,
-    };
-
-    return NextResponse.json(responsePayload);
+    } satisfies ChatResponse);
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
@@ -146,7 +139,7 @@ export async function POST(req: NextRequest) {
       try {
         await mcpClient.close();
       } catch {
-        // ignore close errors
+        /* ignore */
       }
     }
   }
@@ -155,7 +148,6 @@ export async function POST(req: NextRequest) {
 function extractProducts(data: unknown): KiraProduct[] {
   if (!data || typeof data !== "object") return [];
 
-  // Try common MCP response shapes
   const obj = data as Record<string, unknown>;
   const candidates =
     (obj.products as unknown[]) ??
@@ -172,9 +164,13 @@ function extractProducts(data: unknown): KiraProduct[] {
         name: String(p.name ?? p.title ?? "Product"),
         price: Number(p.price ?? p.unitPrice ?? 0),
         currency: String(p.currency ?? "LKR"),
-        image: p.image as string | undefined ?? p.imageUrl as string | undefined,
+        image:
+          (p.image as string | undefined) ??
+          (p.imageUrl as string | undefined),
         category: p.category as string | undefined,
-        url: p.url as string | undefined ?? p.productUrl as string | undefined,
+        url:
+          (p.url as string | undefined) ??
+          (p.productUrl as string | undefined),
       };
     })
     .filter((p) => p.name !== "Product" || p.price > 0);
