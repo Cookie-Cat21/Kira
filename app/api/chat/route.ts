@@ -297,10 +297,15 @@ export async function POST(req: NextRequest) {
               max_tokens: 512,
             });
           } catch (err) {
+            // The Groq SDK exposes the full response body on `.error`, so the
+            // actual failure payload is nested: err.error.error.{code,...}.
+            // Fall back to the flat shape just in case the SDK changes.
+            type ErrBody = { code?: string; failed_generation?: string };
             const apiErr = err as {
               status?: number;
-              error?: { code?: string; failed_generation?: string };
+              error?: ErrBody & { error?: ErrBody };
             };
+            const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
             // Rate-limited on this model — drop to the next model in the
             // cascade and retry this same round (nothing has been mutated yet).
             if (apiErr?.status === 429 && modelIndex < MODELS.length - 1) {
@@ -310,8 +315,8 @@ export async function POST(req: NextRequest) {
             }
             if (
               apiErr?.status === 400 &&
-              apiErr?.error?.code === "tool_use_failed" &&
-              apiErr?.error?.failed_generation
+              inner.code === "tool_use_failed" &&
+              inner.failed_generation
             ) {
               type RawCall = {
                 name: string;
@@ -319,12 +324,9 @@ export async function POST(req: NextRequest) {
               };
               let rawCalls: RawCall[] = [];
               try {
-                rawCalls = JSON.parse(
-                  apiErr.error.failed_generation
-                ) as RawCall[];
+                rawCalls = JSON.parse(inner.failed_generation) as RawCall[];
               } catch {
-                const match =
-                  apiErr.error.failed_generation.match(/\[[\s\S]*\]/);
+                const match = inner.failed_generation.match(/\[[\s\S]*\]/);
                 if (match) {
                   try {
                     rawCalls = JSON.parse(match[0]) as RawCall[];
