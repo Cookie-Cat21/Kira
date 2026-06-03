@@ -27,13 +27,18 @@ export async function POST(req: NextRequest) {
     mcpClient = await createMcpClient();
     const mcpTools = await listMcpTools(mcpClient);
 
-    // Convert MCP tools to OpenAI/Groq format
+    // Convert MCP tools to OpenAI/Groq format.
+    // Trim verbose multi-paragraph descriptions to first sentence only —
+    // the free Groq tier has a 12k TPM cap and the full descriptions blow past it.
+    const trimDesc = (desc: string) =>
+      desc.split(/\n/)[0].split(". ")[0].slice(0, 120);
+
     const tools: Groq.Chat.Completions.ChatCompletionTool[] = mcpTools.map(
       (tool) => ({
         type: "function",
         function: {
           name: tool.name,
-          description: tool.description ?? "",
+          description: trimDesc(tool.description ?? ""),
           parameters: (tool.inputSchema as Record<string, unknown>) ?? {
             type: "object",
             properties: {},

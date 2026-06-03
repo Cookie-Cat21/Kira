@@ -23,6 +23,7 @@ export interface KiraMessage {
   deliveryInfo?: DeliveryQuote;
   payLink?: string;
   timestamp: number;
+  thinkingMs?: number; // how long Kira thought before responding
 }
 
 export interface CartItem {

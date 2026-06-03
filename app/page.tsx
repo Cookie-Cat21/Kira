@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ShoppingCart, X, ListTodo } from "lucide-react";
+import { ShoppingCart, X } from "lucide-react";
 import ChatMessage from "./components/ChatMessage";
-import TypingIndicator from "./components/TypingIndicator";
-import AgentPlan from "./components/ui/agent-plan";
+import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
 import {
   ChatInput,
   ChatInputTextArea,
@@ -50,7 +49,7 @@ export default function KiraChat() {
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
+  const thinkingStartRef = useRef<number>(0);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -85,6 +84,7 @@ export default function KiraChat() {
       setMessages((prev) => [...prev, userMsg]);
       setInput("");
       setIsLoading(true);
+      thinkingStartRef.current = Date.now();
 
       try {
         const history = [...messages, userMsg]
@@ -115,6 +115,7 @@ export default function KiraChat() {
             products: data.products,
             payLink: data.payLink,
             timestamp: Date.now(),
+            thinkingMs: Date.now() - thinkingStartRef.current,
           },
         ]);
       } catch {
@@ -125,6 +126,7 @@ export default function KiraChat() {
             role: "assistant",
             content: "Aiyo, something went wrong on my end. Try again?",
             timestamp: Date.now(),
+            thinkingMs: Date.now() - thinkingStartRef.current,
           },
         ]);
       } finally {
@@ -151,36 +153,20 @@ export default function KiraChat() {
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Plan toggle */}
+        {cartCount > 0 ? (
           <button
-            onClick={() => setPlanOpen((o) => !o)}
+            onClick={() => setCartOpen((o) => !o)}
             className={cn(
-              "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors",
-              planOpen
-                ? "bg-kap-purple text-white border-kap-purple"
-                : "bg-white text-kira-muted border-kira-border hover:border-kap-purple/40 hover:text-kap-purple"
+              "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
+              cartBounce ? "scale-110" : "scale-100"
             )}
           >
-            <ListTodo className="w-3.5 h-3.5" />
-            Plan
+            <ShoppingCart className="w-3.5 h-3.5" />
+            {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
           </button>
-
-          {cartCount > 0 ? (
-            <button
-              onClick={() => setCartOpen((o) => !o)}
-              className={cn(
-                "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
-                cartBounce ? "scale-110" : "scale-100"
-              )}
-            >
-              <ShoppingCart className="w-3.5 h-3.5" />
-              {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
-            </button>
-          ) : (
-            <span className="text-kira-muted text-xs">Free delivery ✓</span>
-          )}
-        </div>
+        ) : (
+          <span className="text-kira-muted text-xs">Free delivery ✓</span>
+        )}
       </header>
 
       {/* ── Cart drawer ────────────────────────────────────────────── */}
@@ -214,25 +200,23 @@ export default function KiraChat() {
         </div>
       )}
 
-      {/* ── Agent plan panel ───────────────────────────────────────── */}
-      {planOpen && (
-        <div className="shrink-0 border-b border-kira-border bg-white px-4 py-3 max-h-72 overflow-y-auto animate-fade-up z-10 shadow-sm">
-          <AgentPlan />
-        </div>
-      )}
-
-      {/* ── Messages (dot-grid background) ─────────────────────────── */}
+      {/* ── Messages ───────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 py-4 dot-grid">
         {messages.map((msg) => (
-          <ChatMessage
-            key={msg.id}
-            message={msg}
-            cart={cart}
-            onAddToCart={handleAddToCart}
-            deliveryCity={deliveryCity}
-          />
+          <div key={msg.id}>
+            {/* Thinking summary above each Kira reply */}
+            {msg.role === "assistant" && msg.thinkingMs && (
+              <ThinkingDone thinkingMs={msg.thinkingMs} />
+            )}
+            <ChatMessage
+              message={msg}
+              cart={cart}
+              onAddToCart={handleAddToCart}
+              deliveryCity={deliveryCity}
+            />
+          </div>
         ))}
-        {isLoading && <TypingIndicator />}
+        {isLoading && <ThinkingLive />}
         <div ref={bottomRef} />
       </main>
 
