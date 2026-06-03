@@ -27,24 +27,65 @@ export async function POST(req: NextRequest) {
     mcpClient = await createMcpClient();
     const mcpTools = await listMcpTools(mcpClient);
 
-    // Convert MCP tools to OpenAI/Groq format.
-    // Trim verbose multi-paragraph descriptions to first sentence only —
-    // the free Groq tier has a 12k TPM cap and the full descriptions blow past it.
+    // The Kapruka MCP wraps all args in a `params` key (Pydantic model pattern).
+    // Groq validates tool call args against the schema and rejects calls that
+    // don't include `params`. Fix: flatten the schema for Groq, then re-wrap
+    // the args before calling the MCP.
+    //
+    // Also trim verbose descriptions — free Groq tier has a 12k TPM cap.
     const trimDesc = (desc: string) =>
       desc.split(/\n/)[0].split(". ")[0].slice(0, 120);
 
+    // Returns the inner SearchProductsInput schema (without the `params` wrapper)
+    // and a flag so we know to re-wrap when calling the tool.
+    function resolveSchema(rawSchema: Record<string, unknown>): {
+      schema: Record<string, unknown>;
+      needsParamsWrap: boolean;
+    } {
+      const props = rawSchema.properties as Record<string, unknown> | undefined;
+      const required = rawSchema.required as string[] | undefined;
+      const defs = rawSchema.$defs as Record<string, unknown> | undefined;
+
+      if (
+        props &&
+        required?.length === 1 &&
+        required[0] === "params" &&
+        props.params
+      ) {
+        const paramsEntry = props.params as Record<string, unknown>;
+        const ref = paramsEntry.$ref as string | undefined;
+        if (ref && defs) {
+          const refName = ref.split("/").pop()!;
+          const inner = defs[refName] as Record<string, unknown> | undefined;
+          if (inner) {
+            // Keep outer $defs so any $ref pointers inside the inner schema
+            // (e.g. CreateOrderInput references $defs/Sender, $defs/Recipient)
+            // still resolve correctly.
+            return { schema: { ...inner, $defs: defs }, needsParamsWrap: true };
+          }
+        }
+      }
+      return { schema: rawSchema, needsParamsWrap: false };
+    }
+
+    const toolMeta: { needsParamsWrap: boolean }[] = [];
     const tools: Groq.Chat.Completions.ChatCompletionTool[] = mcpTools.map(
-      (tool) => ({
-        type: "function",
-        function: {
-          name: tool.name,
-          description: trimDesc(tool.description ?? ""),
-          parameters: (tool.inputSchema as Record<string, unknown>) ?? {
-            type: "object",
-            properties: {},
+      (tool) => {
+        const raw = (tool.inputSchema as Record<string, unknown>) ?? {
+          type: "object",
+          properties: {},
+        };
+        const { schema, needsParamsWrap } = resolveSchema(raw);
+        toolMeta.push({ needsParamsWrap });
+        return {
+          type: "function",
+          function: {
+            name: tool.name,
+            description: trimDesc(tool.description ?? ""),
+            parameters: schema,
           },
-        },
-      })
+        };
+      }
     );
 
     // Build message history — system prompt is a separate message for Groq
@@ -101,7 +142,12 @@ export async function POST(req: NextRequest) {
           // malformed args, proceed with empty
         }
 
-        const toolResult = await callMcpTool(mcpClient, toolName, toolArgs);
+        // Re-wrap args in `params` if this tool uses the Pydantic wrapper pattern
+        const toolIndex = mcpTools.findIndex((t) => t.name === toolName);
+        const needsWrap = toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
+        const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
+
+        const toolResult = await callMcpTool(mcpClient, toolName, mcpArgs);
         const resultText = JSON.stringify(toolResult.content);
 
         if (
