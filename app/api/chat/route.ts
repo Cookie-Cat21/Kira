@@ -38,6 +38,25 @@ export async function POST(req: NextRequest) {
     const trimDesc = (desc: string) =>
       desc.split(/\n/)[0].split(". ")[0].slice(0, 120);
 
+    // Llama 4 Scout (and other models) sometimes emit integers as strings.
+    // Groq validates against the schema and rejects the generation.
+    // Fix: relax integer/number fields to accept string too, then coerce back
+    // in coerceArgTypes before calling the MCP.
+    function relaxIntegers(schema: Record<string, unknown>): Record<string, unknown> {
+      const props = schema.properties as Record<string, Record<string, unknown>> | undefined;
+      if (!props) return schema;
+      const relaxed = Object.fromEntries(
+        Object.entries(props).map(([k, v]) => {
+          if (v.type === "integer" || v.type === "number") {
+            const { type: _t, ...rest } = v;
+            return [k, { ...rest, anyOf: [{ type: v.type }, { type: "string" }] }];
+          }
+          return [k, v];
+        })
+      );
+      return { ...schema, properties: relaxed };
+    }
+
     // Returns the inner SearchProductsInput schema (without the `params` wrapper)
     // and a flag so we know to re-wrap when calling the tool.
     function resolveSchema(rawSchema: Record<string, unknown>): {
@@ -84,7 +103,7 @@ export async function POST(req: NextRequest) {
           function: {
             name: tool.name,
             description: trimDesc(tool.description ?? ""),
-            parameters: schema,
+            parameters: relaxIntegers(schema),
           },
         };
       }
@@ -147,8 +166,31 @@ export async function POST(req: NextRequest) {
           // malformed args, proceed with empty
         }
 
-        // Re-wrap args in `params` if this tool uses the Pydantic wrapper pattern
+        // Force JSON response format on all Kapruka tools so we can parse results.
+        // The LLM defaults to "markdown" which we can't reliably parse for cards.
+        const JSON_FORMAT_TOOLS = [
+          "kapruka_search_products",
+          "kapruka_list_categories",
+          "kapruka_check_delivery",
+          "kapruka_get_product",
+          "kapruka_create_order",
+        ];
+        if (JSON_FORMAT_TOOLS.includes(toolName)) {
+          toolArgs = { ...toolArgs, response_format: "json" };
+        }
+
+        // Coerce string values to their schema types — Llama 4 Scout sometimes
+        // passes integers as strings (e.g. "limit": "10" instead of 10).
         const toolIndex = mcpTools.findIndex((t) => t.name === toolName);
+        const toolSchema = toolIndex >= 0 ? toolMeta[toolIndex] : null;
+        const flatSchema = toolIndex >= 0
+          ? (tools[toolIndex]?.function?.parameters as Record<string, unknown>)
+          : null;
+        if (flatSchema) {
+          toolArgs = coerceArgTypes(toolArgs, flatSchema);
+        }
+
+        // Re-wrap args in `params` if this tool uses the Pydantic wrapper pattern
         const needsWrap = toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
         const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
 
@@ -202,6 +244,31 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+}
+
+// Coerce string-typed values to the types declared in the JSON Schema.
+// Llama 4 Scout (and some other models) occasionally returns integers as
+// strings (e.g. "limit": "10") which Groq's schema validation rejects.
+function coerceArgTypes(
+  args: Record<string, unknown>,
+  schema: Record<string, unknown>
+): Record<string, unknown> {
+  const props = (schema.properties as Record<string, { type?: string }>) || {};
+  const result = { ...args };
+  for (const [key, val] of Object.entries(result)) {
+    if (val === null || val === undefined) continue;
+    const expectedType = props[key]?.type;
+    if (expectedType === "integer" && typeof val === "string") {
+      const n = parseInt(val, 10);
+      if (!isNaN(n)) result[key] = n;
+    } else if (expectedType === "number" && typeof val === "string") {
+      const n = parseFloat(val);
+      if (!isNaN(n)) result[key] = n;
+    } else if (expectedType === "boolean" && typeof val === "string") {
+      result[key] = val === "true";
+    }
+  }
+  return result;
 }
 
 // Real Kapruka MCP response shapes (verified against live API 2026-06-03)

@@ -5,6 +5,7 @@
  * Clean bubbles: Kira on left (lavender bg), user on right (Kapruka purple).
  */
 
+import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
 import { cn } from "@/lib/utils";
@@ -49,10 +50,14 @@ export default function ChatMessage({
           <div
             className={cn(
               "bg-kira-bubble-kira border border-kira-border text-kira-text",
-              "rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm"
+              "rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+              "prose prose-sm max-w-none",
+              "[&_strong]:font-semibold [&_strong]:text-kira-text",
+              "[&_ol]:pl-4 [&_ol]:space-y-1 [&_ul]:pl-4 [&_ul]:space-y-1",
+              "[&_p]:m-0 [&_p+p]:mt-2"
             )}
           >
-            {message.content}
+            <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}
 
