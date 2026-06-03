@@ -131,7 +131,7 @@ export default function KiraChat() {
     messages.length === 1 && messages[0].id === "opening";
 
   return (
-    <div className="h-full flex flex-col bg-kira-base">
+    <div className="h-screen flex flex-col bg-kira-base">
       {/* Header */}
       <header className="shrink-0 h-14 flex items-center justify-between px-4 border-b border-kira-border bg-kira-base/80 backdrop-blur-sm z-10">
         <div className="flex items-center gap-2">
