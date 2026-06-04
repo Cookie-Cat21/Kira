@@ -909,3 +909,29 @@ function GiftConciergeWelcome({
     </div>
   );
 }
+
+function BriefRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: KiraIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-kira-line bg-white p-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-kira-bg text-kap-purple">
+        <Icon className="size-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-bold uppercase text-kira-muted">
+          {label}
+        </span>
+        <span className="block truncate text-sm font-semibold text-kira-text">
+          {value}
+        </span>
+      </span>
+    </div>
+  );
+}
