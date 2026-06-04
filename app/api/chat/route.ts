@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity } = body;
+        const { messages, cart, deliveryCity, deliveryDate } = body;
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
@@ -89,13 +89,18 @@ export async function POST(req: NextRequest) {
         const deliveryContext = deliveryCity
           ? `\nDelivery city: ${deliveryCity} (already confirmed — do not call check_delivery again for this city unless a product or date is now available)`
           : "";
+        const deliveryDateContext = deliveryDate
+          ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
+          : "";
 
         mcpClient = await createMcpClient();
         if (
           await tryHandleDeterministicPrompt({
             text: latestUserText,
+            messages,
             cart,
             deliveryCity,
+            deliveryDate,
             mcpClient,
             controller,
           })
@@ -223,7 +228,7 @@ export async function POST(req: NextRequest) {
         const currentMessages: GroqMessage[] = [
           {
             role: "system",
-            content: KIRA_SYSTEM_PROMPT + cartContext + deliveryContext,
+            content: KIRA_SYSTEM_PROMPT + cartContext + deliveryContext + deliveryDateContext,
           },
           ...messages.map((m) => ({
             role: m.role as "user" | "assistant",
@@ -253,15 +258,30 @@ export async function POST(req: NextRequest) {
           for (const toolCall of calls) {
             const toolName = toolCall.function.name;
 
-            controller.enqueue(
-              sse("step", TOOL_STEPS[toolName] ?? "Using a tool")
-            );
-
+            // Parse args first so we can use them in the step label and context SSE
             let toolArgs: Record<string, unknown> = {};
             try {
               toolArgs = JSON.parse(toolCall.function.arguments || "{}");
-            } catch {
-              /* malformed args */
+            } catch { /* malformed args */ }
+
+            // Step label — include search query for visibility
+            let stepLabel = TOOL_STEPS[toolName] ?? "Using a tool";
+            if (toolName === "kapruka_search_products") {
+              const q = String(toolArgs.q ?? "").trim();
+              if (q) stepLabel = `Searching Kapruka for "${q}"`;
+            }
+            controller.enqueue(sse("step", stepLabel));
+
+            // Emit grounded budget context so the commerce rail updates
+            if (toolName === "kapruka_search_products") {
+              const maxPrice = toolArgs.max_price ?? toolArgs.maxPrice;
+              if (maxPrice != null) {
+                const num = Number(maxPrice);
+                if (!isNaN(num) && num > 0)
+                  controller.enqueue(
+                    sse("context", { budget: `Under LKR ${num.toLocaleString("en-LK")}` })
+                  );
+              }
             }
 
             if (JSON_FORMAT_TOOLS.includes(toolName)) {
@@ -491,16 +511,23 @@ export async function POST(req: NextRequest) {
   });
 }
 
+// Matches short "show me" / "can i see them" re-show requests with no product query.
+const RESHOW_RE = /^(show\s*(me|them|these)?|can\s+i\s+see(\s+them)?|let\s+me\s+see(\s+them)?)[\.\?\!]?$/i;
+
 async function tryHandleDeterministicPrompt({
   text,
+  messages,
   cart,
   deliveryCity,
+  deliveryDate,
   mcpClient,
   controller,
 }: {
   text: string;
+  messages: { role: string; content: string }[];
   cart: CartItem[];
   deliveryCity?: string;
+  deliveryDate?: string;
   mcpClient: Awaited<ReturnType<typeof createMcpClient>>;
   controller: ReadableStreamDefaultController<Uint8Array>;
 }): Promise<boolean> {
@@ -556,10 +583,95 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // Re-show request: "show me" / "can i see them" with no product specified.
+  // Re-run the last search from conversation history so the carousel appears.
+  if (trimmed.split(/\s+/).length <= 5 && RESHOW_RE.test(trimmed)) {
+    const ctx = extractLastSearchContext(messages, trimmed);
+    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}"`));
+    const reshowResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: ctx.query,
+        limit: 6,
+        in_stock_only: true,
+        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    if (reshowProducts.length === 0) {
+      await streamWords(
+        controller,
+        `I checked Kapruka live but nothing's in stock right now. Want to try a different search?`
+      );
+    } else {
+      const budgetText = ctx.maxPrice
+        ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
+        : "";
+      await streamWords(
+        controller,
+        `Here you go${budgetText} — ${reshowProducts.length} pick${reshowProducts.length === 1 ? "" : "s"} from Kapruka.`
+      );
+      controller.enqueue(sse("products", reshowProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // "More options" handler — re-search with a different sort or broader query.
+  // Only fires when the message is short and has no specific product keyword.
+  const MORE_PRODUCT_KW =
+    /\b(cake|cakes|flower|flowers|chocolate|chocolates|hamper|toy|toys|fashion|electronics|phone|gift|roses|bouquet|dress|shirt|gadget)\b/i;
+  const MORE_RE_PATTERN =
+    /\b(more|other options?|different|something else|other picks?|another option|alternatives?|see more|show more)\b/i;
+  const isPureMoreRequest =
+    MORE_RE_PATTERN.test(lower) &&
+    trimmed.split(/\s+/).length <= 7 &&
+    !MORE_PRODUCT_KW.test(trimmed);
+
+  if (isPureMoreRequest) {
+    const ctx = extractLastSearchContext(messages, trimmed);
+    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (price ↑)`));
+    const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: ctx.query,
+        limit: 6,
+        in_stock_only: true,
+        sort: "price_asc", // different angle from the default bestseller ordering
+        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
+
+    if (moreProducts.length === 0) {
+      await streamWords(
+        controller,
+        `Hmm, nothing else in stock on Kapruka right now — want to try a different category?`
+      );
+    } else if (moreProducts.length <= 3) {
+      await streamWords(
+        controller,
+        `These are all the ${ctx.query} picks Kapruka has in stock at the moment. Want me to try a different category or remove the budget filter?`
+      );
+      controller.enqueue(sse("products", moreProducts));
+    } else {
+      const budgetText = ctx.maxPrice
+        ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
+        : "";
+      await streamWords(
+        controller,
+        `Here are ${moreProducts.length} more picks${budgetText}, sorted by price ↑`
+      );
+      controller.enqueue(sse("products", moreProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   const searchIntent = parseSearchIntent(trimmed);
   if (!searchIntent) return false;
 
-  controller.enqueue(sse("step", TOOL_STEPS.kapruka_search_products));
+  controller.enqueue(sse("step", `Searching Kapruka for "${searchIntent.query}"`));
   let products: KiraProduct[] = [];
   let usedQuery = searchIntent.query;
 
@@ -582,6 +694,7 @@ async function tryHandleDeterministicPrompt({
 
   let deliveryCityForMessage = deliveryCity;
   const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+  const effectiveDate = deliveryDate ?? searchIntent.deliveryDate;
   if (cityHint && products[0]) {
     controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
     const cityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
@@ -598,9 +711,7 @@ async function tryHandleDeterministicPrompt({
     const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
       params: {
         city: canonicalCity,
-        ...(searchIntent.deliveryDate
-          ? { delivery_date: searchIntent.deliveryDate }
-          : {}),
+        ...(effectiveDate ? { delivery_date: effectiveDate } : {}),
         product_id: products[0].id,
         response_format: "json",
       },
@@ -619,7 +730,7 @@ async function tryHandleDeterministicPrompt({
       ? ` under LKR ${searchIntent.maxPrice.toLocaleString("en-LK")}`
       : "";
     const cityText = deliveryCityForMessage ? ` for ${deliveryCityForMessage}` : "";
-    const dateText = searchIntent.deliveryDate ? ` on ${searchIntent.deliveryDate}` : "";
+    const dateText = effectiveDate ? ` on ${effectiveDate}` : "";
     await streamWords(
       controller,
       `Found ${products.length} live Kapruka pick${products.length === 1 ? "" : "s"} for ${usedQuery}${budgetText}${cityText}${dateText}.`
@@ -629,6 +740,47 @@ async function tryHandleDeterministicPrompt({
 
   controller.enqueue(sse("done"));
   return true;
+}
+
+// Scan recent user messages to find what was last searched (query + budget).
+// Used by the re-show deterministic handler when the user says "show me" / "can i see them".
+function extractLastSearchContext(
+  messages: { role: string; content: string }[],
+  currentText: string
+): { query: string; maxPrice?: number } {
+  let query = "gift";
+  let maxPrice: number | undefined;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "user") continue;
+    if (msg.content === currentText) continue; // skip the current "show me" message
+
+    // Try the standard search intent parser first
+    const intent = parseSearchIntent(msg.content);
+    if (intent) return { query: intent.query, maxPrice: intent.maxPrice };
+
+    // Extract first plausible LKR amount (200–99999)
+    const nums = msg.content.match(/\b([\d,]{3,6})\b/g)
+      ?.map((n) => parseInt(n.replace(/,/g, ""), 10))
+      .filter((n) => n >= 200 && n <= 99999);
+    if (nums?.length) maxPrice = nums[0];
+
+    // Match product category keywords
+    const msgLow = msg.content.toLowerCase();
+    if (/\bcake\b/.test(msgLow)) { query = "cake"; break; }
+    if (/\bflower/.test(msgLow)) { query = "roses"; break; }
+    if (/\bchocolat/.test(msgLow)) { query = "chocolate"; break; }
+    if (/\bhamper\b/.test(msgLow)) { query = "gift hamper"; break; }
+    if (/\btoy\b/.test(msgLow)) { query = "toy"; break; }
+    if (/\bfashion|clothing\b/.test(msgLow)) { query = "fashion"; break; }
+    if (/\belectronic|phone|gadget\b/.test(msgLow)) { query = "electronics"; break; }
+
+    // Stop if we at least found a price
+    if (maxPrice !== undefined) break;
+  }
+
+  return { query, maxPrice };
 }
 
 function dedupeProducts(products: KiraProduct[]): KiraProduct[] {
@@ -663,9 +815,13 @@ function parseSearchIntent(text: string):
     categoryMatch?.[1]?.trim() ??
     forMatch?.[1]?.trim() ??
     lower
-      .replace(/search|kapruka|live|catalog|show me|in stock|available|products|product cards|if available/gi, " ")
+      // strip intent/meta words that are NOT product names
+      .replace(/search|kapruka|live|catalog|show me|show us|in stock|available|products?|product cards|if available|listings?|picks?|pics?|pictures?|photos?|options?|items?|stuff/gi, " ")
+      // strip common prepositions and noise words that survive the first pass
+      .replace(/\b(more|some|any|all|the|of|for|with|to|a|an|me|us)\b/gi, " ")
       .replace(/\bunder\s+\d[\d,]*/gi, " ")
       .replace(SERVER_CITY_REGEX, " ")
+      .replace(/\s+/g, " ")
       .trim();
 
   const query = normalizeProductQuery(rawQuery);
@@ -684,7 +840,12 @@ function parseSearchIntent(text: string):
 }
 
 function normalizeProductQuery(raw: string): string {
-  const compact = raw.replace(/[^a-z0-9\s&]/gi, " ").replace(/\s+/g, " ").trim();
+  const compact = raw
+    .replace(/[^a-z0-9\s&]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^(the|a|an)\s+/i, "") // strip leading articles: "the cake" → "cake"
+    .trim();
   return CATEGORY_QUERY_MAP[compact] ?? compact;
 }
 

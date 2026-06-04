@@ -5,12 +5,13 @@ import { ShoppingCart, X } from "lucide-react";
 import ChatMessage from "./components/ChatMessage";
 import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
+import CommerceRail, { type CommerceContext } from "./components/CommerceRail";
 import {
   ChatInput,
   ChatInputTextArea,
   ChatInputSubmit,
 } from "./components/ui/chat-input";
-import { getContextualGreeting } from "@/lib/kira-prompt";
+import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
   CartItem,
   CheckoutInfo,
@@ -21,13 +22,49 @@ import type {
 } from "@/types";
 import { cn } from "@/lib/utils";
 
-const OCCASION_CHIPS = [
-  { label: "🎁 Father's Day", value: "I need a Father's Day gift for my dad" },
-  { label: "🎂 Birthday gift", value: "I need to send a birthday gift" },
-  { label: "💐 Flowers & cake", value: "I want to send flowers and a cake" },
-  { label: "🛍️ Just browsing", value: "What's popular on Kapruka right now?" },
-  { label: "📦 Track an order", value: "I want to track my order" },
-];
+const OCCASION_CHIPS = getOccasionChips();
+
+// Client-side heuristic context detection from user message text.
+// Not perfect — server emits ground-truth `context` SSE events for values it
+// can verify (e.g. budget from search params). This gives instant visual feedback.
+function detectContextFromMessage(text: string): Partial<{
+  budget: string;
+  occasion: string;
+  recipient: string;
+}> {
+  const lower = text.toLowerCase();
+  const ctx: Partial<{ budget: string; occasion: string; recipient: string }> = {};
+
+  const budgetMatch = lower.match(
+    /\b(?:budget|under|below|within|max(?:imum)?|up\s*to|less\s*than)\s*(?:lkr\s*)?([\d,]+)/
+  );
+  if (budgetMatch) {
+    const amount = parseInt(budgetMatch[1].replace(/,/g, ""), 10);
+    if (!isNaN(amount) && amount > 0)
+      ctx.budget = `Under LKR ${amount.toLocaleString("en-LK")}`;
+  }
+
+  if (/\bfather'?s?\s*day\b/i.test(lower)) ctx.occasion = "Father's Day";
+  else if (/\bmother'?s?\s*day\b/i.test(lower)) ctx.occasion = "Mother's Day";
+  else if (/\bbirthday\b/i.test(lower)) ctx.occasion = "Birthday";
+  else if (/\banniversary\b/i.test(lower)) ctx.occasion = "Anniversary";
+  else if (/\bchristmas\b/i.test(lower)) ctx.occasion = "Christmas";
+  else if (/\bwedding\b/i.test(lower)) ctx.occasion = "Wedding";
+  else if (/\bvesak\b/i.test(lower)) ctx.occasion = "Vesak";
+  else if (/\bavurudu\b/i.test(lower)) ctx.occasion = "Avurudu";
+  else if (/\bposon\b/i.test(lower)) ctx.occasion = "Poson";
+  else if (/\bnew year\b/i.test(lower)) ctx.occasion = "New Year";
+
+  const recipientMatch = lower.match(
+    /\bfor (?:my )?(dad|appa|thaththa|thaththi|amma|mum|mom|wife|husband|girlfriend|boyfriend|brother|sister|friend|boss|teacher|colleague)\b/
+  );
+  if (recipientMatch) {
+    const r = recipientMatch[1];
+    ctx.recipient = r.charAt(0).toUpperCase() + r.slice(1);
+  }
+
+  return ctx;
+}
 
 // Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
 const CITY_REGEX =
@@ -64,6 +101,10 @@ export default function KiraChat() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  const [deliveryDate, setDeliveryDate] = useState<string | undefined>();
+  const [sessionBudget, setSessionBudget] = useState<string | undefined>();
+  const [sessionOccasion, setSessionOccasion] = useState<string | undefined>();
+  const [sessionRecipient, setSessionRecipient] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
@@ -73,12 +114,29 @@ export default function KiraChat() {
   const pendingDeliveryRef = useRef<DeliveryQuote | null>(null);
   const pendingTrackingRef = useRef<OrderTracking | null>(null);
   const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
+  const pendingProductsRef = useRef<KiraProduct[] | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  const commerceContext: CommerceContext = {
+    city: deliveryCity,
+    deliveryDate,
+    budget: sessionBudget,
+    occasion: sessionOccasion,
+    recipient: sessionRecipient,
+  };
+
+  function handleCommerceChange(updates: Partial<CommerceContext>) {
+    if ("city" in updates) setDeliveryCity(updates.city);
+    if ("deliveryDate" in updates) setDeliveryDate(updates.deliveryDate);
+    if ("budget" in updates) setSessionBudget(updates.budget);
+    if ("occasion" in updates) setSessionOccasion(updates.occasion);
+    if ("recipient" in updates) setSessionRecipient(updates.recipient);
+  }
 
   const handleAddToCart = useCallback((product: KiraProduct) => {
     setCart((prev) => {
@@ -102,6 +160,7 @@ export default function KiraChat() {
     pendingDeliveryRef.current = null;
     pendingTrackingRef.current = null;
     pendingCheckoutRef.current = null;
+    pendingProductsRef.current = null;
     setLiveSteps([]);
     setIsLoading(false);
     setIsStreaming(false);
@@ -121,6 +180,12 @@ export default function KiraChat() {
       const trimmed = text.trim();
       if (!trimmed || isLoading) return;
 
+      // Instant context extraction — rail updates before Kira even responds
+      const detected = detectContextFromMessage(trimmed);
+      if (detected.budget) setSessionBudget(detected.budget);
+      if (detected.occasion) setSessionOccasion(detected.occasion);
+      if (detected.recipient) setSessionRecipient(detected.recipient);
+
       const userMsg: KiraMessage = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -137,6 +202,7 @@ export default function KiraChat() {
       pendingDeliveryRef.current = null;
       pendingTrackingRef.current = null;
       pendingCheckoutRef.current = null;
+      pendingProductsRef.current = null;
       thinkingStartRef.current = Date.now();
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
@@ -158,7 +224,7 @@ export default function KiraChat() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: abortController.signal,
-          body: JSON.stringify({ messages: history, cart, deliveryCity }),
+          body: JSON.stringify({ messages: history, cart, deliveryCity, deliveryDate }),
         });
         if (!res.ok || !res.body) throw new Error("API error");
 
@@ -192,6 +258,7 @@ export default function KiraChat() {
                   const pendingDelivery = pendingDeliveryRef.current;
                   const pendingTracking = pendingTrackingRef.current;
                   const pendingCheckout = pendingCheckoutRef.current;
+                  const pendingProducts = pendingProductsRef.current;
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -199,6 +266,7 @@ export default function KiraChat() {
                       role: "assistant",
                       content: payload.v as string,
                       timestamp: Date.now(),
+                      ...(pendingProducts ? { products: pendingProducts } : {}),
                       ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
                       ...(pendingTracking ? { tracking: pendingTracking } : {}),
                       ...(pendingCheckout
@@ -221,7 +289,7 @@ export default function KiraChat() {
                 }
               } else if (payload.t === "products") {
                 const id = streamingMsgIdRef.current;
-                if (id)
+                if (id) {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === id
@@ -229,6 +297,13 @@ export default function KiraChat() {
                         : m
                     )
                   );
+                } else {
+                  pendingProductsRef.current = payload.v as KiraProduct[];
+                }
+              } else if (payload.t === "context") {
+                const ctx = payload.v as { budget?: string; city?: string };
+                if (ctx?.budget) setSessionBudget(ctx.budget);
+                if (ctx?.city) setDeliveryCity(ctx.city);
               } else if (payload.t === "delivery") {
                 const info = payload.v as DeliveryQuote;
                 if (info?.city) setDeliveryCity(info.city);
@@ -375,7 +450,7 @@ export default function KiraChat() {
         }
       }
     },
-    [messages, cart, deliveryCity, isLoading]
+    [messages, cart, deliveryCity, deliveryDate, isLoading]
   );
 
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
@@ -394,11 +469,10 @@ export default function KiraChat() {
     <div className="h-screen flex flex-col bg-kira-bg overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="shrink-0 h-14 flex items-center justify-between px-4 bg-white border-b border-kira-border shadow-sm z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-kap-yellow text-lg leading-none drop-shadow-sm">✦</span>
-          <span className="font-display text-xl text-kira-text tracking-wide">Kira</span>
-          <span className="text-[10px] font-semibold text-kira-muted bg-kira-bg border border-kira-border px-2 py-0.5 rounded-full ml-0.5">
+      <header className="shrink-0 h-16 flex items-center justify-between px-5 bg-white border-b border-kira-border shadow-sm z-10">
+        <div className="flex items-center gap-2.5">
+          <img src="/kira-logo.svg" alt="Kira" className="h-11 w-auto object-contain" />
+          <span className="text-[10px] font-semibold tracking-wide text-kira-muted bg-kira-bg border border-kira-border px-2.5 py-1 rounded-full">
             by kapruka
           </span>
         </div>
@@ -417,9 +491,12 @@ export default function KiraChat() {
             {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
           </button>
         ) : (
-          <span className="text-kira-muted text-xs">Free delivery ✓</span>
+          <span className="text-kira-muted text-xs font-medium">Free delivery ✓</span>
         )}
       </header>
+
+      {/* ── Commerce rail ──────────────────────────────────────────── */}
+      <CommerceRail context={commerceContext} onChange={handleCommerceChange} />
 
       {/* ── Cart drawer ────────────────────────────────────────────── */}
       {cartOpen && cartCount > 0 && (
@@ -494,7 +571,12 @@ export default function KiraChat() {
               <button
                 key={chip.label}
                 onClick={() => sendMessage(chip.value)}
-                className="shrink-0 text-xs font-semibold text-kira-text-2 bg-white border border-kira-border px-3 py-1.5 rounded-full hover:border-kap-purple hover:text-kap-purple transition-colors shadow-sm"
+                className={cn(
+                  "shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors shadow-sm",
+                  chip.urgent
+                    ? "bg-kap-purple text-white border border-kap-purple hover:brightness-110"
+                    : "text-kira-text-2 bg-white border border-kira-border hover:border-kap-purple hover:text-kap-purple"
+                )}
               >
                 {chip.label}
               </button>

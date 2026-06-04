@@ -114,6 +114,7 @@ export interface ChatRequest {
   messages: { role: "user" | "assistant"; content: string }[];
   cart: CartItem[];
   deliveryCity?: string;
+  deliveryDate?: string;
 }
 
 export interface ChatResponse {

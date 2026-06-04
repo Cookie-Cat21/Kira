@@ -128,8 +128,8 @@ export default function ChatMessage({
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="w-7 h-7 rounded-full bg-kap-purple flex items-center justify-center shrink-0 text-xs text-kap-yellow shadow-sm">
-        ✦
+      <div className="w-7 h-7 rounded-full bg-kap-purple shrink-0 shadow-sm overflow-hidden">
+        <img src="/kira-logo.svg" alt="Kira" className="w-full h-full object-cover" />
       </div>
 
       <div className="flex flex-col gap-3 max-w-[88%]">
