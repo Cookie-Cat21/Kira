@@ -542,6 +542,31 @@ function extractPayLink(data: unknown): string | undefined {
   return (obj.checkout_url as string) ?? undefined;
 }
 
+// Recursively search an object for a fee-like numeric value (depth-limited).
+function findFeeDeep(obj: Record<string, unknown>, depth = 0): number | undefined {
+  if (depth > 3) return undefined;
+  for (const [key, val] of Object.entries(obj)) {
+    const lk = key.toLowerCase();
+    if (lk.includes("fee") || lk.includes("cost") || lk.includes("charge")) {
+      const n = typeof val === "number" ? val : Number(String(val).replace(/,/g, ""));
+      if (!isNaN(n) && n > 0) return n;
+    }
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const nested = findFeeDeep(val as Record<string, unknown>, depth + 1);
+      if (nested !== undefined) return nested;
+    }
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        if (item && typeof item === "object") {
+          const nested = findFeeDeep(item as Record<string, unknown>, depth + 1);
+          if (nested !== undefined) return nested;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
 function extractDeliveryInfo(data: unknown): DeliveryQuote | undefined {
   let inner = data;
   if (Array.isArray(data)) {
@@ -556,12 +581,16 @@ function extractDeliveryInfo(data: unknown): DeliveryQuote | undefined {
   const obj = inner as Record<string, unknown>;
   const city = String(obj.city ?? obj.destination ?? "");
   if (!city) return undefined;
+  // Try top-level fields first, then recurse the whole object
   const rawFee =
     obj.fee ?? obj.delivery_fee ?? obj.shipping_fee ??
     obj.cost ?? obj.delivery_cost ?? obj.price ?? obj.amount;
-  const feeNum = typeof rawFee === "number"
+  let feeNum = typeof rawFee === "number"
     ? rawFee
-    : rawFee != null ? Number(rawFee) : NaN;
+    : rawFee != null ? Number(String(rawFee).replace(/,/g, "")) : NaN;
+  if (isNaN(feeNum) || feeNum <= 0) {
+    feeNum = findFeeDeep(obj) ?? NaN;
+  }
   return {
     available: obj.available !== false,
     city,
