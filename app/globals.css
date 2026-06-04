@@ -5,20 +5,25 @@
   --color-kap-purple: #402970;
   --color-kap-yellow: #f8da08;
 
-  /* Light surfaces */
-  --color-kira-bg: #f7f5fc;
+  /* Gift desk surfaces */
+  --color-kira-canvas: #fbfaf6;
+  --color-kira-paper: #fffdf8;
+  --color-kira-bg: #f4efe6;
   --color-kira-surface: #ffffff;
-  --color-kira-border: #e8e2f5;
-  --color-kira-border-focus: #c4b0e8;
+  --color-kira-line: #e7ded1;
+  --color-kira-border: #e7ded1;
+  --color-kira-border-focus: #9c84c6;
 
   /* Bubbles */
-  --color-kira-bubble-kira: #f3eeff;
+  --color-kira-bubble-kira: #fffdf8;
   --color-kira-bubble-user: #402970;
 
   /* Text */
-  --color-kira-text: #1a0f33;
-  --color-kira-text-2: #5a4a7a;
-  --color-kira-muted: #9b8cb4;
+  --color-kira-text: #241832;
+  --color-kira-text-2: #62556e;
+  --color-kira-muted: #8b7d91;
+  --color-kira-leaf: #236447;
+  --color-kira-rose: #a64d63;
 
   --font-display: var(--font-dm-serif);
   --font-sans: var(--font-jakarta), var(--font-noto-sinhala), "Iskoola Pota", sans-serif;
@@ -27,8 +32,8 @@
 html,
 body {
   height: 100%;
-  background-color: #f7f5fc;
-  color: #1a0f33;
+  background-color: #fbfaf6;
+  color: #241832;
 }
 
 * {
@@ -42,14 +47,12 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #e8e2f5;
+  background: #d8cdbf;
   border-radius: 2px;
 }
 
-/* Subtle dot-grid background — popular 21st.dev pattern */
-.dot-grid {
-  background-image: radial-gradient(circle, #d4c8ee 1px, transparent 1px);
-  background-size: 20px 20px;
+.gift-slip {
+  border-left: 4px solid #f8da08;
 }
 
 @keyframes fade-up {

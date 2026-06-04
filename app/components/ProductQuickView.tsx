@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Check,
   ExternalLink,
+  Gift,
   Package,
   ShoppingCart,
   Truck,
@@ -102,11 +103,11 @@ export default function ProductQuickView({
         role="dialog"
         aria-modal="true"
         aria-label={`${product.name} details`}
-        className="w-full max-w-3xl max-h-[92vh] overflow-hidden rounded-2xl bg-white border border-kira-border shadow-2xl animate-fade-up flex flex-col"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-kira-line bg-white shadow-2xl animate-fade-up"
       >
-        <header className="shrink-0 h-12 px-4 border-b border-kira-border flex items-center justify-between">
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-kira-line px-4">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-kira-muted">
+            <p className="text-[10px] font-bold uppercase text-kira-muted">
               Product details
             </p>
             <p className="text-xs text-kira-text truncate">{product.id}</p>
@@ -115,27 +116,27 @@ export default function ProductQuickView({
             type="button"
             onClick={onClose}
             aria-label="Close product details"
-            className="h-8 w-8 rounded-full border border-kira-border text-kira-muted flex items-center justify-center hover:text-kira-text hover:border-kap-purple transition-colors"
+            className="flex size-8 items-center justify-center rounded-md border border-kira-line text-kira-muted transition-colors hover:border-kap-purple hover:text-kira-text"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </header>
 
         <div className="overflow-y-auto">
           <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-3">
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-kira-bg border border-kira-border">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-kira-line bg-kira-paper">
                 {selectedImage ? (
                   <Image
                     src={selectedImage}
                     alt={display.name}
                     fill
                     sizes="(max-width: 640px) 92vw, 320px"
-                    className="object-cover"
+                    className="object-contain p-3"
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center text-4xl text-kira-muted">
-                    🛍️
+                  <div className="flex h-full w-full items-center justify-center text-kira-muted">
+                    <Gift className="size-10" />
                   </div>
                 )}
               </div>
@@ -149,7 +150,7 @@ export default function ProductQuickView({
                       onClick={() => setActiveImage(index)}
                       aria-label={`Show image ${index + 1}`}
                       className={cn(
-                        "relative h-14 w-14 shrink-0 rounded-lg overflow-hidden border transition-colors",
+                        "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border transition-colors",
                         index === activeImage
                           ? "border-kap-purple"
                           : "border-kira-border"
@@ -171,7 +172,7 @@ export default function ProductQuickView({
             <div className="min-w-0 flex flex-col gap-3">
               <div>
                 {display.category && (
-                  <span className="inline-flex text-[10px] font-bold uppercase tracking-wider text-kap-purple bg-kap-purple/10 rounded-full px-2 py-1 mb-2">
+                  <span className="mb-2 inline-flex rounded-md bg-kap-purple/10 px-2 py-1 text-[10px] font-bold uppercase text-kap-purple">
                     {display.category}
                   </span>
                 )}
@@ -197,7 +198,7 @@ export default function ProductQuickView({
                 {display.inStock !== undefined && (
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2 py-1",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold",
                       display.inStock
                         ? "bg-emerald-50 text-emerald-700"
                         : "bg-red-50 text-red-700"
@@ -215,7 +216,7 @@ export default function ProductQuickView({
 
               {state === "loading" && <QuickViewSkeleton />}
               {state === "error" && (
-                <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   {error}
                 </div>
               )}
@@ -230,14 +231,14 @@ export default function ProductQuickView({
 
                   {details.variants.length > 0 && (
                     <div>
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-kira-muted mb-2">
+                      <p className="mb-2 text-[10px] font-bold uppercase text-kira-muted">
                         Variants
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {details.variants.slice(0, 5).map((variant) => (
                           <span
                             key={variant.id}
-                            className="rounded-full border border-kira-border px-2.5 py-1 text-xs text-kira-text bg-kira-bg"
+                            className="rounded-lg border border-kira-line bg-kira-bg px-2.5 py-1 text-xs text-kira-text"
                           >
                             {variant.name}
                             {variant.price > 0 &&
@@ -298,20 +299,20 @@ export default function ProductQuickView({
                   type="button"
                   onClick={() => onAddToCart(product)}
                   className={cn(
-                    "flex-1 h-11 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95",
+                    "flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-bold transition-all active:scale-95",
                     inCart
-                      ? "bg-kap-purple/10 text-kap-purple border border-kap-purple/20"
-                      : "bg-kap-yellow text-gray-900 hover:brightness-95 shadow-sm"
+                      ? "border border-kap-purple/20 bg-kap-purple/10 text-kap-purple"
+                      : "bg-kap-yellow text-gray-950 shadow-sm hover:brightness-95"
                   )}
                 >
                   {inCart ? (
                     <>
-                      <Check className="h-4 w-4" />
+                    <Check className="size-4" />
                       In cart ({qty})
                     </>
                   ) : (
                     <>
-                      <ShoppingCart className="h-4 w-4" />
+                    <ShoppingCart className="size-4" />
                       Add to cart
                     </>
                   )}
@@ -322,9 +323,9 @@ export default function ProductQuickView({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Open product on Kapruka"
-                    className="h-11 w-11 rounded-xl border border-kira-border text-kira-muted flex items-center justify-center hover:text-kap-purple hover:border-kap-purple transition-colors"
+                    className="flex size-11 items-center justify-center rounded-lg border border-kira-line text-kira-muted transition-colors hover:border-kap-purple hover:text-kap-purple"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="size-4" />
                   </a>
                 )}
               </div>
@@ -341,7 +342,7 @@ function QuickViewSkeleton() {
     <div className="space-y-2 animate-pulse" aria-label="Loading product details">
       <div className="h-3 rounded-full bg-kira-border w-full" />
       <div className="h-3 rounded-full bg-kira-border w-10/12" />
-      <div className="h-9 rounded-xl bg-kira-border/80 w-full mt-3" />
+      <div className="mt-3 h-9 w-full rounded-lg bg-kira-border/80" />
     </div>
   );
 }
@@ -356,9 +357,9 @@ function InfoPill({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-kira-border bg-kira-bg px-3 py-2 min-w-0">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold text-kira-muted">
-        <Icon className="h-3 w-3" />
+    <div className="min-w-0 rounded-lg border border-kira-line bg-kira-bg px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-kira-muted">
+        <Icon className="size-3" />
         {label}
       </div>
       <p className="text-xs font-semibold text-kira-text mt-1 truncate">{value}</p>

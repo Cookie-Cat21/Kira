@@ -1,7 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { ShoppingCart, X } from "lucide-react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  type ComponentType,
+} from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CakeSlice,
+  CalendarDays,
+  Flower2,
+  Gift,
+  MapPin,
+  Package,
+  PackageCheck,
+  Search,
+  Shirt,
+  ShoppingBag,
+  ShoppingCart,
+  Smartphone,
+  Sparkles,
+  Truck,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import ChatMessage from "./components/ChatMessage";
 import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
@@ -11,6 +38,7 @@ import {
   ChatInputTextArea,
   ChatInputSubmit,
 } from "./components/ui/chat-input";
+import { useCart } from "./context/CartContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
   CartItem,
@@ -23,6 +51,13 @@ import type {
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = getOccasionChips();
+const currencyFormatter = new Intl.NumberFormat("en-LK", {
+  style: "currency",
+  currency: "LKR",
+  maximumFractionDigits: 0,
+});
+
+type KiraIcon = ComponentType<{ className?: string }>;
 
 // Client-side heuristic context detection from user message text.
 // Not perfect — server emits ground-truth `context` SSE events for values it
@@ -70,21 +105,105 @@ function detectContextFromMessage(text: string): Partial<{
 const CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
-const CATEGORIES = [
-  { icon: "🎂", label: "Cakes" },
-  { icon: "💐", label: "Flowers" },
-  { icon: "🍫", label: "Chocolates" },
-  { icon: "📱", label: "Electronics" },
-  { icon: "👗", label: "Fashion" },
-  { icon: "🧺", label: "Hampers" },
+const CATEGORIES: {
+  icon: KiraIcon;
+  label: string;
+  value: string;
+  tone: string;
+}[] = [
+  {
+    icon: CakeSlice,
+    label: "Cakes",
+    value: "Show me gift-ready cakes on Kapruka",
+    tone: "border-rose-100 bg-rose-50 text-rose-800",
+  },
+  {
+    icon: Flower2,
+    label: "Flowers",
+    value: "I want to send fresh flowers",
+    tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+  },
+  {
+    icon: Gift,
+    label: "Chocolates",
+    value: "Show me chocolate gifts and sweet boxes",
+    tone: "border-orange-100 bg-orange-50 text-orange-900",
+  },
+  {
+    icon: Smartphone,
+    label: "Electronics",
+    value: "Show me electronics gifts on Kapruka",
+    tone: "border-sky-100 bg-sky-50 text-sky-800",
+  },
+  {
+    icon: Shirt,
+    label: "Fashion",
+    value: "Show me fashion gifts on Kapruka",
+    tone: "border-fuchsia-100 bg-fuchsia-50 text-fuchsia-800",
+  },
+  {
+    icon: Package,
+    label: "Hampers",
+    value: "Show me gift hampers",
+    tone: "border-amber-100 bg-amber-50 text-amber-900",
+  },
 ];
 
+const CONCIERGE_PROMPTS: {
+  eyebrow: string;
+  label: string;
+  value: string;
+  icon: KiraIcon;
+  tone: string;
+}[] = [
+  {
+    eyebrow: "Fast route",
+    label: "Father's Day under LKR 10,000",
+    value: "Find a Father's Day gift for my dad under LKR 10,000",
+    icon: Gift,
+    tone: "border-kap-yellow/80 bg-kap-yellow/15 text-kira-text",
+  },
+  {
+    eyebrow: "Fresh delivery",
+    label: "Flowers and cake to Colombo",
+    value: "I want to send flowers and a cake to Colombo",
+    icon: Flower2,
+    tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
+  },
+  {
+    eyebrow: "Order help",
+    label: "Track an existing order",
+    value: "I want to track my Kapruka order",
+    icon: PackageCheck,
+    tone: "border-violet-100 bg-violet-50 text-violet-800",
+  },
+];
+
+function stripDecorativeGlyphs(text: string) {
+  return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function formatLKR(amount: number) {
+  return currencyFormatter.format(amount);
+}
+
+function formatDeliveryDate(raw?: string) {
+  if (!raw) return undefined;
+  const date = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function buildOpeningMessage(): KiraMessage {
-  const greeting = getContextualGreeting();
+  const greeting = stripDecorativeGlyphs(getContextualGreeting());
   return {
     id: "opening",
     role: "assistant",
-    content: `${greeting} 👋 Shopping for someone special, or just browsing?`,
+    content: `${greeting} Tell me who it is for, your budget, and where it needs to go.`,
     timestamp: Date.now(),
   };
 }
@@ -96,16 +215,23 @@ export default function KiraChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
-  const [cartOpen, setCartOpen] = useState(false);
-  const [cartBounce, setCartBounce] = useState(false);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate, setDeliveryDate] = useState<string | undefined>();
   const [sessionBudget, setSessionBudget] = useState<string | undefined>();
   const [sessionOccasion, setSessionOccasion] = useState<string | undefined>();
   const [sessionRecipient, setSessionRecipient] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
+  const {
+    cart,
+    cartCount,
+    cartTotal,
+    addToCart,
+    openCart,
+    cartButtonRef,
+    bagControls,
+    setPayLink,
+  } = useCart();
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -138,18 +264,12 @@ export default function KiraChat() {
     if ("recipient" in updates) setSessionRecipient(updates.recipient);
   }
 
-  const handleAddToCart = useCallback((product: KiraProduct) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
-      if (existing)
-        return prev.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
-      return [...prev, { product, quantity: 1 }];
-    });
-    setCartBounce(true);
-    setTimeout(() => setCartBounce(false), 400);
-  }, []);
+  const handleAddToCart = useCallback(
+    (product: KiraProduct) => {
+      addToCart(product);
+    },
+    [addToCart]
+  );
 
   const cancelActiveResponse = useCallback(() => {
     if (!isLoading || cancelledRef.current) return;
@@ -220,11 +340,22 @@ export default function KiraChat() {
           .filter((m) => m.id !== "opening")
           .map((m) => ({ role: m.role, content: m.content }));
 
+        const allMsgs = [...messages, userMsg];
+        const lastWithProducts = [...allMsgs].reverse().find(
+          (m) => m.role === "assistant" && m.products && m.products.length > 0
+        );
+
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: abortController.signal,
-          body: JSON.stringify({ messages: history, cart, deliveryCity, deliveryDate }),
+          body: JSON.stringify({
+            messages: history,
+            cart,
+            deliveryCity,
+            deliveryDate,
+            lastProducts: lastWithProducts?.products,
+          }),
         });
         if (!res.ok || !res.body) throw new Error("API error");
 
@@ -331,6 +462,7 @@ export default function KiraChat() {
                 }
               } else if (payload.t === "checkout") {
                 const checkout = payload.v as CheckoutInfo;
+                setPayLink(checkout.checkoutUrl);
                 const id = streamingMsgIdRef.current;
                 if (id) {
                   setMessages((prev) =>
@@ -348,6 +480,7 @@ export default function KiraChat() {
                   pendingCheckoutRef.current = checkout;
                 }
               } else if (payload.t === "payLink") {
+                setPayLink(payload.v as string);
                 const id = streamingMsgIdRef.current;
                 if (id)
                   setMessages((prev) =>
@@ -450,11 +583,9 @@ export default function KiraChat() {
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading]
+    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink]
   );
 
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
-  const cartTotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
   const showProductSkeleton =
     isLoading &&
@@ -466,156 +597,147 @@ export default function KiraChat() {
     );
 
   return (
-    <div className="h-screen flex flex-col bg-kira-bg overflow-hidden">
-
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-5 bg-white border-b border-kira-border shadow-sm z-10">
-        <div className="flex items-center gap-2.5">
-          <img src="/kira-logo.svg" alt="Kira" className="h-11 w-auto object-contain" />
-          <span className="text-[10px] font-semibold tracking-wide text-kira-muted bg-kira-bg border border-kira-border px-2.5 py-1 rounded-full">
-            by kapruka
+    <div className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-kira-canvas text-kira-text">
+      <header
+        className="z-10 flex h-16 shrink-0 items-center justify-between px-4 sm:px-6"
+        style={{
+          background: "rgba(251, 250, 246, 0.82)",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.65)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 24px rgba(64,41,112,0.07)",
+        }}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <Image
+            src="/kira-logo.svg"
+            alt="Kira"
+            width={96}
+            height={40}
+            className="object-contain"
+            style={{ width: "auto", height: "2rem" }}
+            priority
+          />
+          <span className="font-display text-2xl leading-none text-kira-text">
+            Kira
           </span>
+          <div className="hidden h-8 items-center gap-2 border-l border-kira-line pl-3 sm:flex">
+            <span className="text-xs font-semibold text-kira-muted">
+              by Kapruka
+            </span>
+            <span className="flex items-center gap-1 text-xs font-semibold text-kira-leaf">
+              <BadgeCheck className="size-3.5" />
+              Live catalog
+            </span>
+          </div>
         </div>
 
         {cartCount > 0 ? (
           <button
-            onClick={() => setCartOpen((o) => !o)}
-            aria-label={`${cartOpen ? "Close" : "Open"} cart — ${cartCount} item${cartCount === 1 ? "" : "s"}, total LKR ${cartTotal.toLocaleString()}`}
-            aria-expanded={cartOpen}
-            className={cn(
-              "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
-              cartBounce ? "scale-110" : "scale-100"
-            )}
+            ref={cartButtonRef}
+            type="button"
+            onClick={openCart}
+            aria-label={`Open gift tray, ${cartCount} item${
+              cartCount === 1 ? "" : "s"
+            }, total ${formatLKR(cartTotal)}`}
+            className="relative flex items-center gap-2 rounded-xl border border-kap-purple/25 bg-kap-purple/10 px-3 py-2 text-xs font-bold text-kap-purple transition-colors hover:bg-kap-purple/15"
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            {cartCount} · LKR {new Intl.NumberFormat("en-LK", { maximumFractionDigits: 0 }).format(cartTotal)}
+            <motion.span animate={bagControls} className="flex items-center">
+              <ShoppingBag className="size-4" />
+            </motion.span>
+            <span>{cartCount}</span>
+            <span className="hidden sm:inline">{formatLKR(cartTotal)}</span>
           </button>
         ) : (
-          <span className="text-kira-muted text-xs font-medium">Free delivery ✓</span>
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-kira-leaf">
+            <Truck className="size-3.5" />
+            Free delivery
+          </span>
         )}
       </header>
 
-      {/* ── Commerce rail ──────────────────────────────────────────── */}
       <CommerceRail context={commerceContext} onChange={handleCommerceChange} />
 
-      {/* ── Cart drawer ────────────────────────────────────────────── */}
-      {cartOpen && cartCount > 0 && (
-        <div
-          role="region"
-          aria-label="Your cart"
-          className="shrink-0 bg-white border-b border-kira-border px-4 py-3 animate-fade-up shadow-sm z-10"
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <main
+          role="log"
+          aria-live="polite"
+          aria-label="Conversation with Kira"
+          className="min-h-0 overflow-y-auto bg-kira-canvas"
         >
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] uppercase tracking-widest font-semibold text-kira-muted">
-              Your cart
-            </p>
-            <button onClick={() => setCartOpen(false)} aria-label="Close cart">
-              <X className="w-3.5 h-3.5 text-kira-muted hover:text-kira-text" />
-            </button>
-          </div>
-          {cart.map((item) => (
-            <div key={item.product.id} className="flex justify-between items-center text-sm text-kira-text py-1">
-              <span className="truncate mr-3">{item.product.name}</span>
-              <span className="shrink-0 text-xs text-kira-muted">
-                ×{item.quantity} · <span className="text-kira-text font-semibold">LKR {(item.product.price * item.quantity).toLocaleString()}</span>
-              </span>
-            </div>
-          ))}
-          <button
-            onClick={() => {
-              setCartOpen(false);
-              sendMessage("I'm ready to checkout. Can you help me complete the order?");
-            }}
-            className="mt-3 w-full bg-kap-yellow text-gray-900 text-sm font-bold py-2.5 rounded-xl hover:brightness-95 transition-all shadow-sm"
-          >
-            Checkout →
-          </button>
-        </div>
-      )}
-
-      {/* ── Messages ───────────────────────────────────────────────── */}
-      <main
-        role="log"
-        aria-live="polite"
-        aria-label="Conversation with Kira"
-        className="flex-1 overflow-y-auto px-4 py-4 dot-grid"
-      >
-        {messages.map((msg) => (
-          <div key={msg.id}>
-            {msg.role === "assistant" && msg.thinkingMs && (
-              <ThinkingDone thinkingMs={msg.thinkingMs} steps={msg.steps} />
-            )}
-            <ChatMessage
-              message={msg}
-              cart={cart}
-              onAddToCart={handleAddToCart}
-              onOpenProduct={setSelectedProduct}
-              deliveryCity={deliveryCity}
-            />
-          </div>
-        ))}
-        {isLoading && !isStreaming && (
-          <ThinkingLive
-            steps={liveSteps}
-            showProductSkeleton={showProductSkeleton}
-          />
-        )}
-        <div ref={bottomRef} />
-      </main>
-
-      {/* ── Opening prompts ─────────────────────────────────────────── */}
-      {isOnlyOpening && (
-        <div className="shrink-0 px-4 pb-2 pt-1 space-y-2 bg-kira-bg border-t border-kira-border">
-          <div className="flex gap-2 overflow-x-auto pb-0.5">
-            {OCCASION_CHIPS.map((chip) => (
-              <button
-                key={chip.label}
-                onClick={() => sendMessage(chip.value)}
-                className={cn(
-                  "shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors shadow-sm",
-                  chip.urgent
-                    ? "bg-kap-purple text-white border border-kap-purple hover:brightness-110"
-                    : "text-kira-text-2 bg-white border border-kira-border hover:border-kap-purple hover:text-kap-purple"
+          <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+            {isOnlyOpening ? (
+              <GiftConciergeWelcome
+                greeting={messages[0]?.content ?? ""}
+                context={commerceContext}
+                onPrompt={sendMessage}
+              />
+            ) : (
+              <>
+                {messages.map((msg) => (
+                  <div key={msg.id}>
+                    {msg.role === "assistant" && msg.thinkingMs && (
+                      <ThinkingDone
+                        thinkingMs={msg.thinkingMs}
+                        steps={msg.steps}
+                      />
+                    )}
+                    <ChatMessage
+                      message={msg}
+                      cart={cart}
+                      onAddToCart={handleAddToCart}
+                      onOpenProduct={setSelectedProduct}
+                      deliveryCity={deliveryCity}
+                    />
+                  </div>
+                ))}
+                {isLoading && !isStreaming && (
+                  <ThinkingLive
+                    steps={liveSteps}
+                    showProductSkeleton={showProductSkeleton}
+                  />
                 )}
-              >
-                {chip.label}
-              </button>
-            ))}
+              </>
+            )}
+            <div ref={bottomRef} />
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-0.5">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.label}
-                onClick={() => sendMessage(`Show me ${cat.label.toLowerCase()} on Kapruka`)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-kira-border hover:border-kap-purple hover:text-kap-purple transition-colors text-kira-muted group shadow-sm"
+        </main>
+
+      </div>
+
+      <div className="shrink-0 border-t border-kira-line bg-kira-paper">
+        <div className="mx-auto grid w-full max-w-[1400px] gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="min-w-0">
+            <ChatInput
+              value={input}
+              setValue={setInput}
+              isLoading={isLoading}
+              onSubmit={sendMessage}
+              onCancel={cancelActiveResponse}
+              className="bg-white"
+            >
+              <ChatInputTextArea placeholder="Ask for a gift, budget, city, or order number..." />
+              <ChatInputSubmit />
+            </ChatInput>
+            <p className="mt-2 text-center text-[10px] text-kira-muted lg:hidden">
+              Powered by{" "}
+              <a
+                href="https://www.kapruka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold hover:text-kap-purple"
               >
-                <span className="text-sm">{cat.icon}</span>
-                <span className="text-[11px] font-medium group-hover:text-kap-purple transition-colors">{cat.label}</span>
-              </button>
-            ))}
+                Kapruka
+              </a>
+            </p>
+          </div>
+          <div className="hidden items-center justify-between rounded-lg border border-kira-line bg-white px-4 text-[11px] font-semibold text-kira-muted lg:flex">
+            <span>Powered by Kapruka</span>
+            <span className="text-kira-leaf">Live products</span>
+            <span>Real checkout</span>
           </div>
         </div>
-      )}
-
-      {/* ── Chat input ──────────────────────────────────────────────── */}
-      <div className="shrink-0 px-4 pb-4 pt-3 bg-white border-t border-kira-border">
-        <ChatInput
-          value={input}
-          setValue={setInput}
-          isLoading={isLoading}
-          onSubmit={sendMessage}
-          onCancel={cancelActiveResponse}
-        >
-          <ChatInputTextArea placeholder="Message Kira..." />
-          <ChatInputSubmit />
-        </ChatInput>
-        <p className="text-center text-kira-muted text-[10px] mt-2">
-          Powered by{" "}
-          <a href="https://www.kapruka.com" target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-kap-purple transition-colors">
-            Kapruka
-          </a>
-          {" · "}Live products · Real checkout
-        </p>
       </div>
 
       {selectedProduct && (
@@ -627,6 +749,163 @@ export default function KiraChat() {
           onClose={() => setSelectedProduct(null)}
         />
       )}
+    </div>
+  );
+}
+
+function GiftConciergeWelcome({
+  greeting,
+  context,
+  onPrompt,
+}: {
+  greeting: string;
+  context: CommerceContext;
+  onPrompt: (text: string) => void;
+}) {
+  const deliveryValue =
+    context.city && context.deliveryDate
+      ? `${context.city}, ${formatDeliveryDate(context.deliveryDate)}`
+      : context.city ?? formatDeliveryDate(context.deliveryDate) ?? "Pick city and date";
+
+  return (
+    <div className="flex flex-1 flex-col justify-center pb-3">
+      <div className="grid gap-3 lg:grid-cols-12">
+        <section className="gift-slip rounded-lg border border-kira-line bg-kira-paper p-5 shadow-sm sm:p-6 lg:col-span-8">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
+              <Gift className="size-4" />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase text-kira-muted">
+                Kira gift desk
+              </p>
+              <p className="text-sm font-semibold text-kira-leaf">
+                Kapruka catalog, delivery, checkout
+              </p>
+            </div>
+          </div>
+
+          <h1 className="max-w-2xl text-balance font-display text-3xl leading-[1.05] text-kira-text sm:text-5xl">
+            Send a better gift, without the catalog hunt.
+          </h1>
+          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-kira-text-2 sm:text-base">
+            {greeting}
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
+            <BriefRow
+              icon={Sparkles}
+              label="Occasion"
+              value={context.occasion ?? "Father's Day, birthday, thank you"}
+            />
+            <BriefRow
+              icon={UserRound}
+              label="Recipient"
+              value={context.recipient ?? "Dad, amma, friend, colleague"}
+            />
+            <BriefRow
+              icon={Wallet}
+              label="Budget"
+              value={context.budget ?? "Any range"}
+            />
+            <BriefRow icon={MapPin} label="Delivery" value={deliveryValue} />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-kira-line bg-white p-4 shadow-sm lg:col-span-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase text-kira-muted">
+              Start with a route
+            </p>
+            <Search className="size-4 text-kira-muted" />
+          </div>
+          <div className="space-y-2">
+            {CONCIERGE_PROMPTS.map((prompt) => {
+              const Icon = prompt.icon;
+              return (
+                <button
+                  key={prompt.label}
+                  type="button"
+                  onClick={() => onPrompt(prompt.value)}
+                  className={cn(
+                    "group flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-kap-purple/40 hover:bg-kira-bg",
+                    prompt.tone
+                  )}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-bold uppercase text-current/65">
+                      {prompt.eyebrow}
+                    </span>
+                    <span className="line-clamp-2 block text-sm font-bold leading-snug">
+                      {prompt.label}
+                    </span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5 group-hover:opacity-80" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-kira-line bg-white p-4 shadow-sm lg:col-span-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-bold text-kira-text">
+              Shop by gift type
+            </h2>
+            <span className="text-[11px] font-semibold text-kira-muted">
+              Live Kapruka search
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={category.label}
+                  type="button"
+                  onClick={() => onPrompt(category.value)}
+                  className={cn(
+                    "flex min-h-24 flex-col justify-between rounded-lg border p-3 text-left shadow-sm transition-colors hover:border-kap-purple/40 hover:bg-white",
+                    category.tone
+                  )}
+                >
+                  <Icon className="size-5" />
+                  <span className="text-sm font-bold">{category.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-kira-line bg-kira-paper p-4 shadow-sm lg:col-span-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase text-kira-muted">
+              Popular now
+            </p>
+            <Sparkles className="size-4 text-kap-purple" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {OCCASION_CHIPS.map((chip) => (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => onPrompt(chip.value)}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
+                  chip.urgent
+                    ? "border-kap-yellow bg-kap-yellow text-gray-950"
+                    : "border-kira-line bg-white text-kira-text-2 hover:border-kap-purple/40 hover:text-kap-purple"
+                )}
+              >
+                {stripDecorativeGlyphs(chip.label)}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

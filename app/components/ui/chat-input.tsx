@@ -57,8 +57,8 @@ export function ChatInput({
     <Ctx.Provider value={{ value, setValue, isLoading, onSubmit, onCancel }}>
       <div
         className={cn(
-          "relative flex flex-col rounded-3xl border border-[#e8e2f5] bg-white px-4 pt-3 pb-12 shadow-sm",
-          "transition-shadow focus-within:shadow-md focus-within:border-[#c4b0e8]",
+          "relative flex flex-col rounded-lg border border-kira-line bg-white px-4 pb-12 pt-3 shadow-sm",
+          "transition-shadow focus-within:border-kira-border-focus focus-within:shadow-md",
           className
         )}
       >
@@ -97,7 +97,7 @@ export function ChatInputTextArea({
       disabled={isLoading}
       rows={1}
       className={cn(
-        "w-full resize-none border-0 bg-transparent text-[#1a0f33] placeholder-[#9b8cb4]",
+        "w-full resize-none border-0 bg-transparent text-kira-text placeholder:text-kira-muted",
         "text-sm leading-relaxed outline-none disabled:cursor-not-allowed",
         "max-h-[120px] overflow-y-auto",
         className
@@ -130,9 +130,9 @@ export function ChatInputSubmit({ className }: ChatInputSubmitProps) {
       disabled={!active}
       aria-label={isLoading ? "Stop" : "Send"}
       className={cn(
-        "absolute right-3 bottom-3 flex h-9 w-9 items-center justify-center rounded-full transition-all duration-150",
+        "absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-lg transition-all duration-150",
         active
-          ? "bg-[#402970] text-white shadow-sm hover:bg-[#4e3488] active:scale-95"
+          ? "bg-kap-purple text-white shadow-sm hover:bg-kap-purple/90 active:scale-95"
           : "bg-gray-100 text-gray-400 cursor-not-allowed",
         className
       )}

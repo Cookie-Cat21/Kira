@@ -13,7 +13,7 @@ import {
 import type { OrderTracking } from "@/types";
 import { cn } from "@/lib/utils";
 
-const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const STATUS_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   order_placed: Package,
   confirmed: Package,
   processing: Clock,
@@ -35,18 +35,18 @@ interface Props {
 
 export default function OrderTracker({ tracking }: Props) {
   return (
-    <div className="bg-white border border-kira-border rounded-2xl px-4 py-3 max-w-xs animate-fade-up">
-      <div className="flex items-center justify-between mb-3">
+    <div className="max-w-xs rounded-lg border border-kira-line bg-white px-4 py-3 animate-fade-up">
+      <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-widest text-kira-muted">
+          <p className="text-[11px] font-bold uppercase text-kira-muted">
             Order Tracking
           </p>
-          <p className="text-xs font-semibold text-kira-text mt-0.5">
+          <p className="mt-0.5 text-xs font-semibold text-kira-text">
             {tracking.statusDisplay || tracking.currentStatus || "Processing"}
           </p>
         </div>
         {tracking.orderNumber && (
-          <span className="text-[10px] font-mono text-kira-muted bg-kira-bg px-2 py-0.5 rounded-full border border-kira-border">
+          <span className="rounded-md border border-kira-line bg-kira-bg px-2 py-0.5 font-mono text-[10px] text-kira-muted">
             #{tracking.orderNumber}
           </span>
         )}
@@ -55,15 +55,15 @@ export default function OrderTracker({ tracking }: Props) {
       {(tracking.deliveryDate || tracking.items?.length) && (
         <div className="mb-3 grid grid-cols-2 gap-2">
           {tracking.deliveryDate && (
-            <div className="rounded-xl bg-kira-bg border border-kira-border px-2.5 py-2">
+            <div className="rounded-lg border border-kira-line bg-kira-bg px-2.5 py-2">
               <p className="text-[10px] text-kira-muted">Delivery</p>
-              <p className="text-xs font-semibold text-kira-text truncate">
+              <p className="truncate text-xs font-semibold text-kira-text">
                 {tracking.deliveryDate}
               </p>
             </div>
           )}
           {tracking.items?.length ? (
-            <div className="rounded-xl bg-kira-bg border border-kira-border px-2.5 py-2">
+            <div className="rounded-lg border border-kira-line bg-kira-bg px-2.5 py-2">
               <p className="text-[10px] text-kira-muted">Items</p>
               <p className="text-xs font-semibold text-kira-text">
                 {tracking.items.length}
@@ -73,7 +73,7 @@ export default function OrderTracker({ tracking }: Props) {
         </div>
       )}
 
-      <ol className="relative border-l border-kira-border ml-3 space-y-3">
+      <ol className="relative ml-3 space-y-3 border-l border-kira-line">
         {tracking.timeline.map((event, i) => {
           const Icon = getIcon(event.status);
           const isLast = i === tracking.timeline.length - 1;
@@ -81,10 +81,10 @@ export default function OrderTracker({ tracking }: Props) {
             event.status.toLowerCase() === tracking.currentStatus.toLowerCase() ||
             (isLast && !tracking.timeline.some((e) => e.status === tracking.currentStatus));
           return (
-            <li key={i} className="pl-4 relative">
+            <li key={i} className="relative pl-4">
               <span
                 className={cn(
-                  "absolute -left-[9px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 transition-colors",
+                  "absolute -left-[9px] top-0.5 flex size-4 items-center justify-center rounded-full border-2 transition-colors",
                   event.done
                     ? "bg-emerald-500 border-emerald-500"
                     : isCurrent
@@ -93,9 +93,9 @@ export default function OrderTracker({ tracking }: Props) {
                 )}
               >
                 {event.done ? (
-                  <Check className="w-2.5 h-2.5 text-white" />
+                  <Check className="size-2.5 text-white" />
                 ) : isCurrent ? (
-                  <Icon className="w-2.5 h-2.5 text-white" />
+                  <Icon className="size-2.5 text-white" />
                 ) : null}
               </span>
               <p
@@ -111,7 +111,7 @@ export default function OrderTracker({ tracking }: Props) {
                 {event.label}
               </p>
               {event.time && (
-                <p className="text-[10px] text-kira-muted mt-0.5">
+                <p className="mt-0.5 text-[10px] text-kira-muted">
                   {formatTime(event.time)}
                 </p>
               )}
@@ -123,7 +123,7 @@ export default function OrderTracker({ tracking }: Props) {
       {(tracking.liveTrackingAvailable ||
         tracking.hasDeliveryPhoto ||
         tracking.hasDeliveryVideo) && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {tracking.liveTrackingAvailable && (
             <MediaPill icon={Truck} label="Live tracking" />
           )}
@@ -143,8 +143,8 @@ function MediaPill({
   label: string;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-kap-purple/10 text-kap-purple px-2 py-1 text-[10px] font-bold">
-      <Icon className="h-3 w-3" />
+    <span className="inline-flex items-center gap-1 rounded-md bg-kap-purple/10 px-2 py-1 text-[10px] font-bold text-kap-purple">
+      <Icon className="size-3" />
       {label}
     </span>
   );

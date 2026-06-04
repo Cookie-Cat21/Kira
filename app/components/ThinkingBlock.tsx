@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ProductCardSkeleton } from "./ProductCard";
 
@@ -15,12 +15,12 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="w-7 h-7 rounded-full bg-kap-purple flex items-center justify-center shrink-0 text-xs text-kap-yellow shadow-sm mt-0.5">
-        ✦
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-kap-purple text-xs text-kap-yellow shadow-sm">
+        <Sparkles className="size-4" />
       </div>
 
       <div className="flex-1 max-w-[88%]">
-        <div className="bg-kira-bg border border-kira-border rounded-2xl rounded-bl-sm overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-kira-line bg-kira-bg">
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-kira-border">
             <span className="relative flex h-2 w-2">
@@ -52,9 +52,9 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
                           <motion.span
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className="text-emerald-500 text-xs"
+                            className="text-emerald-500"
                           >
-                            ✓
+                            <Check className="size-3" />
                           </motion.span>
                         ) : isActive ? (
                           <span className="w-1.5 h-1.5 rounded-full bg-kap-purple animate-pulse" />
@@ -136,10 +136,12 @@ export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
               transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
               className="overflow-hidden mt-2"
             >
-              <div className="bg-kira-bg border border-kira-border rounded-xl px-4 py-3 space-y-2">
+              <div className="space-y-2 rounded-lg border border-kira-line bg-kira-bg px-4 py-3">
                 {steps!.map((label, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="text-emerald-500 text-xs w-4 text-center">✓</span>
+                    <span className="flex w-4 justify-center text-emerald-500">
+                      <Check className="size-3" />
+                    </span>
                     <span className="text-xs text-kira-muted line-through decoration-kira-muted/40">
                       {label}
                     </span>

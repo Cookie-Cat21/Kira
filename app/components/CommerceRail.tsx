@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { MapPin, Calendar, X, Sparkles, User } from "lucide-react";
+import { MapPin, Calendar, X, Sparkles, User, Wallet } from "lucide-react";
 
 export interface CommerceContext {
   city?: string;
@@ -28,14 +28,17 @@ function CityChip({
 
   useEffect(() => {
     if (editing) {
-      setDraft(city ?? "");
-      // defer focus so the element is in the DOM
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       }, 0);
     }
-  }, [editing, city]);
+  }, [editing]);
+
+  function startEditing() {
+    setDraft(city ?? "");
+    setEditing(true);
+  }
 
   function commit() {
     const v = draft.trim();
@@ -45,8 +48,8 @@ function CityChip({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1 border border-kap-purple/60 rounded-full px-2.5 py-1 bg-white shadow-sm shrink-0">
-        <MapPin className="w-3 h-3 text-kap-purple shrink-0" />
+      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-kap-purple/60 bg-white px-2.5 py-1 shadow-sm">
+        <MapPin className="size-3 shrink-0 text-kap-purple" />
         <input
           ref={inputRef}
           value={draft}
@@ -56,7 +59,7 @@ function CityChip({
             if (e.key === "Escape") setEditing(false);
           }}
           onBlur={commit}
-          className="w-20 text-[11px] font-medium text-kira-text outline-none bg-transparent placeholder:text-kira-muted"
+          className="w-20 bg-transparent text-[11px] font-medium text-kira-text outline-none placeholder:text-kira-muted"
           placeholder="e.g. Colombo"
         />
       </div>
@@ -65,32 +68,33 @@ function CityChip({
 
   if (city) {
     return (
-      <button
-        onClick={() => setEditing(true)}
-        title="Change city"
-        className="flex items-center gap-1.5 bg-kap-purple/10 border border-kap-purple/30 text-kap-purple rounded-full px-2.5 py-1 text-[11px] font-semibold hover:bg-kap-purple/15 transition-colors shrink-0 animate-pop-in"
-      >
-        <MapPin className="w-3 h-3 shrink-0" />
-        {city}
-        <span
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
-          role="button"
-          aria-label="Clear city"
-          className="ml-0.5 hover:opacity-60 transition-opacity"
+      <div className="flex shrink-0 items-center rounded-lg border border-kap-purple/25 bg-kap-purple/10 text-[11px] font-semibold text-kap-purple">
+        <button
+          onClick={startEditing}
+          title="Change city"
+          className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-kap-purple/10"
         >
-          <X className="w-2.5 h-2.5" />
-        </span>
-      </button>
+          <MapPin className="size-3 shrink-0" />
+          {city}
+        </button>
+        <button
+          onClick={onClear}
+          aria-label="Clear city"
+          className="flex size-6 items-center justify-center border-l border-kap-purple/20 hover:bg-kap-purple/10"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
     );
   }
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={startEditing}
       title="Set your delivery city"
-      className="flex items-center gap-1.5 border border-dashed border-kira-border text-kira-muted rounded-full px-2.5 py-1 text-[11px] font-medium hover:border-kap-purple/40 hover:text-kira-text-2 transition-colors shrink-0"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-kira-border px-2.5 py-1 text-[11px] font-medium text-kira-muted transition-colors hover:border-kap-purple/40 hover:text-kira-text-2"
     >
-      <MapPin className="w-3 h-3 shrink-0" />
+      <MapPin className="size-3 shrink-0" />
       <span>Your city</span>
     </button>
   );
@@ -133,16 +137,16 @@ function DateChip({
       <div
         onClick={openPicker}
         title="Change delivery date"
-        className="relative flex items-center gap-1.5 bg-kap-purple/10 border border-kap-purple/30 text-kap-purple rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 animate-pop-in cursor-pointer hover:bg-kap-purple/15 transition-colors"
+        className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-kap-purple/25 bg-kap-purple/10 px-2.5 py-1 text-[11px] font-semibold text-kap-purple transition-colors hover:bg-kap-purple/15"
       >
-        <Calendar className="w-3 h-3 shrink-0 pointer-events-none" />
+        <Calendar className="size-3 shrink-0 pointer-events-none" />
         <span className="pointer-events-none">{formatted}</span>
         <button
           onClick={(e) => { e.stopPropagation(); onClear(); }}
           aria-label="Clear delivery date"
-          className="ml-0.5 hover:opacity-60 transition-opacity"
+          className="ml-0.5 hover:opacity-60"
         >
-          <X className="w-2.5 h-2.5" />
+          <X className="size-3" />
         </button>
         {/* Hidden input — showPicker() target */}
         <input
@@ -164,15 +168,15 @@ function DateChip({
   return (
     <label
       title="Set delivery date"
-      className="relative flex items-center gap-1.5 border border-dashed border-kira-border text-kira-muted rounded-full px-2.5 py-1 text-[11px] font-medium hover:border-kap-purple/40 hover:text-kira-text-2 transition-colors cursor-pointer shrink-0"
+      className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-kira-border px-2.5 py-1 text-[11px] font-medium text-kira-muted transition-colors hover:border-kap-purple/40 hover:text-kira-text-2"
     >
-      <Calendar className="w-3 h-3 shrink-0 pointer-events-none" />
+      <Calendar className="size-3 shrink-0 pointer-events-none" />
       <span className="pointer-events-none">Delivery date</span>
       <input
         type="date"
         min={today}
         onChange={(e) => e.target.value && onSet(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full rounded-full"
+        className="absolute inset-0 h-full w-full cursor-pointer rounded-lg opacity-0"
         tabIndex={-1}
       />
     </label>
@@ -190,8 +194,11 @@ export default function CommerceRail({ context, onChange }: CommerceRailProps) {
   const { city, deliveryDate, budget, occasion, recipient } = context;
 
   return (
-    <div className="shrink-0 border-b border-kira-border bg-white/80 backdrop-blur-sm z-10">
-      <div className="scrollbar-hide flex items-center gap-1.5 px-4 py-2 overflow-x-auto">
+    <div className="z-10 shrink-0 border-b border-kira-line bg-kira-paper">
+      <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto px-4 py-2">
+        <span className="hidden text-[10px] font-bold uppercase text-kira-muted sm:inline">
+          Gift brief
+        </span>
         <CityChip
           city={city}
           onSet={(v) => onChange({ city: v })}
@@ -204,19 +211,20 @@ export default function CommerceRail({ context, onChange }: CommerceRailProps) {
         />
 
         {budget && (
-          <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-900 rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 animate-pop-in">
-            💰 {budget}
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+            <Wallet className="size-3" />
+            {budget}
           </div>
         )}
         {occasion && (
-          <div className="flex items-center gap-1.5 bg-violet-50 border border-violet-200 text-violet-800 rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 animate-pop-in">
-            <Sparkles className="w-3 h-3 shrink-0" />
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-800">
+            <Sparkles className="size-3 shrink-0" />
             {occasion}
           </div>
         )}
         {recipient && (
-          <div className="flex items-center gap-1.5 bg-kira-bg border border-kira-border text-kira-text-2 rounded-full px-2.5 py-1 text-[11px] font-semibold shrink-0 animate-pop-in">
-            <User className="w-3 h-3 shrink-0" />
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-kira-border bg-white px-2.5 py-1 text-[11px] font-semibold text-kira-text-2">
+            <User className="size-3 shrink-0" />
             {recipient}
           </div>
         )}

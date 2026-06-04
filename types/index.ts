@@ -115,6 +115,7 @@ export interface ChatRequest {
   cart: CartItem[];
   deliveryCity?: string;
   deliveryDate?: string;
+  lastProducts?: KiraProduct[];
 }
 
 export interface ChatResponse {

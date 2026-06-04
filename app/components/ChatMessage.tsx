@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import OrderTracker from "./OrderTracker";
@@ -48,7 +49,7 @@ function ProductCarousel({
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -196 : 196, behavior: "smooth" });
+    el.scrollBy({ left: dir === "left" ? -252 : 252, behavior: "smooth" });
   };
 
   if (!message.products?.length) return null;
@@ -60,9 +61,9 @@ function ProductCarousel({
         <button
           onClick={() => scroll("left")}
           aria-label="Scroll left"
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-kira-border shadow-md flex items-center justify-center hover:bg-kap-purple hover:text-white hover:border-kap-purple transition-colors"
+          className="absolute left-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md border border-kira-line bg-white shadow-md transition-colors hover:border-kap-purple hover:bg-kap-purple hover:text-white"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="size-4" />
         </button>
       )}
 
@@ -97,9 +98,9 @@ function ProductCarousel({
         <button
           onClick={() => scroll("right")}
           aria-label="Scroll right"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-kira-border shadow-md flex items-center justify-center hover:bg-kap-purple hover:text-white hover:border-kap-purple transition-colors"
+          className="absolute right-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md border border-kira-line bg-white shadow-md transition-colors hover:border-kap-purple hover:bg-kap-purple hover:text-white"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="size-4" />
         </button>
       )}
     </div>
@@ -118,7 +119,7 @@ export default function ChatMessage({
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
-        <div className="bg-kap-purple text-white rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%] text-sm leading-relaxed shadow-sm">
+        <div className="max-w-[75%] rounded-lg bg-kap-purple px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
           {message.content}
         </div>
       </div>
@@ -128,8 +129,15 @@ export default function ChatMessage({
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="w-7 h-7 rounded-full bg-kap-purple shrink-0 shadow-sm overflow-hidden">
-        <img src="/kira-logo.svg" alt="Kira" className="w-full h-full object-cover" />
+      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-kira-line bg-white shadow-sm">
+        <Image
+          src="/kira-logo.svg"
+          alt="Kira"
+          width={28}
+          height={28}
+          className="object-contain"
+          style={{ width: "auto", height: "1.75rem" }}
+        />
       </div>
 
       <div className="flex flex-col gap-3 max-w-[88%]">
@@ -137,8 +145,8 @@ export default function ChatMessage({
         {message.content && (
           <div
             className={cn(
-              "bg-kira-bubble-kira border border-kira-border text-kira-text",
-              "rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+              "border border-kira-line bg-kira-bubble-kira text-kira-text",
+              "rounded-lg px-4 py-3 text-sm leading-relaxed shadow-sm",
               "prose prose-sm max-w-none",
               "[&_strong]:font-semibold [&_strong]:text-kira-text",
               "[&_ol]:pl-4 [&_ol]:space-y-1 [&_ul]:pl-4 [&_ul]:space-y-1",
@@ -178,10 +186,10 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
 
   const summary = message.checkout?.summary;
   return (
-    <div className="bg-white border border-kira-border rounded-2xl px-4 py-3 max-w-xs shadow-sm">
+    <div className="max-w-xs rounded-lg border border-kira-line bg-white px-4 py-3 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <span className="h-7 w-7 rounded-full bg-kap-yellow text-gray-900 flex items-center justify-center">
-          <CreditCard className="h-3.5 w-3.5" />
+        <span className="flex size-8 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
+          <CreditCard className="size-4" />
         </span>
         <div className="min-w-0">
           <p className="text-xs font-bold text-kira-text">Checkout ready</p>
@@ -222,10 +230,10 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
         href={checkoutUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-kap-yellow text-gray-900 text-sm font-bold px-5 py-3 rounded-xl text-center hover:brightness-95 transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+        className="flex items-center justify-center gap-2 rounded-lg bg-kap-yellow px-5 py-3 text-center text-sm font-bold text-gray-950 shadow-sm transition-all hover:brightness-95 active:scale-95"
       >
         Complete payment
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="size-4" />
       </a>
     </div>
   );
