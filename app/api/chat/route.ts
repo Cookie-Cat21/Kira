@@ -556,12 +556,17 @@ function extractDeliveryInfo(data: unknown): DeliveryQuote | undefined {
   const obj = inner as Record<string, unknown>;
   const city = String(obj.city ?? obj.destination ?? "");
   if (!city) return undefined;
-  const rawFee = obj.fee ?? obj.delivery_fee ?? obj.shipping_fee;
+  const rawFee =
+    obj.fee ?? obj.delivery_fee ?? obj.shipping_fee ??
+    obj.cost ?? obj.delivery_cost ?? obj.price ?? obj.amount;
+  const feeNum = typeof rawFee === "number"
+    ? rawFee
+    : rawFee != null ? Number(rawFee) : NaN;
   return {
     available: obj.available !== false,
     city,
     estimatedDate: (obj.estimated_date ?? obj.delivery_date) as string | undefined,
-    fee: typeof rawFee === "number" ? rawFee : undefined,
+    fee: !isNaN(feeNum) && feeNum > 0 ? feeNum : undefined,
     perishable: Boolean(obj.perishable ?? obj.is_perishable),
   };
 }
