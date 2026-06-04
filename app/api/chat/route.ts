@@ -2,25 +2,25 @@ import Groq from "groq-sdk";
 import { NextRequest } from "next/server";
 import { KIRA_SYSTEM_PROMPT } from "@/lib/kira-prompt";
 import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
-import type { ChatRequest, KiraProduct } from "@/types";
+import type { ChatRequest, KiraProduct, DeliveryQuote, OrderTracking, TrackingEvent } from "@/types";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-// Free-tier model cascade. We use the warmest/most capable model first, then
-// fall back on rate-limit (429) so a demo NEVER hard-fails under load:
-//   1. Llama 3.3 70B — best personality, but a low 100k tokens/day free budget
-//   2. Llama 4 Scout — middle ground, generous 30k TPM headroom
-//   3. Llama 3.1 8B — highest free limits, last-resort so it always answers
+let _groq: Groq | undefined;
+function getGroq(): Groq {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
+  return _groq;
+}
+// Free-tier model cascade: most capable first, fall back on 429.
+//   1. Llama 3.3 70B  — best personality, 100k tokens/day free budget
+//   2. Llama 4 Scout  — generous 30k TPM headroom
+//   3. Llama 3.1 8B   — highest free limits, last resort
 const MODELS = [
   "llama-3.3-70b-versatile",
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "llama-3.1-8b-instant",
 ];
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 5;
 
-// Cache the MCP tool list across requests so we skip the listTools() round-trip
-// on every message. Schemas rarely change; refresh on a short TTL. We still open
-// a fresh client per request for *calling* tools (connection reuse across
-// serverless invocations is fragile).
+// Cache the MCP tool list across requests (schemas rarely change).
 let mcpToolsCache:
   | { tools: Awaited<ReturnType<typeof listMcpTools>>; ts: number }
   | null = null;
@@ -39,6 +39,8 @@ const TOOL_STEPS: Record<string, string> = {
   kapruka_check_delivery: "Checking delivery availability",
   kapruka_get_product: "Getting product details",
   kapruka_create_order: "Placing your order",
+  kapruka_list_delivery_cities: "Resolving delivery city",
+  kapruka_track_order: "Tracking your order",
 };
 
 export async function POST(req: NextRequest) {
@@ -47,8 +49,8 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       let mcpClient: Awaited<ReturnType<typeof createMcpClient>> | undefined;
-      // Per-request delivery cache — module scope would bleed quotes across users
-      // on a warm serverless instance.
+      // Per-request delivery cache — keyed by city|date|product to avoid
+      // cross-contaminating date-specific quotes across calls.
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
             ? `\n\nCurrent cart: ${cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ")}`
             : "";
         const deliveryContext = deliveryCity
-          ? `\nDelivery city: ${deliveryCity} (already confirmed — do not call check_delivery again for this city)`
+          ? `\nDelivery city: ${deliveryCity} (already confirmed — do not call check_delivery again for this city unless a product or date is now available)`
           : "";
 
         mcpClient = await createMcpClient();
@@ -183,7 +185,7 @@ export async function POST(req: NextRequest) {
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
         let payLink: string | undefined;
-        let modelIndex = 0; // advances through MODELS on rate-limit
+        let modelIndex = 0;
 
         const JSON_FORMAT_TOOLS = [
           "kapruka_search_products",
@@ -191,6 +193,8 @@ export async function POST(req: NextRequest) {
           "kapruka_check_delivery",
           "kapruka_get_product",
           "kapruka_create_order",
+          "kapruka_list_delivery_cities",
+          "kapruka_track_order",
         ];
 
         async function executeToolCalls(
@@ -199,7 +203,6 @@ export async function POST(req: NextRequest) {
           for (const toolCall of calls) {
             const toolName = toolCall.function.name;
 
-            // Emit the thinking step for this tool
             controller.enqueue(
               sse("step", TOOL_STEPS[toolName] ?? "Using a tool")
             );
@@ -230,28 +233,26 @@ export async function POST(req: NextRequest) {
             try {
               if (toolName === "kapruka_check_delivery") {
                 const city = String(toolArgs.city ?? "").toLowerCase().trim();
-                if (city && deliveryCacheStore.has(city)) {
-                  resultText = JSON.stringify(deliveryCacheStore.get(city));
+                const date = String(toolArgs.delivery_date ?? "").trim();
+                const product = String(toolArgs.product_id ?? "").trim();
+                const cacheKey = `${city}|${date}|${product}`;
+                if (city && deliveryCacheStore.has(cacheKey)) {
+                  resultText = JSON.stringify(deliveryCacheStore.get(cacheKey));
                 } else {
-                  const toolResult = await callMcpTool(
-                    mcpClient!,
-                    toolName,
-                    mcpArgs
-                  );
+                  const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
                   resultText = JSON.stringify(toolResult.content);
-                  if (city) deliveryCacheStore.set(city, toolResult.content);
+                  if (city) deliveryCacheStore.set(cacheKey, toolResult.content);
                 }
+                // Emit structured delivery info to client
+                try {
+                  const deliveryInfo = extractDeliveryInfo(JSON.parse(resultText));
+                  if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+                } catch { /* skip */ }
               } else {
-                const toolResult = await callMcpTool(
-                  mcpClient!,
-                  toolName,
-                  mcpArgs
-                );
+                const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
                 resultText = JSON.stringify(toolResult.content);
               }
             } catch (mcpErr) {
-              // MCP call failed — return error as tool result so the model can
-              // respond gracefully rather than crashing the whole request.
               const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
               resultText = JSON.stringify([{ type: "text", text: `Tool error: ${msg}` }]);
             }
@@ -261,19 +262,19 @@ export async function POST(req: NextRequest) {
               toolName === "kapruka_list_categories"
             ) {
               try {
-                collectedProducts.push(
-                  ...extractProducts(JSON.parse(resultText))
-                );
-              } catch {
-                /* skip */
-              }
+                collectedProducts.push(...extractProducts(JSON.parse(resultText)));
+              } catch { /* skip */ }
             }
             if (toolName === "kapruka_create_order") {
               try {
                 payLink = extractPayLink(JSON.parse(resultText));
-              } catch {
-                /* skip */
-              }
+              } catch { /* skip */ }
+            }
+            if (toolName === "kapruka_track_order") {
+              try {
+                const tracking = extractTracking(JSON.parse(resultText));
+                if (tracking) controller.enqueue(sse("tracking", tracking));
+              } catch { /* skip */ }
             }
 
             currentMessages.push({
@@ -289,7 +290,7 @@ export async function POST(req: NextRequest) {
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
           try {
-            response = await groq.chat.completions.create({
+            response = await getGroq().chat.completions.create({
               model: MODELS[modelIndex],
               messages: currentMessages,
               tools: tools.length > 0 ? tools : undefined,
@@ -297,21 +298,23 @@ export async function POST(req: NextRequest) {
               max_tokens: 512,
             });
           } catch (err) {
-            // The Groq SDK exposes the full response body on `.error`, so the
-            // actual failure payload is nested: err.error.error.{code,...}.
-            // Fall back to the flat shape just in case the SDK changes.
             type ErrBody = { code?: string; failed_generation?: string };
             const apiErr = err as {
               status?: number;
               error?: ErrBody & { error?: ErrBody };
             };
             const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
-            // Rate-limited on this model — drop to the next model in the
-            // cascade and retry this same round (nothing has been mutated yet).
-            if (apiErr?.status === 429 && modelIndex < MODELS.length - 1) {
-              modelIndex++;
-              round--;
-              continue;
+
+            if (apiErr?.status === 429) {
+              if (modelIndex < MODELS.length - 1) {
+                modelIndex++;
+                round--;
+                continue;
+              }
+              // All models rate-limited — return a graceful in-character message
+              finalText =
+                "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?";
+              break;
             }
             if (
               apiErr?.status === 400 &&
@@ -330,9 +333,7 @@ export async function POST(req: NextRequest) {
                 if (match) {
                   try {
                     rawCalls = JSON.parse(match[0]) as RawCall[];
-                  } catch {
-                    /* unparseable */
-                  }
+                  } catch { /* unparseable */ }
                 }
               }
 
@@ -378,20 +379,18 @@ export async function POST(req: NextRequest) {
           await executeToolCalls(msg.tool_calls);
         }
 
-        // Fallback if all tool rounds were consumed without a text response
         if (!finalText) {
           finalText = "Aiyo, I ran out of time processing that. Can you try again?";
         }
 
-        // Stream the final text word-by-word for a live typing effect
+        // Stream final text word-by-word for typing effect
         const words = finalText.match(/\S+\s*/g) ?? [];
         for (const word of words) {
           controller.enqueue(sse("token", word));
           await new Promise((r) => setTimeout(r, 18));
         }
 
-        // Dedup by id (searches across rounds can repeat products) and cap the
-        // carousel so a multi-search turn doesn't flood the UI.
+        // Dedup + cap carousel
         const seenIds = new Set<string>();
         const dedupedProducts = collectedProducts
           .filter((p) => {
@@ -415,9 +414,7 @@ export async function POST(req: NextRequest) {
         if (mcpClient) {
           try {
             await mcpClient.close();
-          } catch {
-            /* ignore */
-          }
+          } catch { /* ignore */ }
         }
       }
     },
@@ -459,9 +456,7 @@ function coerceArgTypes(
       } else if (t === "array" || t === "object") {
         try {
           result[key] = JSON.parse(val);
-        } catch {
-          /* leave */
-        }
+        } catch { /* leave */ }
       } else if (anyOf) {
         const hasInt = anyOf.some((s) => s.type === "integer");
         const hasNum = anyOf.some((s) => s.type === "number");
@@ -476,9 +471,7 @@ function coerceArgTypes(
         } else if (hasArr || hasObj) {
           try {
             result[key] = JSON.parse(val);
-          } catch {
-            /* leave */
-          }
+          } catch { /* leave */ }
         } else if (hasInt) {
           const n = parseInt(val, 10);
           if (!isNaN(n)) result[key] = n;
@@ -547,4 +540,62 @@ function extractPayLink(data: unknown): string | undefined {
   if (!inner || typeof inner !== "object") return undefined;
   const obj = inner as Record<string, unknown>;
   return (obj.checkout_url as string) ?? undefined;
+}
+
+function extractDeliveryInfo(data: unknown): DeliveryQuote | undefined {
+  let inner = data;
+  if (Array.isArray(data)) {
+    const textBlock = (data as { type: string; text: string }[]).find(
+      (b) => b.type === "text"
+    );
+    if (textBlock) {
+      try { inner = JSON.parse(textBlock.text); } catch { return undefined; }
+    }
+  }
+  if (!inner || typeof inner !== "object") return undefined;
+  const obj = inner as Record<string, unknown>;
+  const city = String(obj.city ?? obj.destination ?? "");
+  if (!city) return undefined;
+  const rawFee = obj.fee ?? obj.delivery_fee ?? obj.shipping_fee;
+  return {
+    available: obj.available !== false,
+    city,
+    estimatedDate: (obj.estimated_date ?? obj.delivery_date) as string | undefined,
+    fee: typeof rawFee === "number" ? rawFee : undefined,
+    perishable: Boolean(obj.perishable ?? obj.is_perishable),
+  };
+}
+
+function extractTracking(data: unknown): OrderTracking | undefined {
+  let inner = data;
+  if (Array.isArray(data)) {
+    const textBlock = (data as { type: string; text: string }[]).find(
+      (b) => b.type === "text"
+    );
+    if (textBlock) {
+      try { inner = JSON.parse(textBlock.text); } catch { return undefined; }
+    }
+  }
+  if (!inner || typeof inner !== "object") return undefined;
+  const obj = inner as Record<string, unknown>;
+
+  const rawTimeline = (obj.timeline as unknown[]) ?? [];
+  const timeline: TrackingEvent[] = rawTimeline.map((e) => {
+    const ev = e as Record<string, unknown>;
+    return {
+      status: String(ev.status ?? ev.stage ?? ""),
+      label: String(ev.label ?? ev.description ?? ev.status ?? ""),
+      time: (ev.time ?? ev.timestamp ?? ev.date) as string | undefined,
+      done: Boolean(ev.done ?? ev.completed ?? ev.is_done),
+    };
+  });
+
+  const currentStatus = String(obj.status ?? obj.current_status ?? "");
+  return {
+    orderNumber: String(obj.order_number ?? obj.order_id ?? obj.id ?? ""),
+    currentStatus,
+    timeline: timeline.length > 0 ? timeline : [
+      { status: currentStatus, label: currentStatus || "Processing", done: false },
+    ],
+  };
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { KiraProduct, CartItem } from "@/types";
-import { ShoppingCart, Check } from "lucide-react";
+import type { KiraProduct, CartItem, DeliveryQuote } from "@/types";
+import { ShoppingCart, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -10,6 +10,7 @@ interface ProductCardProps {
   cart: CartItem[];
   onAddToCart: (product: KiraProduct) => void;
   deliveryCity?: string;
+  deliveryInfo?: DeliveryQuote;
 }
 
 export default function ProductCard({
@@ -17,6 +18,7 @@ export default function ProductCard({
   cart,
   onAddToCart,
   deliveryCity,
+  deliveryInfo,
 }: ProductCardProps) {
   const inCart = cart.some((i) => i.product.id === product.id);
   const qty = cart.find((i) => i.product.id === product.id)?.quantity ?? 0;
@@ -27,6 +29,10 @@ export default function ProductCard({
     currency: product.currency ?? "LKR",
     maximumFractionDigits: 0,
   }).format(product.price);
+
+  const city = deliveryInfo?.city ?? deliveryCity;
+  const fee = deliveryInfo?.fee;
+  const perishable = deliveryInfo?.perishable;
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-pop-in border border-kira-border shadow-sm hover:shadow-md transition-shadow">
@@ -50,6 +56,12 @@ export default function ProductCard({
             {product.category}
           </span>
         )}
+        {perishable && (
+          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-amber-400 text-gray-900 px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5">
+            <AlertCircle className="w-2.5 h-2.5" />
+            Fresh
+          </span>
+        )}
       </div>
 
       {/* Details */}
@@ -59,11 +71,18 @@ export default function ProductCard({
         </p>
         <p className="text-kap-purple font-bold text-sm">{formattedPrice}</p>
 
-        {deliveryCity && (
-          <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
-            <Check className="w-3 h-3" />
-            Delivers to {deliveryCity}
-          </p>
+        {city && (
+          <div className="flex flex-col gap-0.5">
+            <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
+              <Check className="w-3 h-3" />
+              Delivers to {city}
+            </p>
+            {fee !== undefined && (
+              <p className="text-[10px] text-kira-muted pl-3.5">
+                + LKR {fee.toLocaleString()} delivery
+              </p>
+            )}
+          </div>
         )}
 
         <button

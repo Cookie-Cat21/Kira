@@ -13,6 +13,20 @@ export interface DeliveryQuote {
   city: string;
   estimatedDate?: string;
   fee?: number;
+  perishable?: boolean;
+}
+
+export interface TrackingEvent {
+  status: string;
+  label: string;
+  time?: string;
+  done: boolean;
+}
+
+export interface OrderTracking {
+  orderNumber: string;
+  currentStatus: string;
+  timeline: TrackingEvent[];
 }
 
 export interface KiraMessage {
@@ -22,8 +36,9 @@ export interface KiraMessage {
   products?: KiraProduct[];
   deliveryInfo?: DeliveryQuote;
   payLink?: string;
+  tracking?: OrderTracking;
   timestamp: number;
-  thinkingMs?: number; // how long Kira thought before responding
+  thinkingMs?: number;
 }
 
 export interface CartItem {

@@ -1,12 +1,8 @@
 "use client";
 
-/**
- * ChatMessage — inspired by jakobhoeg/chat-bubble on 21st.dev
- * Clean bubbles: Kira on left (lavender bg), user on right (Kapruka purple).
- */
-
 import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
+import OrderTracker from "./OrderTracker";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +21,6 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
 
-  /* ── User bubble ─────────────────────────────────────────────── */
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
@@ -36,7 +31,6 @@ export default function ChatMessage({
     );
   }
 
-  /* ── Kira bubble ─────────────────────────────────────────────── */
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
@@ -79,11 +73,15 @@ export default function ChatMessage({
                   cart={cart}
                   onAddToCart={onAddToCart}
                   deliveryCity={deliveryCity}
+                  deliveryInfo={message.deliveryInfo}
                 />
               </div>
             ))}
           </div>
         )}
+
+        {/* Order tracking timeline */}
+        {message.tracking && <OrderTracker tracking={message.tracking} />}
 
         {/* Pay link CTA */}
         {message.payLink && (

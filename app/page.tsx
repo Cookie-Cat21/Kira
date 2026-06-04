@@ -10,7 +10,7 @@ import {
   ChatInputSubmit,
 } from "./components/ui/chat-input";
 import { getContextualGreeting } from "@/lib/kira-prompt";
-import type { KiraMessage, CartItem, KiraProduct } from "@/types";
+import type { KiraMessage, CartItem, KiraProduct, DeliveryQuote, OrderTracking } from "@/types";
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = [
@@ -18,7 +18,12 @@ const OCCASION_CHIPS = [
   { label: "🎂 Birthday gift", value: "I need to send a birthday gift" },
   { label: "💐 Flowers & cake", value: "I want to send flowers and a cake" },
   { label: "🛍️ Just browsing", value: "What's popular on Kapruka right now?" },
+  { label: "📦 Track an order", value: "I want to track my order" },
 ];
+
+// Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
+const CITY_REGEX =
+  /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
 const CATEGORIES = [
   { icon: "🎂", label: "Cakes" },
@@ -91,11 +96,8 @@ export default function KiraChat() {
       thinkingStartRef.current = Date.now();
 
       if (!deliveryCity) {
-        const m = trimmed.match(
-          /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i
-        );
+        const m = trimmed.match(CITY_REGEX);
         if (m) {
-          // Title-case so cards read "Delivers to Colombo", not "colombo"
           const city = m[1].replace(/\b\w/g, (c) => c.toUpperCase());
           setDeliveryCity(city);
         }
@@ -135,7 +137,6 @@ export default function KiraChat() {
 
               if (payload.t === "token") {
                 if (!streamingMsgIdRef.current) {
-                  // First token — create the reply bubble and hide ThinkingLive
                   const msgId = `kira-${Date.now()}`;
                   streamingMsgIdRef.current = msgId;
                   setIsStreaming(true);
@@ -168,6 +169,26 @@ export default function KiraChat() {
                         : m
                     )
                   );
+              } else if (payload.t === "delivery") {
+                const info = payload.v as DeliveryQuote;
+                if (info?.city) setDeliveryCity(info.city);
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id ? { ...m, deliveryInfo: info } : m
+                    )
+                  );
+              } else if (payload.t === "tracking") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, tracking: payload.v as OrderTracking }
+                        : m
+                    )
+                  );
               } else if (payload.t === "payLink") {
                 const id = streamingMsgIdRef.current;
                 if (id)
@@ -192,7 +213,6 @@ export default function KiraChat() {
                     )
                   );
                 } else {
-                  // done fired with no tokens — server sent empty response
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -339,7 +359,6 @@ export default function KiraChat() {
       >
         {messages.map((msg) => (
           <div key={msg.id}>
-            {/* Thinking summary above each Kira reply */}
             {msg.role === "assistant" && msg.thinkingMs && (
               <ThinkingDone thinkingMs={msg.thinkingMs} />
             )}
@@ -384,7 +403,7 @@ export default function KiraChat() {
         </div>
       )}
 
-      {/* ── Chat input (from 21st.dev Alwurts/chat-input) ──────────── */}
+      {/* ── Chat input ──────────────────────────────────────────────── */}
       <div className="shrink-0 px-4 pb-4 pt-3 bg-white border-t border-kira-border">
         <ChatInput
           value={input}
