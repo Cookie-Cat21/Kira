@@ -547,7 +547,7 @@ function findFeeDeep(obj: Record<string, unknown>, depth = 0): number | undefine
   if (depth > 3) return undefined;
   for (const [key, val] of Object.entries(obj)) {
     const lk = key.toLowerCase();
-    if (lk.includes("fee") || lk.includes("cost") || lk.includes("charge")) {
+    if (lk.includes("fee") || lk.includes("cost") || lk.includes("charge") || lk.includes("rate") || lk === "price" || lk === "amount") {
       const n = typeof val === "number" ? val : Number(String(val).replace(/,/g, ""));
       if (!isNaN(n) && n > 0) return n;
     }

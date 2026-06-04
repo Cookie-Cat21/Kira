@@ -57,6 +57,9 @@ export default function KiraChat() {
   const [cartBounce, setCartBounce] = useState(false);
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
+  // Buffer delivery/tracking events that arrive before the first token creates the message
+  const pendingDeliveryRef = useRef<DeliveryQuote | null>(null);
+  const pendingTrackingRef = useRef<OrderTracking | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +96,8 @@ export default function KiraChat() {
       setIsLoading(true);
       setIsStreaming(false);
       streamingMsgIdRef.current = null;
+      pendingDeliveryRef.current = null;
+      pendingTrackingRef.current = null;
       thinkingStartRef.current = Date.now();
 
       if (!deliveryCity) {
@@ -140,6 +145,8 @@ export default function KiraChat() {
                   const msgId = `kira-${Date.now()}`;
                   streamingMsgIdRef.current = msgId;
                   setIsStreaming(true);
+                  const pendingDelivery = pendingDeliveryRef.current;
+                  const pendingTracking = pendingTrackingRef.current;
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -147,6 +154,8 @@ export default function KiraChat() {
                       role: "assistant",
                       content: payload.v as string,
                       timestamp: Date.now(),
+                      ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
+                      ...(pendingTracking ? { tracking: pendingTracking } : {}),
                     },
                   ]);
                 } else {
@@ -173,22 +182,27 @@ export default function KiraChat() {
                 const info = payload.v as DeliveryQuote;
                 if (info?.city) setDeliveryCity(info.city);
                 const id = streamingMsgIdRef.current;
-                if (id)
+                if (id) {
                   setMessages((prev) =>
                     prev.map((m) =>
                       m.id === id ? { ...m, deliveryInfo: info } : m
                     )
                   );
+                } else {
+                  pendingDeliveryRef.current = info;
+                }
               } else if (payload.t === "tracking") {
+                const tracking = payload.v as OrderTracking;
                 const id = streamingMsgIdRef.current;
-                if (id)
+                if (id) {
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === id
-                        ? { ...m, tracking: payload.v as OrderTracking }
-                        : m
+                      m.id === id ? { ...m, tracking } : m
                     )
                   );
+                } else {
+                  pendingTrackingRef.current = tracking;
+                }
               } else if (payload.t === "payLink") {
                 const id = streamingMsgIdRef.current;
                 if (id)
