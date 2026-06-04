@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
             seenIds.add(p.id);
             return true;
           })
-          .slice(0, 6);
+          .slice(0, 8);
         if (dedupedProducts.length > 0)
           controller.enqueue(sse("products", dedupedProducts));
         if (payLink) controller.enqueue(sse("payLink", payLink));
@@ -505,7 +505,7 @@ function extractProducts(data: unknown): KiraProduct[] {
     (obj.results as unknown[]) ?? (Array.isArray(inner) ? inner : []);
 
   return candidates
-    .slice(0, 4)
+    .slice(0, 6)
     .map((item) => {
       const p = item as Record<string, unknown>;
       const priceObj = p.price as { amount?: number; currency?: string } | undefined;

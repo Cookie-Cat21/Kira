@@ -1,16 +1,106 @@
 "use client";
 
+import { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import OrderTracker from "./OrderTracker";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
 import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ChatMessageProps {
   message: KiraMessage;
   cart: CartItem[];
   onAddToCart: (product: KiraProduct) => void;
   deliveryCity?: string;
+}
+
+function ProductCarousel({
+  message,
+  cart,
+  onAddToCart,
+  deliveryCity,
+}: ChatMessageProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
+
+  useEffect(() => {
+    // Defer to next frame so the browser has finished layout before measuring
+    const raf = requestAnimationFrame(() => checkScroll());
+    const el = scrollRef.current;
+    el?.addEventListener("scroll", checkScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      el?.removeEventListener("scroll", checkScroll);
+    };
+  }, [message.products]);
+
+  const scroll = (dir: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -196 : 196, behavior: "smooth" });
+  };
+
+  if (!message.products?.length) return null;
+
+  return (
+    <div className="relative max-w-[400px] overflow-hidden">
+      {/* Left arrow */}
+      {canLeft && (
+        <button
+          onClick={() => scroll("left")}
+          aria-label="Scroll left"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-kira-border shadow-md flex items-center justify-center hover:bg-kap-purple hover:text-white hover:border-kap-purple transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Carousel */}
+      <div
+        ref={scrollRef}
+        role="list"
+        aria-label={`${message.products.length} product suggestions`}
+        className="flex gap-3 overflow-x-auto pb-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={checkScroll}
+      >
+        {message.products.map((product, i) => (
+          <div
+            key={product.id}
+            role="listitem"
+            style={{ animationDelay: `${i * 0.07}s` }}
+          >
+            <ProductCard
+              product={product}
+              cart={cart}
+              onAddToCart={onAddToCart}
+              deliveryCity={deliveryCity}
+              deliveryInfo={message.deliveryInfo}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Right arrow */}
+      {canRight && (
+        <button
+          onClick={() => scroll("right")}
+          aria-label="Scroll right"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white border border-kira-border shadow-md flex items-center justify-center hover:bg-kap-purple hover:text-white hover:border-kap-purple transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function ChatMessage({
@@ -55,29 +145,14 @@ export default function ChatMessage({
           </div>
         )}
 
-        {/* Product cards carousel */}
+        {/* Product cards carousel with arrows */}
         {message.products && message.products.length > 0 && (
-          <div
-            role="list"
-            aria-label={`${message.products.length} product suggestions`}
-            className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4"
-          >
-            {message.products.map((product, i) => (
-              <div
-                key={product.id}
-                role="listitem"
-                style={{ animationDelay: `${i * 0.07}s` }}
-              >
-                <ProductCard
-                  product={product}
-                  cart={cart}
-                  onAddToCart={onAddToCart}
-                  deliveryCity={deliveryCity}
-                  deliveryInfo={message.deliveryInfo}
-                />
-              </div>
-            ))}
-          </div>
+          <ProductCarousel
+            message={message}
+            cart={cart}
+            onAddToCart={onAddToCart}
+            deliveryCity={deliveryCity}
+          />
         )}
 
         {/* Order tracking timeline */}
