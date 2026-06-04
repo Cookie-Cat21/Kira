@@ -28,8 +28,8 @@ function ProductCarousel({
   const checkScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    setCanLeft(el.scrollLeft > 4);
-    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setCanLeft(el.scrollLeft > 8);
+    setCanRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
   };
 
   useEffect(() => {
