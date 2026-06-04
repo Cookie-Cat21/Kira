@@ -15,19 +15,19 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-kap-purple text-xs text-kap-yellow shadow-sm">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs text-kap-yellow" style={{ background: "rgba(64,41,112,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(248,218,8,0.2)" }}>
         <Sparkles className="size-4" />
       </div>
 
       <div className="flex-1 max-w-[88%]">
-        <div className="overflow-hidden rounded-lg border border-kira-line bg-kira-bg">
+        <div className="overflow-hidden rounded-xl" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
           {/* Header */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-kira-border">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kap-purple opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-kap-purple" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-400" />
             </span>
-            <span className="text-xs font-semibold text-kap-purple">
+            <span className="text-xs font-semibold text-purple-300">
               Kira is thinking…
             </span>
           </div>
@@ -63,8 +63,8 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
                       <span
                         className={`text-xs ${
                           isDone
-                            ? "text-kira-muted line-through decoration-kira-muted/40"
-                            : "text-kap-purple font-medium"
+                            ? "text-white/35 line-through decoration-white/20"
+                            : "text-purple-300 font-medium"
                         }`}
                       >
                         {label}
@@ -109,8 +109,8 @@ export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
     <div className="mb-2 ml-9">
       <button
         onClick={() => hasSteps && setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 text-xs text-kira-muted transition-colors group ${
-          hasSteps ? "hover:text-kap-purple cursor-pointer" : "cursor-default"
+        className={`flex items-center gap-1.5 text-xs text-white/35 transition-colors group ${
+          hasSteps ? "hover:text-white/60 cursor-pointer" : "cursor-default"
         }`}
       >
         {hasSteps ? (
@@ -136,13 +136,13 @@ export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
               transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
               className="overflow-hidden mt-2"
             >
-              <div className="space-y-2 rounded-lg border border-kira-line bg-kira-bg px-4 py-3">
+              <div className="space-y-2 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 {steps!.map((label, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="flex w-4 justify-center text-emerald-500">
                       <Check className="size-3" />
                     </span>
-                    <span className="text-xs text-kira-muted line-through decoration-kira-muted/40">
+                    <span className="text-xs text-white/35 line-through decoration-white/20">
                       {label}
                     </span>
                   </div>

@@ -53,14 +53,18 @@ export default function ProductCard({
   }
 
   return (
-    <article className="flex w-56 shrink-0 flex-col overflow-hidden rounded-lg border border-kira-line bg-white shadow-sm transition-shadow hover:shadow-md">
+    <article
+      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl transition-all hover:shadow-[0_8px_32px_rgba(64,41,112,0.4)]"
+      style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
+    >
       {/* Image */}
       <button
         ref={imgRef}
         type="button"
         onClick={() => onOpenProduct?.(product)}
         aria-label={`View details for ${product.name}`}
-        className="group relative aspect-square w-full overflow-hidden bg-kira-paper text-left"
+        className="group relative aspect-square w-full overflow-hidden text-left"
+        style={{ background: "rgba(255,255,255,0.05)" }}
       >
         {product.image && !imgError ? (
           <Image
@@ -88,7 +92,10 @@ export default function ProductCard({
           </span>
         )}
         {onOpenProduct && (
-          <span className="absolute bottom-2 right-2 flex size-8 translate-y-1 items-center justify-center rounded-md bg-white text-kap-purple opacity-0 shadow-sm transition-all group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
+          <span
+            className="absolute bottom-2 right-2 flex size-8 translate-y-1 items-center justify-center rounded-md text-white opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100"
+            style={{ background: "rgba(64,41,112,0.7)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
+          >
             <Eye className="size-4" />
           </span>
         )}
@@ -99,11 +106,11 @@ export default function ProductCard({
         <button
           type="button"
           onClick={() => onOpenProduct?.(product)}
-          className="line-clamp-2 text-left text-sm font-semibold leading-tight text-kira-text transition-colors hover:text-kap-purple"
+          className="line-clamp-2 text-left text-sm font-semibold leading-tight text-white/85 transition-colors hover:text-white"
         >
           {product.name}
         </button>
-        <p className="text-sm font-bold text-kap-purple">{formattedPrice}</p>
+        <p className="text-sm font-bold text-kap-yellow">{formattedPrice}</p>
 
         {city && (
           <div className="flex flex-col gap-0.5">
@@ -121,12 +128,12 @@ export default function ProductCard({
               {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
             {deliveryInfo?.nextAvailableDate && (
-              <p className="text-[10px] text-kira-muted pl-3.5">
+              <p className="text-[10px] text-white/40 pl-3.5">
                 {deliveryInfo.nextAvailableDate}
               </p>
             )}
             {fee !== undefined && (
-              <p className="text-[10px] text-kira-muted pl-3.5">
+              <p className="text-[10px] text-white/40 pl-3.5">
                 + LKR {fee.toLocaleString()} delivery
               </p>
             )}
@@ -139,23 +146,23 @@ export default function ProductCard({
         )}
 
         {inCart ? (
-          <div className="mt-auto flex items-center justify-between rounded-lg border border-kap-purple/20 bg-kap-purple/5 p-1">
+          <div className="mt-auto flex items-center justify-between rounded-lg border border-kap-yellow/20 bg-kap-yellow/10 p-1">
             <button
               type="button"
               onClick={() => updateQty(product.id, qty - 1)}
               aria-label={`Decrease quantity for ${product.name}`}
-              className="flex size-7 items-center justify-center rounded-md text-kap-purple transition-colors hover:bg-kap-purple/10"
+              className="flex size-7 items-center justify-center rounded-md text-kap-yellow transition-colors hover:bg-kap-yellow/10"
             >
               <Minus className="size-3" />
             </button>
-            <span className="text-xs font-bold text-kap-purple">
+            <span className="text-xs font-bold text-kap-yellow">
               {qty} in tray
             </span>
             <button
               type="button"
               onClick={handleAddToCart}
               aria-label={`Increase quantity for ${product.name}`}
-              className="flex size-7 items-center justify-center rounded-md text-kap-purple transition-colors hover:bg-kap-purple/10"
+              className="flex size-7 items-center justify-center rounded-md text-kap-yellow transition-colors hover:bg-kap-yellow/10"
             >
               <Plus className="size-3" />
             </button>
@@ -176,13 +183,16 @@ export default function ProductCard({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="flex w-56 shrink-0 animate-pulse flex-col overflow-hidden rounded-lg border border-kira-line bg-white shadow-sm">
-      <div className="aspect-square bg-kira-border/70" />
+    <div
+      className="flex w-56 shrink-0 animate-pulse flex-col overflow-hidden rounded-xl"
+      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div className="aspect-square" style={{ background: "rgba(255,255,255,0.04)" }} />
       <div className="flex flex-col gap-2 p-3">
-        <div className="h-3 rounded-full bg-kira-border w-11/12" />
-        <div className="h-3 rounded-full bg-kira-border w-8/12" />
-        <div className="h-4 rounded-full bg-kira-border w-5/12" />
-        <div className="mt-1 h-8 rounded-lg bg-kira-border/80" />
+        <div className="h-3 rounded-full w-11/12" style={{ background: "rgba(255,255,255,0.08)" }} />
+        <div className="h-3 rounded-full w-8/12" style={{ background: "rgba(255,255,255,0.08)" }} />
+        <div className="h-4 rounded-full w-5/12" style={{ background: "rgba(255,255,255,0.08)" }} />
+        <div className="mt-1 h-8 rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }} />
       </div>
     </div>
   );

@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  /* Kapruka exact brand values */
+  /* Kapruka brand */
   --color-kap-purple: #402970;
   --color-kap-yellow: #f8da08;
 
-  /* Gift desk surfaces */
-  --color-kira-canvas: #fbfaf6;
-  --color-kira-paper: #fffdf8;
-  --color-kira-bg: #f4efe6;
-  --color-kira-surface: #ffffff;
-  --color-kira-line: #e7ded1;
-  --color-kira-border: #e7ded1;
-  --color-kira-border-focus: #9c84c6;
+  /* Dark glass surfaces */
+  --color-kira-canvas: #0d0818;
+  --color-kira-paper: #130d24;
+  --color-kira-bg: rgba(255, 255, 255, 0.06);
+  --color-kira-surface: rgba(255, 255, 255, 0.07);
+  --color-kira-line: rgba(255, 255, 255, 0.1);
+  --color-kira-border: rgba(255, 255, 255, 0.1);
+  --color-kira-border-focus: rgba(156, 132, 198, 0.8);
 
   /* Bubbles */
-  --color-kira-bubble-kira: #fffdf8;
+  --color-kira-bubble-kira: rgba(255, 255, 255, 0.07);
   --color-kira-bubble-user: #402970;
 
-  /* Text */
-  --color-kira-text: #241832;
-  --color-kira-text-2: #62556e;
-  --color-kira-muted: #8b7d91;
-  --color-kira-leaf: #236447;
-  --color-kira-rose: #a64d63;
+  /* Text — white at opacity levels */
+  --color-kira-text: rgba(255, 255, 255, 0.92);
+  --color-kira-text-2: rgba(255, 255, 255, 0.65);
+  --color-kira-muted: rgba(255, 255, 255, 0.4);
+  --color-kira-leaf: #4ade80;
+  --color-kira-rose: #f9a8d4;
 
   --font-display: var(--font-dm-serif);
   --font-sans: var(--font-jakarta), var(--font-noto-sinhala), "Iskoola Pota", sans-serif;
@@ -32,12 +32,54 @@
 html,
 body {
   height: 100%;
-  background-color: #fbfaf6;
-  color: #241832;
+  background: linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%);
+  background-attachment: fixed;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Glass utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-rail {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Yellow left-accent for gift slip */
+.gift-slip {
+  border-left: 4px solid #f8da08;
 }
 
 ::-webkit-scrollbar {
@@ -47,12 +89,8 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d8cdbf;
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 2px;
-}
-
-.gift-slip {
-  border-left: 4px solid #f8da08;
 }
 
 @keyframes fade-up {

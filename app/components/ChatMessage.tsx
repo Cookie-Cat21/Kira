@@ -61,7 +61,8 @@ function ProductCarousel({
         <button
           onClick={() => scroll("left")}
           aria-label="Scroll left"
-          className="absolute left-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md border border-kira-line bg-white shadow-md transition-colors hover:border-kap-purple hover:bg-kap-purple hover:text-white"
+          className="absolute left-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
+          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.15)" }}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -98,7 +99,8 @@ function ProductCarousel({
         <button
           onClick={() => scroll("right")}
           aria-label="Scroll right"
-          className="absolute right-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md border border-kira-line bg-white shadow-md transition-colors hover:border-kap-purple hover:bg-kap-purple hover:text-white"
+          className="absolute right-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
+          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.15)" }}
         >
           <ChevronRight className="size-4" />
         </button>
@@ -119,7 +121,16 @@ export default function ChatMessage({
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
-        <div className="max-w-[75%] rounded-lg bg-kap-purple px-4 py-2.5 text-sm leading-relaxed text-white shadow-sm">
+        <div
+          className="max-w-[75%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed text-white"
+          style={{
+            background: "linear-gradient(135deg, rgba(64,41,112,0.9), rgba(90,55,160,0.9))",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(148,100,255,0.3)",
+            boxShadow: "0 4px 24px rgba(64,41,112,0.4)",
+          }}
+        >
           {message.content}
         </div>
       </div>
@@ -129,7 +140,14 @@ export default function ChatMessage({
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-kira-line bg-white shadow-sm">
+      <div
+        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+        style={{
+          background: "rgba(64,41,112,0.5)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(248,218,8,0.25)",
+        }}
+      >
         <Image
           src="/kira-logo.svg"
           alt="Kira"
@@ -145,13 +163,21 @@ export default function ChatMessage({
         {message.content && (
           <div
             className={cn(
-              "border border-kira-line bg-kira-bubble-kira text-kira-text",
-              "rounded-lg px-4 py-3 text-sm leading-relaxed shadow-sm",
+              "rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed",
               "prose prose-sm max-w-none",
-              "[&_strong]:font-semibold [&_strong]:text-kira-text",
+              "[&_strong]:font-semibold [&_strong]:text-white/90",
               "[&_ol]:pl-4 [&_ol]:space-y-1 [&_ul]:pl-4 [&_ul]:space-y-1",
-              "[&_p]:m-0 [&_p+p]:mt-2"
+              "[&_p]:m-0 [&_p+p]:mt-2 [&_p]:text-white/85",
+              "[&_li]:text-white/85"
             )}
+            style={{
+              background: "rgba(255,255,255,0.07)",
+              backdropFilter: "blur(30px) saturate(180%)",
+              WebkitBackdropFilter: "blur(30px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+              color: "rgba(255,255,255,0.85)",
+            }}
           >
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
@@ -186,15 +212,18 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
 
   const summary = message.checkout?.summary;
   return (
-    <div className="max-w-xs rounded-lg border border-kira-line bg-white px-4 py-3 shadow-sm">
+    <div
+      className="max-w-xs rounded-2xl px-4 py-3"
+      style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(30px)", WebkitBackdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}
+    >
       <div className="flex items-center gap-2 mb-3">
         <span className="flex size-8 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
           <CreditCard className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-bold text-kira-text">Checkout ready</p>
+          <p className="text-xs font-bold text-white/90">Checkout ready</p>
           {message.checkout?.orderRef && (
-            <p className="text-[10px] font-mono text-kira-muted truncate">
+            <p className="text-[10px] font-mono text-white/40 truncate">
               {message.checkout.orderRef}
             </p>
           )}
@@ -220,7 +249,7 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
       )}
 
       {message.checkout?.expiresAt && (
-        <p className="flex items-center gap-1.5 text-[10px] text-kira-muted mb-3">
+        <p className="flex items-center gap-1.5 text-[10px] text-white/40 mb-3">
           <Clock className="h-3 w-3" />
           Link expires {formatExpiry(message.checkout.expiresAt)}
         </p>
@@ -252,7 +281,7 @@ function SummaryRow({
     <div
       className={cn(
         "flex items-center justify-between gap-3",
-        strong ? "font-bold text-kira-text pt-1 border-t border-kira-border" : "text-kira-muted"
+        strong ? "font-bold text-white/90 pt-1 border-t border-white/10" : "text-white/45"
       )}
     >
       <span>{label}</span>

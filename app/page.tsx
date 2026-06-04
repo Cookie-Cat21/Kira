@@ -597,17 +597,13 @@ export default function KiraChat() {
     );
 
   return (
-    <div className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-kira-canvas text-kira-text">
+    <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden" style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
+      {/* Ambient blobs */}
+      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.5) 0%, transparent 70%)", filter: "blur(50px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "320px", height: "320px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.07) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+
       <header
-        className="z-10 flex h-16 shrink-0 items-center justify-between px-4 sm:px-6"
-        style={{
-          background: "rgba(251, 250, 246, 0.82)",
-          backdropFilter: "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.65)",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 24px rgba(64,41,112,0.07)",
-        }}
+        className="glass-nav relative z-10 flex h-16 shrink-0 items-center justify-between px-4 sm:px-6"
       >
         <div className="flex min-w-0 items-center gap-3">
           <Image
@@ -622,8 +618,8 @@ export default function KiraChat() {
           <span className="font-display text-2xl leading-none text-kira-text">
             Kira
           </span>
-          <div className="hidden h-8 items-center gap-2 border-l border-kira-line pl-3 sm:flex">
-            <span className="text-xs font-semibold text-kira-muted">
+          <div className="hidden h-8 items-center gap-2 border-l border-white/10 pl-3 sm:flex">
+            <span className="text-xs font-semibold text-white/40">
               by Kapruka
             </span>
             <span className="flex items-center gap-1 text-xs font-semibold text-kira-leaf">
@@ -641,7 +637,8 @@ export default function KiraChat() {
             aria-label={`Open gift tray, ${cartCount} item${
               cartCount === 1 ? "" : "s"
             }, total ${formatLKR(cartTotal)}`}
-            className="relative flex items-center gap-2 rounded-xl border border-kap-purple/25 bg-kap-purple/10 px-3 py-2 text-xs font-bold text-kap-purple transition-colors hover:bg-kap-purple/15"
+            className="relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white transition-colors"
+            style={{ background: "rgba(64,41,112,0.4)", border: "1px solid rgba(148,100,255,0.3)" }}
           >
             <motion.span animate={bagControls} className="flex items-center">
               <ShoppingBag className="size-4" />
@@ -650,7 +647,7 @@ export default function KiraChat() {
             <span className="hidden sm:inline">{formatLKR(cartTotal)}</span>
           </button>
         ) : (
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-kira-leaf">
+          <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-kira-leaf" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.15)" }}>
             <Truck className="size-3.5" />
             Free delivery
           </span>
@@ -664,7 +661,8 @@ export default function KiraChat() {
           role="log"
           aria-live="polite"
           aria-label="Conversation with Kira"
-          className="min-h-0 overflow-y-auto bg-kira-canvas"
+          className="relative z-10 min-h-0 overflow-y-auto"
+          style={{ background: "transparent" }}
         >
           <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8">
             {isOnlyOpening ? (
@@ -706,7 +704,7 @@ export default function KiraChat() {
 
       </div>
 
-      <div className="shrink-0 border-t border-kira-line bg-kira-paper">
+      <div className="glass-nav relative z-10 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "none" }}>
         <div className="mx-auto grid w-full max-w-[1400px] gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
           <div className="min-w-0">
             <ChatInput
@@ -715,24 +713,23 @@ export default function KiraChat() {
               isLoading={isLoading}
               onSubmit={sendMessage}
               onCancel={cancelActiveResponse}
-              className="bg-white"
             >
               <ChatInputTextArea placeholder="Ask for a gift, budget, city, or order number..." />
               <ChatInputSubmit />
             </ChatInput>
-            <p className="mt-2 text-center text-[10px] text-kira-muted lg:hidden">
+            <p className="mt-2 text-center text-[10px] text-white/30 lg:hidden">
               Powered by{" "}
               <a
                 href="https://www.kapruka.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold hover:text-kap-purple"
+                className="font-semibold text-kap-yellow/60 hover:text-kap-yellow"
               >
                 Kapruka
               </a>
             </p>
           </div>
-          <div className="hidden items-center justify-between rounded-lg border border-kira-line bg-white px-4 text-[11px] font-semibold text-kira-muted lg:flex">
+          <div className="hidden items-center justify-between rounded-xl px-4 text-[11px] font-semibold lg:flex" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}>
             <span>Powered by Kapruka</span>
             <span className="text-kira-leaf">Live products</span>
             <span>Real checkout</span>
@@ -770,13 +767,13 @@ function GiftConciergeWelcome({
   return (
     <div className="flex flex-1 flex-col justify-center pb-3">
       <div className="grid gap-3 lg:grid-cols-12">
-        <section className="gift-slip rounded-lg border border-kira-line bg-kira-paper p-5 shadow-sm sm:p-6 lg:col-span-8">
+        <section className="gift-slip rounded-xl p-5 sm:p-6 lg:col-span-8" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
           <div className="mb-4 flex items-center gap-2">
             <span className="flex size-9 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
               <Gift className="size-4" />
             </span>
             <div>
-              <p className="text-xs font-bold uppercase text-kira-muted">
+              <p className="text-xs font-bold uppercase text-white/40">
                 Kira gift desk
               </p>
               <p className="text-sm font-semibold text-kira-leaf">
@@ -785,10 +782,10 @@ function GiftConciergeWelcome({
             </div>
           </div>
 
-          <h1 className="max-w-2xl text-balance font-display text-3xl leading-[1.05] text-kira-text sm:text-5xl">
+          <h1 className="max-w-2xl text-balance font-display text-3xl leading-[1.05] text-white/92 sm:text-5xl">
             Send a better gift, without the catalog hunt.
           </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-kira-text-2 sm:text-base">
+          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-white/60 sm:text-base">
             {greeting}
           </p>
 
@@ -812,12 +809,12 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-lg border border-kira-line bg-white p-4 shadow-sm lg:col-span-4">
+        <section className="rounded-xl p-4 lg:col-span-4" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase text-kira-muted">
+            <p className="text-xs font-bold uppercase text-white/40">
               Start with a route
             </p>
-            <Search className="size-4 text-kira-muted" />
+            <Search className="size-4 text-white/30" />
           </div>
           <div className="space-y-2">
             {CONCIERGE_PROMPTS.map((prompt) => {
@@ -827,16 +824,14 @@ function GiftConciergeWelcome({
                   key={prompt.label}
                   type="button"
                   onClick={() => onPrompt(prompt.value)}
-                  className={cn(
-                    "group flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-kap-purple/40 hover:bg-kira-bg",
-                    prompt.tone
-                  )}
+                  className="group flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all hover:bg-white/5"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md" style={{ background: "rgba(255,255,255,0.08)" }}>
                     <Icon className="size-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase text-current/65">
+                    <span className="block text-[10px] font-bold uppercase text-white/40">
                       {prompt.eyebrow}
                     </span>
                     <span className="line-clamp-2 block text-sm font-bold leading-snug">
@@ -850,12 +845,12 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-lg border border-kira-line bg-white p-4 shadow-sm lg:col-span-8">
+        <section className="rounded-xl p-4 lg:col-span-8" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold text-kira-text">
+            <h2 className="text-sm font-bold text-white/85">
               Shop by gift type
             </h2>
-            <span className="text-[11px] font-semibold text-kira-muted">
+            <span className="text-[11px] font-semibold text-white/35">
               Live Kapruka search
             </span>
           </div>
@@ -867,10 +862,8 @@ function GiftConciergeWelcome({
                   key={category.label}
                   type="button"
                   onClick={() => onPrompt(category.value)}
-                  className={cn(
-                    "flex min-h-24 flex-col justify-between rounded-lg border p-3 text-left shadow-sm transition-colors hover:border-kap-purple/40 hover:bg-white",
-                    category.tone
-                  )}
+                  className="flex min-h-24 flex-col justify-between rounded-lg p-3 text-left transition-all hover:bg-white/5 text-white/75"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
                   <Icon className="size-5" />
                   <span className="text-sm font-bold">{category.label}</span>
@@ -880,12 +873,12 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-lg border border-kira-line bg-kira-paper p-4 shadow-sm lg:col-span-4">
+        <section className="rounded-xl p-4 lg:col-span-4" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase text-kira-muted">
+            <p className="text-xs font-bold uppercase text-white/40">
               Popular now
             </p>
-            <Sparkles className="size-4 text-kap-purple" />
+            <Sparkles className="size-4 text-purple-400" />
           </div>
           <div className="flex flex-wrap gap-2">
             {OCCASION_CHIPS.map((chip) => (
@@ -897,7 +890,7 @@ function GiftConciergeWelcome({
                   "rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
                   chip.urgent
                     ? "border-kap-yellow bg-kap-yellow text-gray-950"
-                    : "border-kira-line bg-white text-kira-text-2 hover:border-kap-purple/40 hover:text-kap-purple"
+                    : "border-white/10 text-white/65 hover:text-white hover:bg-white/5 hover:border-white/20"
                 )}
               >
                 {stripDecorativeGlyphs(chip.label)}
@@ -920,15 +913,15 @@ function BriefRow({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-kira-line bg-white p-3">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-kira-bg text-kap-purple">
+    <div className="flex min-w-0 items-center gap-3 rounded-lg p-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md text-purple-300" style={{ background: "rgba(64,41,112,0.4)" }}>
         <Icon className="size-4" />
       </span>
       <span className="min-w-0">
-        <span className="block text-[10px] font-bold uppercase text-kira-muted">
+        <span className="block text-[10px] font-bold uppercase text-white/35">
           {label}
         </span>
-        <span className="block truncate text-sm font-semibold text-kira-text">
+        <span className="block truncate text-sm font-semibold text-white/80">
           {value}
         </span>
       </span>

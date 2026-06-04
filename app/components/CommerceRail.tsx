@@ -48,8 +48,8 @@ function CityChip({
 
   if (editing) {
     return (
-      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-kap-purple/60 bg-white px-2.5 py-1 shadow-sm">
-        <MapPin className="size-3 shrink-0 text-kap-purple" />
+      <div className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1" style={{ background: "rgba(64,41,112,0.4)", border: "1px solid rgba(148,100,255,0.5)" }}>
+        <MapPin className="size-3 shrink-0 text-purple-300" />
         <input
           ref={inputRef}
           value={draft}
@@ -59,7 +59,7 @@ function CityChip({
             if (e.key === "Escape") setEditing(false);
           }}
           onBlur={commit}
-          className="w-20 bg-transparent text-[11px] font-medium text-kira-text outline-none placeholder:text-kira-muted"
+          className="w-20 bg-transparent text-[11px] font-medium text-white/90 outline-none placeholder:text-white/30"
           placeholder="e.g. Colombo"
         />
       </div>
@@ -68,7 +68,7 @@ function CityChip({
 
   if (city) {
     return (
-      <div className="flex shrink-0 items-center rounded-lg border border-kap-purple/25 bg-kap-purple/10 text-[11px] font-semibold text-kap-purple">
+      <div className="flex shrink-0 items-center rounded-lg text-[11px] font-semibold" style={{ background: "rgba(64,41,112,0.35)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(148,100,255,0.3)" }}>
         <button
           onClick={startEditing}
           title="Change city"
@@ -92,7 +92,8 @@ function CityChip({
     <button
       onClick={startEditing}
       title="Set your delivery city"
-      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-kira-border px-2.5 py-1 text-[11px] font-medium text-kira-muted transition-colors hover:border-kap-purple/40 hover:text-kira-text-2"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
+      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
     >
       <MapPin className="size-3 shrink-0" />
       <span>Your city</span>
@@ -137,7 +138,8 @@ function DateChip({
       <div
         onClick={openPicker}
         title="Change delivery date"
-        className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-kap-purple/25 bg-kap-purple/10 px-2.5 py-1 text-[11px] font-semibold text-kap-purple transition-colors hover:bg-kap-purple/15"
+        className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors"
+        style={{ background: "rgba(64,41,112,0.35)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(148,100,255,0.3)" }}
       >
         <Calendar className="size-3 shrink-0 pointer-events-none" />
         <span className="pointer-events-none">{formatted}</span>
@@ -168,7 +170,8 @@ function DateChip({
   return (
     <label
       title="Set delivery date"
-      className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-kira-border px-2.5 py-1 text-[11px] font-medium text-kira-muted transition-colors hover:border-kap-purple/40 hover:text-kira-text-2"
+      className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
+      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
     >
       <Calendar className="size-3 shrink-0 pointer-events-none" />
       <span className="pointer-events-none">Delivery date</span>
@@ -194,10 +197,10 @@ export default function CommerceRail({ context, onChange }: CommerceRailProps) {
   const { city, deliveryDate, budget, occasion, recipient } = context;
 
   return (
-    <div className="z-10 shrink-0 border-b border-kira-line bg-kira-paper">
+    <div className="glass-rail z-10 shrink-0">
       <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto px-4 py-2">
-        <span className="hidden text-[10px] font-bold uppercase text-kira-muted sm:inline">
-          Gift brief
+        <span className="hidden text-[10px] font-bold uppercase tracking-widest text-white/30 sm:inline">
+          Gift Brief
         </span>
         <CityChip
           city={city}
@@ -211,19 +214,19 @@ export default function CommerceRail({ context, onChange }: CommerceRailProps) {
         />
 
         {budget && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(248,218,8,0.12)", color: "rgba(248,218,8,0.85)", border: "1px solid rgba(248,218,8,0.2)" }}>
             <Wallet className="size-3" />
             {budget}
           </div>
         )}
         {occasion && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-800">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(167,139,250,0.12)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(167,139,250,0.2)" }}>
             <Sparkles className="size-3 shrink-0" />
             {occasion}
           </div>
         )}
         {recipient && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-kira-border bg-white px-2.5 py-1 text-[11px] font-semibold text-kira-text-2">
+          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <User className="size-3 shrink-0" />
             {recipient}
           </div>
