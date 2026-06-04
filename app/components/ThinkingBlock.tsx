@@ -1,48 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
-// Steps Kira works through on every message
-const STEPS = [
-  { id: "understand", label: "Understanding your message", ms: 0 },
-  { id: "search", label: "Searching Kapruka catalog", ms: 600 },
-  { id: "delivery", label: "Checking delivery availability", ms: 1400 },
-  { id: "prepare", label: "Preparing response", ms: 2200 },
-];
+/* ── Live indicator — shown while API is streaming ── */
+interface ThinkingLiveProps {
+  steps: string[]; // real-time steps received from SSE so far
+}
 
-type StepStatus = "pending" | "active" | "done";
-
-/* ── Loading state — shown while waiting for API response ── */
-function ThinkingLive() {
-  const [stepStates, setStepStates] = useState<Record<string, StepStatus>>(
-    Object.fromEntries(STEPS.map((s) => [s.id, "pending"]))
-  );
-
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    STEPS.forEach((step, i) => {
-      // Activate this step
-      timers.push(
-        setTimeout(() => {
-          setStepStates((prev) => ({ ...prev, [step.id]: "active" }));
-        }, step.ms)
-      );
-      // Mark previous step done when next activates
-      if (i > 0) {
-        timers.push(
-          setTimeout(() => {
-            setStepStates((prev) => ({ ...prev, [STEPS[i - 1].id]: "done" }));
-          }, step.ms)
-        );
-      }
-    });
-
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
+export function ThinkingLive({ steps }: ThinkingLiveProps) {
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
@@ -51,10 +18,9 @@ function ThinkingLive() {
       </div>
 
       <div className="flex-1 max-w-[88%]">
-        {/* Thinking header */}
         <div className="bg-kira-bg border border-kira-border rounded-2xl rounded-bl-sm overflow-hidden">
+          {/* Header */}
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-kira-border">
-            {/* Pulsing dot */}
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kap-purple opacity-60" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-kap-purple" />
@@ -64,105 +30,111 @@ function ThinkingLive() {
             </span>
           </div>
 
-          {/* Steps */}
-          <div className="px-4 py-3 space-y-2">
-            {STEPS.map((step) => {
-              const status = stepStates[step.id];
-              return (
-                <motion.div
-                  key={step.id}
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0.3 }}
-                  animate={{ opacity: status === "pending" ? 0.3 : 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Status dot */}
-                  <span className="shrink-0 w-4 flex justify-center">
-                    {status === "done" ? (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="text-emerald-500 text-xs"
+          {/* Steps — only rendered when at least one has arrived */}
+          {steps.length > 0 && (
+            <div className="px-4 py-3 space-y-2">
+              <AnimatePresence initial={false}>
+                {steps.map((label, i) => {
+                  const isDone = i < steps.length - 1;
+                  const isActive = i === steps.length - 1;
+                  return (
+                    <motion.div
+                      key={label + i}
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <span className="shrink-0 w-4 flex justify-center">
+                        {isDone ? (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="text-emerald-500 text-xs"
+                          >
+                            ✓
+                          </motion.span>
+                        ) : isActive ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-kap-purple animate-pulse" />
+                        ) : null}
+                      </span>
+                      <span
+                        className={`text-xs ${
+                          isDone
+                            ? "text-kira-muted line-through decoration-kira-muted/40"
+                            : "text-kap-purple font-medium"
+                        }`}
                       >
-                        ✓
-                      </motion.span>
-                    ) : status === "active" ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-kap-purple animate-pulse" />
-                    ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-kira-border" />
-                    )}
-                  </span>
-                  <span
-                    className={`text-xs ${
-                      status === "pending"
-                        ? "text-kira-muted"
-                        : status === "active"
-                        ? "text-kap-purple font-medium"
-                        : "text-kira-text line-through decoration-kira-muted/50"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
+                        {label}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Collapsed summary — shown attached to a completed message ── */
+/* ── Collapsed summary — attached to a completed message ── */
 interface ThinkingDoneProps {
   thinkingMs: number;
+  steps?: string[];
 }
 
-function ThinkingDone({ thinkingMs }: ThinkingDoneProps) {
+export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
   const [open, setOpen] = useState(false);
   const seconds = (thinkingMs / 1000).toFixed(1);
+  const hasSteps = steps && steps.length > 0;
 
   return (
     <div className="mb-2 ml-9">
       <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-xs text-kira-muted hover:text-kap-purple transition-colors group"
+        onClick={() => hasSteps && setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 text-xs text-kira-muted transition-colors group ${
+          hasSteps ? "hover:text-kap-purple cursor-pointer" : "cursor-default"
+        }`}
       >
-        {open ? (
-          <ChevronDown className="w-3 h-3" />
-        ) : (
-          <ChevronRight className="w-3 h-3" />
-        )}
-        <span className="group-hover:underline underline-offset-2">
+        {hasSteps ? (
+          open ? (
+            <ChevronDown className="w-3 h-3" />
+          ) : (
+            <ChevronRight className="w-3 h-3" />
+          )
+        ) : null}
+        <span className={hasSteps ? "group-hover:underline underline-offset-2" : ""}>
           Thought for {seconds}s
+          {hasSteps && ` · ${steps!.length} step${steps!.length > 1 ? "s" : ""}`}
         </span>
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
-            className="overflow-hidden mt-2"
-          >
-            <div className="bg-kira-bg border border-kira-border rounded-xl px-4 py-3 space-y-2">
-              {STEPS.map((step) => (
-                <div key={step.id} className="flex items-center gap-2">
-                  <span className="text-emerald-500 text-xs w-4 text-center">✓</span>
-                  <span className="text-xs text-kira-muted line-through decoration-kira-muted/40">
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {hasSteps && (
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
+              className="overflow-hidden mt-2"
+            >
+              <div className="bg-kira-bg border border-kira-border rounded-xl px-4 py-3 space-y-2">
+                {steps!.map((label, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-emerald-500 text-xs w-4 text-center">✓</span>
+                    <span className="text-xs text-kira-muted line-through decoration-kira-muted/40">
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }
-
-/* ── Public exports ── */
-export { ThinkingLive, ThinkingDone };

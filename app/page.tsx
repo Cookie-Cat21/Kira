@@ -55,6 +55,7 @@ export default function KiraChat() {
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
+  const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
   // Buffer delivery/tracking events that arrive before the first token creates the message
@@ -95,6 +96,7 @@ export default function KiraChat() {
       setInput("");
       setIsLoading(true);
       setIsStreaming(false);
+      setLiveSteps([]);
       streamingMsgIdRef.current = null;
       pendingDeliveryRef.current = null;
       pendingTrackingRef.current = null;
@@ -140,7 +142,9 @@ export default function KiraChat() {
                 v?: unknown;
               };
 
-              if (payload.t === "token") {
+              if (payload.t === "step") {
+                setLiveSteps((prev) => [...prev, payload.v as string]);
+              } else if (payload.t === "token") {
                 if (!streamingMsgIdRef.current) {
                   const msgId = `kira-${Date.now()}`;
                   streamingMsgIdRef.current = msgId;
@@ -215,29 +219,31 @@ export default function KiraChat() {
                   );
               } else if (payload.t === "done") {
                 const id = streamingMsgIdRef.current;
-                if (id) {
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === id
-                        ? {
-                            ...m,
-                            thinkingMs: Date.now() - thinkingStartRef.current,
-                          }
-                        : m
-                    )
-                  );
-                } else {
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `kira-${Date.now()}`,
-                      role: "assistant",
-                      content: "Aiyo, something went wrong. Try again?",
-                      timestamp: Date.now(),
-                      thinkingMs: Date.now() - thinkingStartRef.current,
-                    },
-                  ]);
-                }
+                const elapsed = Date.now() - thinkingStartRef.current;
+                setLiveSteps((completedSteps) => {
+                  if (id) {
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === id
+                          ? { ...m, thinkingMs: elapsed, steps: completedSteps }
+                          : m
+                      )
+                    );
+                  } else {
+                    setMessages((prev) => [
+                      ...prev,
+                      {
+                        id: `kira-${Date.now()}`,
+                        role: "assistant",
+                        content: "Aiyo, something went wrong. Try again?",
+                        timestamp: Date.now(),
+                        thinkingMs: elapsed,
+                        steps: completedSteps,
+                      },
+                    ]);
+                  }
+                  return completedSteps;
+                });
                 setIsLoading(false);
                 setIsStreaming(false);
               } else if (payload.t === "error") {
@@ -374,7 +380,7 @@ export default function KiraChat() {
         {messages.map((msg) => (
           <div key={msg.id}>
             {msg.role === "assistant" && msg.thinkingMs && (
-              <ThinkingDone thinkingMs={msg.thinkingMs} />
+              <ThinkingDone thinkingMs={msg.thinkingMs} steps={msg.steps} />
             )}
             <ChatMessage
               message={msg}
@@ -384,7 +390,7 @@ export default function KiraChat() {
             />
           </div>
         ))}
-        {isLoading && !isStreaming && <ThinkingLive />}
+        {isLoading && !isStreaming && <ThinkingLive steps={liveSteps} />}
         <div ref={bottomRef} />
       </main>
 
