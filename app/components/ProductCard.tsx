@@ -54,7 +54,7 @@ export default function ProductCard({
 
   return (
     <article
-      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl transition-all hover:shadow-[0_8px_32px_rgba(64,41,112,0.4)]"
+      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl transition-shadow hover:shadow-[0_8px_32px_rgba(64,41,112,0.4)]"
       style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
     >
       {/* Image */}
