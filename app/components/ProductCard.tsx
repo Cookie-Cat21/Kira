@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { KiraProduct, CartItem, DeliveryQuote } from "@/types";
-import { ShoppingCart, Check, AlertCircle } from "lucide-react";
+import { ShoppingCart, Check, AlertCircle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: KiraProduct;
   cart: CartItem[];
   onAddToCart: (product: KiraProduct) => void;
+  onOpenProduct?: (product: KiraProduct) => void;
   deliveryCity?: string;
   deliveryInfo?: DeliveryQuote;
 }
@@ -17,6 +19,7 @@ export default function ProductCard({
   product,
   cart,
   onAddToCart,
+  onOpenProduct,
   deliveryCity,
   deliveryInfo,
 }: ProductCardProps) {
@@ -34,16 +37,24 @@ export default function ProductCard({
   const fee = deliveryInfo?.fee;
   const perishable = deliveryInfo?.perishable;
 
+  const deliveryUnavailable = deliveryInfo && !deliveryInfo.available;
+
   return (
-    <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-pop-in border border-kira-border shadow-sm hover:shadow-md transition-shadow">
+    <article className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 animate-pop-in border border-kira-border shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
-      <div className="aspect-square bg-[#f7f5fc] overflow-hidden relative">
+      <button
+        type="button"
+        onClick={() => onOpenProduct?.(product)}
+        aria-label={`View details for ${product.name}`}
+        className="aspect-square bg-[#f7f5fc] overflow-hidden relative text-left w-full group"
+      >
         {product.image && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover"
+            fill
+            sizes="176px"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -62,24 +73,52 @@ export default function ProductCard({
             Fresh
           </span>
         )}
-      </div>
+        {onOpenProduct && (
+          <span className="absolute bottom-2 right-2 h-7 w-7 rounded-full bg-white/95 text-kap-purple shadow-sm flex items-center justify-center opacity-0 translate-y-1 transition-all group-hover:opacity-100 group-hover:translate-y-0 group-focus-visible:opacity-100 group-focus-visible:translate-y-0">
+            <Eye className="w-3.5 h-3.5" />
+          </span>
+        )}
+      </button>
 
       {/* Details */}
       <div className="p-3 flex flex-col gap-2 flex-1">
-        <p className="text-kira-text text-xs font-semibold leading-tight line-clamp-2">
+        <button
+          type="button"
+          onClick={() => onOpenProduct?.(product)}
+          className="text-kira-text text-xs font-semibold leading-tight line-clamp-2 text-left hover:text-kap-purple transition-colors"
+        >
           {product.name}
-        </p>
+        </button>
         <p className="text-kap-purple font-bold text-sm">{formattedPrice}</p>
 
         {city && (
           <div className="flex flex-col gap-0.5">
-            <p className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5">
-              <Check className="w-3 h-3" />
-              Delivers to {city}
+            <p
+              className={cn(
+                "text-[10px] font-medium flex items-center gap-0.5",
+                deliveryUnavailable ? "text-amber-700" : "text-emerald-600"
+              )}
+            >
+              {deliveryUnavailable ? (
+                <AlertCircle className="w-3 h-3" />
+              ) : (
+                <Check className="w-3 h-3" />
+              )}
+              {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
+            {deliveryInfo?.nextAvailableDate && (
+              <p className="text-[10px] text-kira-muted pl-3.5">
+                {deliveryInfo.nextAvailableDate}
+              </p>
+            )}
             {fee !== undefined && (
               <p className="text-[10px] text-kira-muted pl-3.5">
                 + LKR {fee.toLocaleString()} delivery
+              </p>
+            )}
+            {deliveryInfo?.perishableWarning && (
+              <p className="text-[10px] text-amber-700 pl-3.5 line-clamp-2">
+                {deliveryInfo.perishableWarning}
               </p>
             )}
           </div>
@@ -104,6 +143,20 @@ export default function ProductCard({
             </>
           )}
         </button>
+      </div>
+    </article>
+  );
+}
+
+export function ProductCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-44 shrink-0 border border-kira-border shadow-sm animate-pulse">
+      <div className="aspect-square bg-kira-border/70" />
+      <div className="p-3 flex flex-col gap-2">
+        <div className="h-3 rounded-full bg-kira-border w-11/12" />
+        <div className="h-3 rounded-full bg-kira-border w-8/12" />
+        <div className="h-4 rounded-full bg-kira-border w-5/12" />
+        <div className="h-8 rounded-xl bg-kira-border/80 mt-1" />
       </div>
     </div>
   );

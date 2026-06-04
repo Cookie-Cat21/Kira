@@ -6,12 +6,13 @@ import ProductCard from "./ProductCard";
 import OrderTracker from "./OrderTracker";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, CreditCard } from "lucide-react";
 
 interface ChatMessageProps {
   message: KiraMessage;
   cart: CartItem[];
   onAddToCart: (product: KiraProduct) => void;
+  onOpenProduct?: (product: KiraProduct) => void;
   deliveryCity?: string;
 }
 
@@ -19,6 +20,7 @@ function ProductCarousel({
   message,
   cart,
   onAddToCart,
+  onOpenProduct,
   deliveryCity,
 }: ChatMessageProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,6 +84,7 @@ function ProductCarousel({
               product={product}
               cart={cart}
               onAddToCart={onAddToCart}
+              onOpenProduct={onOpenProduct}
               deliveryCity={deliveryCity}
               deliveryInfo={message.deliveryInfo}
             />
@@ -107,6 +110,7 @@ export default function ChatMessage({
   message,
   cart,
   onAddToCart,
+  onOpenProduct,
   deliveryCity,
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
@@ -151,6 +155,7 @@ export default function ChatMessage({
             message={message}
             cart={cart}
             onAddToCart={onAddToCart}
+            onOpenProduct={onOpenProduct}
             deliveryCity={deliveryCity}
           />
         )}
@@ -159,17 +164,108 @@ export default function ChatMessage({
         {message.tracking && <OrderTracker tracking={message.tracking} />}
 
         {/* Pay link CTA */}
-        {message.payLink && (
-          <a
-            href={message.payLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-kap-yellow text-gray-900 text-sm font-bold px-5 py-3 rounded-xl text-center hover:brightness-95 transition-all active:scale-95 shadow-sm"
-          >
-            Complete payment →
-          </a>
+        {(message.checkout || message.payLink) && (
+          <CheckoutCard message={message} />
         )}
       </div>
     </div>
   );
+}
+
+function CheckoutCard({ message }: { message: KiraMessage }) {
+  const checkoutUrl = message.checkout?.checkoutUrl ?? message.payLink;
+  if (!checkoutUrl) return null;
+
+  const summary = message.checkout?.summary;
+  return (
+    <div className="bg-white border border-kira-border rounded-2xl px-4 py-3 max-w-xs shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="h-7 w-7 rounded-full bg-kap-yellow text-gray-900 flex items-center justify-center">
+          <CreditCard className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-kira-text">Checkout ready</p>
+          {message.checkout?.orderRef && (
+            <p className="text-[10px] font-mono text-kira-muted truncate">
+              {message.checkout.orderRef}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {summary && (
+        <div className="space-y-1 text-xs mb-3">
+          {summary.itemsTotal !== undefined && (
+            <SummaryRow label="Items" value={formatCurrency(summary.itemsTotal, summary.currency)} />
+          )}
+          {summary.deliveryFee !== undefined && (
+            <SummaryRow label="Delivery" value={formatCurrency(summary.deliveryFee, summary.currency)} />
+          )}
+          {summary.grandTotal !== undefined && (
+            <SummaryRow
+              label="Total"
+              value={formatCurrency(summary.grandTotal, summary.currency)}
+              strong
+            />
+          )}
+        </div>
+      )}
+
+      {message.checkout?.expiresAt && (
+        <p className="flex items-center gap-1.5 text-[10px] text-kira-muted mb-3">
+          <Clock className="h-3 w-3" />
+          Link expires {formatExpiry(message.checkout.expiresAt)}
+        </p>
+      )}
+
+      <a
+        href={checkoutUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-kap-yellow text-gray-900 text-sm font-bold px-5 py-3 rounded-xl text-center hover:brightness-95 transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+      >
+        Complete payment
+        <ChevronRight className="h-4 w-4" />
+      </a>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3",
+        strong ? "font-bold text-kira-text pt-1 border-t border-kira-border" : "text-kira-muted"
+      )}
+    >
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function formatCurrency(amount: number, currency = "LKR") {
+  return new Intl.NumberFormat("en-LK", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatExpiry(raw: string) {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleTimeString("en-LK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

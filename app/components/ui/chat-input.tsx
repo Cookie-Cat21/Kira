@@ -22,6 +22,7 @@ interface ChatInputCtx {
   setValue: (v: string) => void;
   isLoading: boolean;
   onSubmit: (v: string) => void;
+  onCancel?: () => void;
 }
 
 const Ctx = createContext<ChatInputCtx | null>(null);
@@ -39,6 +40,7 @@ interface ChatInputProps extends React.PropsWithChildren {
   setValue: (v: string) => void;
   isLoading?: boolean;
   onSubmit: (v: string) => void;
+  onCancel?: () => void;
   className?: string;
 }
 
@@ -47,11 +49,12 @@ export function ChatInput({
   setValue,
   isLoading = false,
   onSubmit,
+  onCancel,
   children,
   className,
 }: ChatInputProps) {
   return (
-    <Ctx.Provider value={{ value, setValue, isLoading, onSubmit }}>
+    <Ctx.Provider value={{ value, setValue, isLoading, onSubmit, onCancel }}>
       <div
         className={cn(
           "relative flex flex-col rounded-3xl border border-[#e8e2f5] bg-white px-4 pt-3 pb-12 shadow-sm",
@@ -110,7 +113,7 @@ interface ChatInputSubmitProps {
 }
 
 export function ChatInputSubmit({ className }: ChatInputSubmitProps) {
-  const { value, isLoading, onSubmit } = useChatInput();
+  const { value, isLoading, onSubmit, onCancel } = useChatInput();
   const canSubmit = value.trim().length > 0;
   const active = canSubmit || isLoading;
 
@@ -118,6 +121,10 @@ export function ChatInputSubmit({ className }: ChatInputSubmitProps) {
     <button
       type="button"
       onClick={() => {
+        if (isLoading) {
+          onCancel?.();
+          return;
+        }
         if (canSubmit && !isLoading) onSubmit(value);
       }}
       disabled={!active}

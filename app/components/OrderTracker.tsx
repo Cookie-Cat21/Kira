@@ -1,6 +1,15 @@
 "use client";
 
-import { Check, Clock, Package, Truck, CheckCircle } from "lucide-react";
+import type { ComponentType } from "react";
+import {
+  Camera,
+  Check,
+  CheckCircle,
+  Clock,
+  Package,
+  Truck,
+  Video,
+} from "lucide-react";
 import type { OrderTracking } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -28,15 +37,41 @@ export default function OrderTracker({ tracking }: Props) {
   return (
     <div className="bg-white border border-kira-border rounded-2xl px-4 py-3 max-w-xs animate-fade-up">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-kira-muted">
-          Order Tracking
-        </p>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-kira-muted">
+            Order Tracking
+          </p>
+          <p className="text-xs font-semibold text-kira-text mt-0.5">
+            {tracking.statusDisplay || tracking.currentStatus || "Processing"}
+          </p>
+        </div>
         {tracking.orderNumber && (
           <span className="text-[10px] font-mono text-kira-muted bg-kira-bg px-2 py-0.5 rounded-full border border-kira-border">
             #{tracking.orderNumber}
           </span>
         )}
       </div>
+
+      {(tracking.deliveryDate || tracking.items?.length) && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          {tracking.deliveryDate && (
+            <div className="rounded-xl bg-kira-bg border border-kira-border px-2.5 py-2">
+              <p className="text-[10px] text-kira-muted">Delivery</p>
+              <p className="text-xs font-semibold text-kira-text truncate">
+                {tracking.deliveryDate}
+              </p>
+            </div>
+          )}
+          {tracking.items?.length ? (
+            <div className="rounded-xl bg-kira-bg border border-kira-border px-2.5 py-2">
+              <p className="text-[10px] text-kira-muted">Items</p>
+              <p className="text-xs font-semibold text-kira-text">
+                {tracking.items.length}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       <ol className="relative border-l border-kira-border ml-3 space-y-3">
         {tracking.timeline.map((event, i) => {
@@ -84,7 +119,34 @@ export default function OrderTracker({ tracking }: Props) {
           );
         })}
       </ol>
+
+      {(tracking.liveTrackingAvailable ||
+        tracking.hasDeliveryPhoto ||
+        tracking.hasDeliveryVideo) && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {tracking.liveTrackingAvailable && (
+            <MediaPill icon={Truck} label="Live tracking" />
+          )}
+          {tracking.hasDeliveryPhoto && <MediaPill icon={Camera} label="Photo" />}
+          {tracking.hasDeliveryVideo && <MediaPill icon={Video} label="Video" />}
+        </div>
+      )}
     </div>
+  );
+}
+
+function MediaPill({
+  icon: Icon,
+  label,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-kap-purple/10 text-kap-purple px-2 py-1 text-[10px] font-bold">
+      <Icon className="h-3 w-3" />
+      {label}
+    </span>
   );
 }
 

@@ -12,9 +12,9 @@ Kira takes you from "I have no idea what to get" all the way to a working checko
 
 ## Stack
 
-- **Next.js 14** (App Router)
+- **Next.js 16** (App Router)
 - **Tailwind CSS v4** with custom design tokens
-- **Claude API** (`claude-sonnet-4-20250514`) for the agent
+- **Groq API** (`llama-3.3-70b-versatile` with free-tier fallbacks) for the agent
 - **Kapruka MCP** (`https://mcp.kapruka.com/mcp`) for live products, delivery & checkout
 - **Vercel** for deployment
 
@@ -24,7 +24,7 @@ Kira takes you from "I have no idea what to get" all the way to a working checko
 # Install dependencies
 npm install
 
-# Copy env file and add your Anthropic API key
+# Copy env file and add your Groq API key
 cp .env.example .env.local
 
 # Run locally
@@ -47,7 +47,7 @@ This lists all available tools, runs a product search, fetches categories, and c
 
 | Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key — get one at [console.anthropic.com](https://console.anthropic.com) |
+| `GROQ_API_KEY` | Your Groq API key — get one at [console.groq.com](https://console.groq.com) |
 
 ---
 

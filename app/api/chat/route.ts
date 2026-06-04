@@ -2,7 +2,15 @@ import Groq from "groq-sdk";
 import { NextRequest } from "next/server";
 import { KIRA_SYSTEM_PROMPT } from "@/lib/kira-prompt";
 import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
-import type { ChatRequest, KiraProduct, DeliveryQuote, OrderTracking, TrackingEvent } from "@/types";
+import {
+  extractCheckoutInfoFromMcp,
+  extractDeliveryInfoFromMcp,
+  extractProductsFromMcp,
+  extractTrackingFromMcp,
+  formatMcpContentForModel,
+  parseMcpPayload,
+} from "@/lib/mcp-parsing";
+import type { CartItem, ChatRequest, CheckoutInfo, KiraProduct } from "@/types";
 
 let _groq: Groq | undefined;
 function getGroq(): Groq {
@@ -19,6 +27,22 @@ const MODELS = [
   "llama-3.1-8b-instant",
 ];
 const MAX_TOOL_ROUNDS = 5;
+
+const SERVER_CITY_REGEX =
+  /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
+
+const CATEGORY_QUERY_MAP: Record<string, string> = {
+  cakes: "cake",
+  cake: "cake",
+  flowers: "roses",
+  flower: "roses",
+  chocolates: "chocolate",
+  chocolate: "chocolate",
+  electronics: "electronics",
+  fashion: "fashion",
+  hampers: "gift hamper",
+  hamper: "gift hamper",
+};
 
 // Cache the MCP tool list across requests (schemas rarely change).
 let mcpToolsCache:
@@ -55,6 +79,8 @@ export async function POST(req: NextRequest) {
 
       try {
         const { messages, cart, deliveryCity } = body;
+        const latestUserText =
+          [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
         const cartContext =
           cart.length > 0
@@ -65,6 +91,19 @@ export async function POST(req: NextRequest) {
           : "";
 
         mcpClient = await createMcpClient();
+        if (
+          await tryHandleDeterministicPrompt({
+            text: latestUserText,
+            cart,
+            deliveryCity,
+            mcpClient,
+            controller,
+          })
+        ) {
+          controller.close();
+          return;
+        }
+
         let mcpTools: Awaited<ReturnType<typeof listMcpTools>>;
         if (mcpToolsCache && Date.now() - mcpToolsCache.ts < MCP_TOOLS_TTL_MS) {
           mcpTools = mcpToolsCache.tools;
@@ -88,11 +127,13 @@ export async function POST(req: NextRequest) {
               // Strip enum constraints on strings — the model may pass valid-but-unlisted
               // values (e.g. sort:"popular") that cause Groq 400 schema rejections.
               if (v.type === "string" && v.enum) {
-                const { enum: _e, ...rest } = v;
+                const rest = { ...v };
+                delete rest.enum;
                 return [k, rest];
               }
               if (v.type === "integer" || v.type === "number") {
-                const { type: _t, ...rest } = v;
+                const rest = { ...v };
+                delete rest.type;
                 return [k, { ...rest, anyOf: [{ type: v.type }, { type: "string" }] }];
               }
               if (v.anyOf && Array.isArray(v.anyOf)) {
@@ -104,11 +145,13 @@ export async function POST(req: NextRequest) {
                   return [k, { ...v, anyOf: [...arr, { type: "string" }] }];
               }
               if (v.type === "array" || v.type === "object") {
-                const { type: _t, ...rest } = v;
+                const rest = { ...v };
+                delete rest.type;
                 return [k, { ...rest, anyOf: [{ type: v.type }, { type: "string" }] }];
               }
               if (v.type === "boolean") {
-                const { type: _t, ...rest } = v;
+                const rest = { ...v };
+                delete rest.type;
                 return [k, { ...rest, anyOf: [{ type: "boolean" }, { type: "string" }] }];
               }
               return [k, v];
@@ -190,6 +233,7 @@ export async function POST(req: NextRequest) {
 
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
+        let checkoutInfo: CheckoutInfo | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
 
@@ -235,7 +279,7 @@ export async function POST(req: NextRequest) {
               toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
             const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
 
-            let resultText: string;
+            let resultContent: unknown;
             try {
               if (toolName === "kapruka_check_delivery") {
                 const city = String(toolArgs.city ?? "").toLowerCase().trim();
@@ -243,44 +287,40 @@ export async function POST(req: NextRequest) {
                 const product = String(toolArgs.product_id ?? "").trim();
                 const cacheKey = `${city}|${date}|${product}`;
                 if (city && deliveryCacheStore.has(cacheKey)) {
-                  resultText = JSON.stringify(deliveryCacheStore.get(cacheKey));
+                  resultContent = deliveryCacheStore.get(cacheKey);
                 } else {
                   const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
-                  resultText = JSON.stringify(toolResult.content);
+                  resultContent = toolResult.content;
                   if (city) deliveryCacheStore.set(cacheKey, toolResult.content);
                 }
-                // Emit structured delivery info to client
-                try {
-                  const deliveryInfo = extractDeliveryInfo(JSON.parse(resultText));
-                  if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
-                } catch { /* skip */ }
               } else {
                 const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
-                resultText = JSON.stringify(toolResult.content);
+                resultContent = toolResult.content;
               }
             } catch (mcpErr) {
               const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
-              resultText = JSON.stringify([{ type: "text", text: `Tool error: ${msg}` }]);
+              resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
             }
 
+            const resultText = formatMcpContentForModel(resultContent);
+
+            if (toolName === "kapruka_check_delivery") {
+              const deliveryInfo = extractDeliveryInfoFromMcp(resultContent);
+              if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+            }
             if (
               toolName === "kapruka_search_products" ||
               toolName === "kapruka_list_categories"
             ) {
-              try {
-                collectedProducts.push(...extractProducts(JSON.parse(resultText)));
-              } catch { /* skip */ }
+              collectedProducts.push(...extractProductsFromMcp(resultContent));
             }
             if (toolName === "kapruka_create_order") {
-              try {
-                payLink = extractPayLink(JSON.parse(resultText));
-              } catch { /* skip */ }
+              checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
+              payLink = checkoutInfo?.checkoutUrl;
             }
             if (toolName === "kapruka_track_order") {
-              try {
-                const tracking = extractTracking(JSON.parse(resultText));
-                if (tracking) controller.enqueue(sse("tracking", tracking));
-              } catch { /* skip */ }
+              const tracking = extractTrackingFromMcp(resultContent);
+              if (tracking) controller.enqueue(sse("tracking", tracking));
             }
 
             currentMessages.push({
@@ -422,6 +462,7 @@ export async function POST(req: NextRequest) {
           .slice(0, 8);
         if (dedupedProducts.length > 0)
           controller.enqueue(sse("products", dedupedProducts));
+        if (checkoutInfo) controller.enqueue(sse("checkout", checkoutInfo));
         if (payLink) controller.enqueue(sse("payLink", payLink));
         controller.enqueue(sse("done"));
         controller.close();
@@ -448,6 +489,241 @@ export async function POST(req: NextRequest) {
       "Connection": "keep-alive",
     },
   });
+}
+
+async function tryHandleDeterministicPrompt({
+  text,
+  cart,
+  deliveryCity,
+  mcpClient,
+  controller,
+}: {
+  text: string;
+  cart: CartItem[];
+  deliveryCity?: string;
+  mcpClient: Awaited<ReturnType<typeof createMcpClient>>;
+  controller: ReadableStreamDefaultController<Uint8Array>;
+}): Promise<boolean> {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (!trimmed) return false;
+
+  const wantsTracking =
+    lower.includes("track") && (lower.includes("order") || lower.includes("delivery"));
+  if (wantsTracking) {
+    const orderNumber = extractOrderNumber(trimmed);
+    if (!orderNumber) {
+      await streamWords(
+        controller,
+        "Sure — send me the Kapruka order number from the confirmation email, and I’ll check the status for you."
+      );
+    } else {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_track_order));
+      const trackingResult = await callMcpTool(mcpClient, "kapruka_track_order", {
+        params: {
+          order_number: orderNumber,
+          response_format: "json",
+        },
+      });
+      const tracking = extractTrackingFromMcp(trackingResult.content);
+      if (tracking) {
+        await streamWords(
+          controller,
+          `I found order ${tracking.orderNumber || orderNumber}: ${tracking.statusDisplay || tracking.currentStatus}.`
+        );
+        controller.enqueue(sse("tracking", tracking));
+      } else {
+        const parsed = parseMcpPayload(trackingResult.content);
+        const reason = parsed.ok ? "I couldn’t read the tracking details." : parsed.error;
+        await streamWords(
+          controller,
+          `I couldn’t track ${orderNumber}. ${reason}`
+        );
+      }
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (lower.includes("ready to checkout") || lower.includes("complete the order")) {
+    const message =
+      cart.length === 0
+        ? "Add a product first and I’ll help you checkout."
+        : "Lovely. Before I create a live Kapruka checkout link, I need the recipient’s full name.";
+    await streamWords(controller, message);
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const searchIntent = parseSearchIntent(trimmed);
+  if (!searchIntent) return false;
+
+  controller.enqueue(sse("step", TOOL_STEPS.kapruka_search_products));
+  let products: KiraProduct[] = [];
+  let usedQuery = searchIntent.query;
+
+  for (const query of [searchIntent.query, fallbackQuery(searchIntent.query)]) {
+    if (!query) continue;
+    const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: query,
+        limit: 6,
+        in_stock_only: true,
+        ...(searchIntent.maxPrice ? { max_price: searchIntent.maxPrice } : {}),
+        ...(searchIntent.sort ? { sort: searchIntent.sort } : {}),
+        response_format: "json",
+      },
+    });
+    products = dedupeProducts(extractProductsFromMcp(searchResult.content));
+    usedQuery = query;
+    if (products.length > 0) break;
+  }
+
+  let deliveryCityForMessage = deliveryCity;
+  const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+  if (cityHint && products[0]) {
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
+    const cityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
+      params: {
+        query: cityHint,
+        limit: 3,
+        response_format: "json",
+      },
+    });
+    const canonicalCity = extractFirstCity(cityResult.content) ?? cityHint;
+    deliveryCityForMessage = canonicalCity;
+
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+    const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+      params: {
+        city: canonicalCity,
+        ...(searchIntent.deliveryDate
+          ? { delivery_date: searchIntent.deliveryDate }
+          : {}),
+        product_id: products[0].id,
+        response_format: "json",
+      },
+    });
+    const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+    if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+  }
+
+  if (products.length === 0) {
+    await streamWords(
+      controller,
+      `I checked Kapruka live, but couldn’t find in-stock products for “${searchIntent.query}” right now. Try a broader term?`
+    );
+  } else {
+    const budgetText = searchIntent.maxPrice
+      ? ` under LKR ${searchIntent.maxPrice.toLocaleString("en-LK")}`
+      : "";
+    const cityText = deliveryCityForMessage ? ` for ${deliveryCityForMessage}` : "";
+    const dateText = searchIntent.deliveryDate ? ` on ${searchIntent.deliveryDate}` : "";
+    await streamWords(
+      controller,
+      `Found ${products.length} live Kapruka pick${products.length === 1 ? "" : "s"} for ${usedQuery}${budgetText}${cityText}${dateText}.`
+    );
+    controller.enqueue(sse("products", products));
+  }
+
+  controller.enqueue(sse("done"));
+  return true;
+}
+
+function dedupeProducts(products: KiraProduct[]): KiraProduct[] {
+  const seen = new Set<string>();
+  return products.filter((product) => {
+    const key = (product.id || product.url || product.name).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function parseSearchIntent(text: string):
+  | {
+      query: string;
+      maxPrice?: number;
+      sort?: "price_asc" | "price_desc" | "bestseller";
+      deliveryDate?: string;
+    }
+  | null {
+  const lower = text.toLowerCase();
+  const isSearchy =
+    lower.includes("show me") ||
+    lower.includes("search") ||
+    lower.includes("catalog") ||
+    lower.includes("kapruka");
+  if (!isSearchy) return null;
+
+  const categoryMatch = lower.match(/show me ([a-z\s&]+?) on kapruka/);
+  const forMatch = lower.match(/(?:for|catalog for) ([a-z\s&]+?)(?: under| below| to | in stock|\.|$)/);
+  const rawQuery =
+    categoryMatch?.[1]?.trim() ??
+    forMatch?.[1]?.trim() ??
+    lower
+      .replace(/search|kapruka|live|catalog|show me|in stock|available|products|product cards|if available/gi, " ")
+      .replace(/\bunder\s+\d[\d,]*/gi, " ")
+      .replace(SERVER_CITY_REGEX, " ")
+      .trim();
+
+  const query = normalizeProductQuery(rawQuery);
+  if (!query || query.length < 3) return null;
+
+  const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
+  const maxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+  const sort = lower.includes("popular") || lower.includes("best")
+    ? "bestseller"
+    : lower.includes("cheap")
+    ? "price_asc"
+    : undefined;
+  const deliveryDate = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
+
+  return { query, maxPrice, sort, deliveryDate };
+}
+
+function normalizeProductQuery(raw: string): string {
+  const compact = raw.replace(/[^a-z0-9\s&]/gi, " ").replace(/\s+/g, " ").trim();
+  return CATEGORY_QUERY_MAP[compact] ?? compact;
+}
+
+function fallbackQuery(query: string): string | undefined {
+  if (query === "flowers") return "roses";
+  if (query === "cake") return "cakes";
+  if (query === "fashion") return "shirt";
+  if (query === "electronics") return "phone";
+  return undefined;
+}
+
+function extractCityHint(text: string): string | undefined {
+  const match = text.match(SERVER_CITY_REGEX);
+  return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function extractFirstCity(content: unknown): string | undefined {
+  const parsed = formatMcpContentForModel(content);
+  try {
+    const data = JSON.parse(parsed) as { cities?: { name?: string }[] };
+    return data.cities?.[0]?.name;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractOrderNumber(text: string): string | undefined {
+  return text.match(/\b[A-Z]{2,}[A-Z0-9]{5,}\b/i)?.[0]?.toUpperCase();
+}
+
+async function streamWords(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  text: string
+) {
+  const words = text.match(/\S+\s*/g) ?? [];
+  for (const word of words) {
+    controller.enqueue(sse("token", word));
+    await new Promise((resolve) => setTimeout(resolve, 12));
+  }
 }
 
 function coerceArgTypes(
@@ -504,153 +780,4 @@ function coerceArgTypes(
     }
   }
   return result;
-}
-
-function extractProducts(data: unknown): KiraProduct[] {
-  let inner = data;
-  if (Array.isArray(data)) {
-    const textBlock = (data as { type: string; text: string }[]).find(
-      (b) => b.type === "text"
-    );
-    if (textBlock) {
-      try {
-        inner = JSON.parse(textBlock.text);
-      } catch {
-        return [];
-      }
-    }
-  }
-  if (!inner || typeof inner !== "object") return [];
-  const obj = inner as Record<string, unknown>;
-  const candidates =
-    (obj.results as unknown[]) ?? (Array.isArray(inner) ? inner : []);
-
-  return candidates
-    .slice(0, 6)
-    .map((item) => {
-      const p = item as Record<string, unknown>;
-      const priceObj = p.price as { amount?: number; currency?: string } | undefined;
-      const catObj = p.category as { name?: string } | undefined;
-      return {
-        id: String(p.id ?? Math.random()),
-        name: String(p.name ?? "Product"),
-        price: Number(priceObj?.amount ?? 0),
-        currency: priceObj?.currency ?? "LKR",
-        image: p.image_url as string | undefined,
-        category: catObj?.name as string | undefined,
-        url: p.url as string | undefined,
-      };
-    })
-    .filter((p) => p.price > 0);
-}
-
-function extractPayLink(data: unknown): string | undefined {
-  let inner = data;
-  if (Array.isArray(data)) {
-    const textBlock = (data as { type: string; text: string }[]).find(
-      (b) => b.type === "text"
-    );
-    if (textBlock) {
-      try {
-        inner = JSON.parse(textBlock.text);
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  if (!inner || typeof inner !== "object") return undefined;
-  const obj = inner as Record<string, unknown>;
-  return (obj.checkout_url as string) ?? undefined;
-}
-
-// Recursively search an object for a fee-like numeric value (depth-limited).
-function findFeeDeep(obj: Record<string, unknown>, depth = 0): number | undefined {
-  if (depth > 3) return undefined;
-  for (const [key, val] of Object.entries(obj)) {
-    const lk = key.toLowerCase();
-    if (lk.includes("fee") || lk.includes("cost") || lk.includes("charge") || lk.includes("rate") || lk === "price" || lk === "amount") {
-      const n = typeof val === "number" ? val : Number(String(val).replace(/,/g, ""));
-      if (!isNaN(n) && n > 0) return n;
-    }
-    if (val && typeof val === "object" && !Array.isArray(val)) {
-      const nested = findFeeDeep(val as Record<string, unknown>, depth + 1);
-      if (nested !== undefined) return nested;
-    }
-    if (Array.isArray(val)) {
-      for (const item of val) {
-        if (item && typeof item === "object") {
-          const nested = findFeeDeep(item as Record<string, unknown>, depth + 1);
-          if (nested !== undefined) return nested;
-        }
-      }
-    }
-  }
-  return undefined;
-}
-
-function extractDeliveryInfo(data: unknown): DeliveryQuote | undefined {
-  let inner = data;
-  if (Array.isArray(data)) {
-    const textBlock = (data as { type: string; text: string }[]).find(
-      (b) => b.type === "text"
-    );
-    if (textBlock) {
-      try { inner = JSON.parse(textBlock.text); } catch { return undefined; }
-    }
-  }
-  if (!inner || typeof inner !== "object") return undefined;
-  const obj = inner as Record<string, unknown>;
-  const city = String(obj.city ?? obj.destination ?? "");
-  if (!city) return undefined;
-  // Try top-level fields first, then recurse the whole object
-  const rawFee =
-    obj.fee ?? obj.delivery_fee ?? obj.shipping_fee ??
-    obj.cost ?? obj.delivery_cost ?? obj.price ?? obj.amount;
-  let feeNum = typeof rawFee === "number"
-    ? rawFee
-    : rawFee != null ? Number(String(rawFee).replace(/,/g, "")) : NaN;
-  if (isNaN(feeNum) || feeNum <= 0) {
-    feeNum = findFeeDeep(obj) ?? NaN;
-  }
-  return {
-    available: obj.available !== false,
-    city,
-    estimatedDate: (obj.estimated_date ?? obj.delivery_date) as string | undefined,
-    fee: !isNaN(feeNum) && feeNum > 0 ? feeNum : undefined,
-    perishable: Boolean(obj.perishable ?? obj.is_perishable),
-  };
-}
-
-function extractTracking(data: unknown): OrderTracking | undefined {
-  let inner = data;
-  if (Array.isArray(data)) {
-    const textBlock = (data as { type: string; text: string }[]).find(
-      (b) => b.type === "text"
-    );
-    if (textBlock) {
-      try { inner = JSON.parse(textBlock.text); } catch { return undefined; }
-    }
-  }
-  if (!inner || typeof inner !== "object") return undefined;
-  const obj = inner as Record<string, unknown>;
-
-  const rawTimeline = (obj.timeline as unknown[]) ?? [];
-  const timeline: TrackingEvent[] = rawTimeline.map((e) => {
-    const ev = e as Record<string, unknown>;
-    return {
-      status: String(ev.status ?? ev.stage ?? ""),
-      label: String(ev.label ?? ev.description ?? ev.status ?? ""),
-      time: (ev.time ?? ev.timestamp ?? ev.date) as string | undefined,
-      done: Boolean(ev.done ?? ev.completed ?? ev.is_done),
-    };
-  });
-
-  const currentStatus = String(obj.status ?? obj.current_status ?? "");
-  return {
-    orderNumber: String(obj.order_number ?? obj.order_id ?? obj.id ?? ""),
-    currentStatus,
-    timeline: timeline.length > 0 ? timeline : [
-      { status: currentStatus, label: currentStatus || "Processing", done: false },
-    ],
-  };
 }

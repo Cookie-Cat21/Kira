@@ -3,13 +3,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { ProductCardSkeleton } from "./ProductCard";
 
 /* ── Live indicator — shown while API is streaming ── */
 interface ThinkingLiveProps {
   steps: string[]; // real-time steps received from SSE so far
+  showProductSkeleton?: boolean;
 }
 
-export function ThinkingLive({ steps }: ThinkingLiveProps) {
+export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiveProps) {
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
@@ -71,6 +73,19 @@ export function ThinkingLive({ steps }: ThinkingLiveProps) {
                   );
                 })}
               </AnimatePresence>
+            </div>
+          )}
+
+          {showProductSkeleton && (
+            <div className="px-4 pb-4 pt-1">
+              <div
+                className="flex gap-3 overflow-hidden"
+                aria-label="Loading product suggestions"
+              >
+                {[0, 1, 2].map((i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
             </div>
           )}
         </div>

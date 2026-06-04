@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ShoppingCart, X } from "lucide-react";
 import ChatMessage from "./components/ChatMessage";
+import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
 import {
   ChatInput,
@@ -10,7 +11,14 @@ import {
   ChatInputSubmit,
 } from "./components/ui/chat-input";
 import { getContextualGreeting } from "@/lib/kira-prompt";
-import type { KiraMessage, CartItem, KiraProduct, DeliveryQuote, OrderTracking } from "@/types";
+import type {
+  CartItem,
+  CheckoutInfo,
+  DeliveryQuote,
+  KiraMessage,
+  KiraProduct,
+  OrderTracking,
+} from "@/types";
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = [
@@ -56,11 +64,15 @@ export default function KiraChat() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
-  // Buffer delivery/tracking events that arrive before the first token creates the message
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const cancelledRef = useRef(false);
+  // Buffer structured events that arrive before the first token creates the message
   const pendingDeliveryRef = useRef<DeliveryQuote | null>(null);
   const pendingTrackingRef = useRef<OrderTracking | null>(null);
+  const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -81,6 +93,29 @@ export default function KiraChat() {
     setTimeout(() => setCartBounce(false), 400);
   }, []);
 
+  const cancelActiveResponse = useCallback(() => {
+    if (!isLoading || cancelledRef.current) return;
+    cancelledRef.current = true;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    streamingMsgIdRef.current = null;
+    pendingDeliveryRef.current = null;
+    pendingTrackingRef.current = null;
+    pendingCheckoutRef.current = null;
+    setLiveSteps([]);
+    setIsLoading(false);
+    setIsStreaming(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `cancel-${Date.now()}`,
+        role: "assistant",
+        content: "Okay, I stopped there. We can pick it back up from here.",
+        timestamp: Date.now(),
+      },
+    ]);
+  }, [isLoading]);
+
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
@@ -97,10 +132,14 @@ export default function KiraChat() {
       setIsLoading(true);
       setIsStreaming(false);
       setLiveSteps([]);
+      cancelledRef.current = false;
       streamingMsgIdRef.current = null;
       pendingDeliveryRef.current = null;
       pendingTrackingRef.current = null;
+      pendingCheckoutRef.current = null;
       thinkingStartRef.current = Date.now();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
       if (!deliveryCity) {
         const m = trimmed.match(CITY_REGEX);
@@ -118,6 +157,7 @@ export default function KiraChat() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal: abortController.signal,
           body: JSON.stringify({ messages: history, cart, deliveryCity }),
         });
         if (!res.ok || !res.body) throw new Error("API error");
@@ -151,6 +191,7 @@ export default function KiraChat() {
                   setIsStreaming(true);
                   const pendingDelivery = pendingDeliveryRef.current;
                   const pendingTracking = pendingTrackingRef.current;
+                  const pendingCheckout = pendingCheckoutRef.current;
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -160,6 +201,12 @@ export default function KiraChat() {
                       timestamp: Date.now(),
                       ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
                       ...(pendingTracking ? { tracking: pendingTracking } : {}),
+                      ...(pendingCheckout
+                        ? {
+                            checkout: pendingCheckout,
+                            payLink: pendingCheckout.checkoutUrl,
+                          }
+                        : {}),
                     },
                   ]);
                 } else {
@@ -207,6 +254,24 @@ export default function KiraChat() {
                 } else {
                   pendingTrackingRef.current = tracking;
                 }
+              } else if (payload.t === "checkout") {
+                const checkout = payload.v as CheckoutInfo;
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? {
+                            ...m,
+                            checkout,
+                            payLink: checkout.checkoutUrl,
+                          }
+                        : m
+                    )
+                  );
+                } else {
+                  pendingCheckoutRef.current = checkout;
+                }
               } else if (payload.t === "payLink") {
                 const id = streamingMsgIdRef.current;
                 if (id)
@@ -246,6 +311,7 @@ export default function KiraChat() {
                 });
                 setIsLoading(false);
                 setIsStreaming(false);
+                abortControllerRef.current = null;
               } else if (payload.t === "error") {
                 const errMsg =
                   (payload.v as string) ||
@@ -268,13 +334,20 @@ export default function KiraChat() {
                 }
                 setIsLoading(false);
                 setIsStreaming(false);
+                abortControllerRef.current = null;
               }
             } catch {
               /* malformed SSE chunk — skip */
             }
           }
         }
-      } catch {
+      } catch (error) {
+        if (
+          cancelledRef.current ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          return;
+        }
         const errMsg = "Aiyo, something went wrong on my end. Try again?";
         const id = streamingMsgIdRef.current;
         if (id) {
@@ -293,8 +366,13 @@ export default function KiraChat() {
           ]);
         }
       } finally {
-        setIsLoading(false);
-        setIsStreaming(false);
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+        }
+        if (!cancelledRef.current) {
+          setIsLoading(false);
+          setIsStreaming(false);
+        }
       }
     },
     [messages, cart, deliveryCity, isLoading]
@@ -303,6 +381,14 @@ export default function KiraChat() {
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
+  const showProductSkeleton =
+    isLoading &&
+    !isStreaming &&
+    liveSteps.some(
+      (step) =>
+        step.includes("Searching Kapruka catalog") ||
+        step.includes("Browsing categories")
+    );
 
   return (
     <div className="h-screen flex flex-col bg-kira-bg overflow-hidden">
@@ -386,11 +472,17 @@ export default function KiraChat() {
               message={msg}
               cart={cart}
               onAddToCart={handleAddToCart}
+              onOpenProduct={setSelectedProduct}
               deliveryCity={deliveryCity}
             />
           </div>
         ))}
-        {isLoading && !isStreaming && <ThinkingLive steps={liveSteps} />}
+        {isLoading && !isStreaming && (
+          <ThinkingLive
+            steps={liveSteps}
+            showProductSkeleton={showProductSkeleton}
+          />
+        )}
         <div ref={bottomRef} />
       </main>
 
@@ -430,6 +522,7 @@ export default function KiraChat() {
           setValue={setInput}
           isLoading={isLoading}
           onSubmit={sendMessage}
+          onCancel={cancelActiveResponse}
         >
           <ChatInputTextArea placeholder="Message Kira..." />
           <ChatInputSubmit />
@@ -442,6 +535,16 @@ export default function KiraChat() {
           {" · "}Live products · Real checkout
         </p>
       </div>
+
+      {selectedProduct && (
+        <ProductQuickView
+          key={selectedProduct.id}
+          product={selectedProduct}
+          cart={cart}
+          onAddToCart={handleAddToCart}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </div>
   );
 }

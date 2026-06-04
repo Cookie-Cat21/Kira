@@ -8,9 +8,33 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 const MCP_URL = "https://mcp.kapruka.com/mcp";
 
-async function call(client, tool, args) {
-  const result = await client.callTool({ name: tool, arguments: args });
-  return result.content;
+async function call(client, tool, params) {
+  const result = await client.callTool({ name: tool, arguments: { params } });
+  return readMcpPayload(tool, result.content);
+}
+
+function readMcpPayload(tool, content) {
+  const text =
+    content?.find?.((block) => block.type === "text")?.text ??
+    content?.[0]?.text ??
+    "";
+
+  if (!text.trim()) {
+    return { ok: false, text: "", data: null, error: `${tool}: empty response` };
+  }
+
+  try {
+    return { ok: true, text, data: JSON.parse(text), error: null };
+  } catch {
+    const isExpectedText =
+      text.startsWith("No products found") || text.startsWith("Error:");
+    return {
+      ok: false,
+      text,
+      data: null,
+      error: isExpectedText ? text : `${tool}: non-JSON response: ${text}`,
+    };
+  }
 }
 
 async function main() {
@@ -27,13 +51,15 @@ async function main() {
   console.log();
 
   // 2. Search products
-  console.log("=== Search: birthday cake (JSON) ===");
+  console.log("=== Search: roses (JSON success) ===");
   const search = await call(client, "kapruka_search_products", {
-    q: "birthday cake",
+    q: "roses",
     limit: 3,
+    in_stock_only: true,
     response_format: "json",
   });
-  const searchData = JSON.parse(search[0].text);
+  if (!search.ok) throw new Error(search.error);
+  const searchData = search.data;
   console.log("Total results:", searchData.results?.length);
   if (searchData.results?.[0]) {
     const p = searchData.results[0];
@@ -48,34 +74,78 @@ async function main() {
   }
   console.log();
 
+  console.log("=== Search: no products response ===");
+  const noProducts = await call(client, "kapruka_search_products", {
+    q: "birthday cake",
+    limit: 3,
+    in_stock_only: true,
+    response_format: "json",
+  });
+  console.log(noProducts.ok ? "Unexpected products found" : noProducts.error);
+  console.log();
+
   // 3. Categories
   console.log("=== Top-level Categories ===");
   const cats = await call(client, "kapruka_list_categories", {
     depth: 1,
     response_format: "json",
   });
-  const catData = JSON.parse(cats[0].text);
+  if (!cats.ok) throw new Error(cats.error);
+  const catData = cats.data;
   catData.categories?.slice(0, 8).forEach((c) => console.log(`  ${c.name}`));
   console.log();
 
-  // 4. Delivery check
+  // 4. City resolution
+  console.log("=== Delivery city alias: kandy ===");
+  const cities = await call(client, "kapruka_list_delivery_cities", {
+    query: "kandy",
+    limit: 3,
+    response_format: "json",
+  });
+  if (!cities.ok) throw new Error(cities.error);
+  console.log(cities.data.cities?.[0]);
+  console.log();
+
+  // 5. Delivery check
   console.log("=== Delivery to Kandy ===");
   const delivery = await call(client, "kapruka_check_delivery", {
     city: "Kandy",
     response_format: "json",
   });
-  const delivData = JSON.parse(delivery[0].text);
+  if (!delivery.ok) throw new Error(delivery.error);
+  const delivData = delivery.data;
   console.log({
     city: delivData.city,
     available: delivData.available,
     rate: delivData.rate,
     currency: delivData.currency,
     checked_date: delivData.checked_date,
+    next_available_date: delivData.next_available_date,
+    reason: delivData.reason,
+  });
+  console.log();
+
+  // 6. Perishable warning probe
+  console.log("=== Perishable delivery warning ===");
+  const futureDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const perishable = await call(client, "kapruka_check_delivery", {
+    city: "Kandy",
+    delivery_date: futureDate,
+    product_id: "FLOWERS00T2075",
+    response_format: "json",
+  });
+  if (!perishable.ok) throw new Error(perishable.error);
+  console.log({
+    checked_date: perishable.data.checked_date,
+    rate: perishable.data.rate,
+    perishable_warning: perishable.data.perishable_warning,
   });
   console.log();
 
   await client.close();
-  console.log("✓ All tools confirmed working. Update extractProducts/extractPayLink with real field names.");
+  console.log("✓ MCP probe completed with JSON and text-response handling.");
 }
 
 main().catch((err) => {
