@@ -29,15 +29,13 @@ import {
   UserRound,
   Wallet,
 } from "lucide-react";
+import KiraLoader from "./components/KiraLoader";
+import McpStatusBadge from "./components/McpStatusBadge";
 import ChatMessage from "./components/ChatMessage";
 import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
 import CommerceRail, { type CommerceContext } from "./components/CommerceRail";
-import {
-  ChatInput,
-  ChatInputTextArea,
-  ChatInputSubmit,
-} from "./components/ui/chat-input";
+import KiraChatInput from "./components/ui/kira-chat-input";
 import { useCart } from "./context/CartContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
@@ -209,10 +207,10 @@ function buildOpeningMessage(): KiraMessage {
 }
 
 export default function KiraChat() {
+  const [appReady, setAppReady] = useState(false);
   const [messages, setMessages] = useState<KiraMessage[]>([
     buildOpeningMessage(),
   ]);
-  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
@@ -313,7 +311,6 @@ export default function KiraChat() {
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
-      setInput("");
       setIsLoading(true);
       setIsStreaming(false);
       setLiveSteps([]);
@@ -598,12 +595,15 @@ export default function KiraChat() {
 
   return (
     <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden" style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
+      {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Ambient blobs */}
-      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "400px", height: "400px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.5) 0%, transparent 70%)", filter: "blur(50px)", zIndex: 0 }} />
-      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "320px", height: "320px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.07) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
 
       <header
-        className="glass-nav relative z-10 flex h-16 shrink-0 items-center justify-between px-4 sm:px-6"
+        className="glass-nav relative z-10 flex h-14 lg:h-[4.5rem] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10"
+        style={{ borderBottom: "1px solid rgba(148,100,255,0.22)", background: "rgba(10,6,20,0.72)" }}
       >
         <div className="flex min-w-0 items-center gap-3">
           <Image
@@ -618,14 +618,16 @@ export default function KiraChat() {
           <span className="font-display text-2xl leading-none text-kira-text">
             Kira
           </span>
-          <div className="hidden h-8 items-center gap-2 border-l border-white/10 pl-3 sm:flex">
-            <span className="text-xs font-semibold text-white/40">
+          <div className="hidden h-8 items-center gap-2.5 border-l border-white/10 pl-3.5 sm:flex">
+            <span className="text-xs font-semibold tracking-wide text-white/35">
               by Kapruka
             </span>
-            <span className="flex items-center gap-1 text-xs font-semibold text-kira-leaf">
-              <BadgeCheck className="size-3.5" />
+            <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-kira-leaf" style={{ background: "rgba(74,222,128,0.09)", border: "1px solid rgba(74,222,128,0.18)" }}>
+              <BadgeCheck className="size-3" />
               Live catalog
             </span>
+            <span aria-hidden="true" className="text-white/15">·</span>
+            <McpStatusBadge />
           </div>
         </div>
 
@@ -654,88 +656,159 @@ export default function KiraChat() {
         )}
       </header>
 
-      <CommerceRail context={commerceContext} onChange={handleCommerceChange} />
+      {!isOnlyOpening && (
+        <CommerceRail context={commerceContext} onChange={handleCommerceChange} />
+      )}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
-        <main
-          role="log"
-          aria-live="polite"
-          aria-label="Conversation with Kira"
-          className="relative z-10 min-h-0 overflow-y-auto"
-          style={{ background: "transparent" }}
-        >
-          <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-            {isOnlyOpening ? (
-              <GiftConciergeWelcome
-                greeting={messages[0]?.content ?? ""}
-                context={commerceContext}
-                onPrompt={sendMessage}
+      {isOnlyOpening ? (
+        /* ── Welcome screen: centered floating input ── */
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
+          {/* Greeting */}
+          <div className="mb-8 text-center animate-fade-up">
+            <div className="mb-5 flex justify-center">
+              <Image
+                src="/kira-logo.svg"
+                alt="Kira"
+                width={64}
+                height={64}
+                className="object-contain opacity-90"
+                style={{ width: "auto", height: "3.5rem" }}
               />
-            ) : (
-              <>
-                {messages.map((msg) => (
-                  <div key={msg.id}>
-                    {msg.role === "assistant" && msg.thinkingMs && (
-                      <ThinkingDone
-                        thinkingMs={msg.thinkingMs}
-                        steps={msg.steps}
-                      />
-                    )}
-                    <ChatMessage
-                      message={msg}
-                      cart={cart}
-                      onAddToCart={handleAddToCart}
-                      onOpenProduct={setSelectedProduct}
-                      deliveryCity={deliveryCity}
-                    />
-                  </div>
-                ))}
-                {isLoading && !isStreaming && (
-                  <ThinkingLive
-                    steps={liveSteps}
-                    showProductSkeleton={showProductSkeleton}
-                  />
-                )}
-              </>
-            )}
-            <div ref={bottomRef} />
-          </div>
-        </main>
-
-      </div>
-
-      <div className="glass-nav relative z-10 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "none" }}>
-        <div className="mx-auto grid w-full max-w-[1400px] gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
-          <div className="min-w-0">
-            <ChatInput
-              value={input}
-              setValue={setInput}
-              isLoading={isLoading}
-              onSubmit={sendMessage}
-              onCancel={cancelActiveResponse}
+            </div>
+            <h1
+              className="font-display text-4xl sm:text-5xl leading-[1.05] mb-3"
+              style={{
+                background: "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(210,190,255,0.9) 60%, rgba(248,218,8,0.85) 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
             >
-              <ChatInputTextArea placeholder="Ask for a gift, budget, city, or order number..." />
-              <ChatInputSubmit />
-            </ChatInput>
-            <p className="mt-2 text-center text-[10px] text-white/30 lg:hidden">
-              Powered by{" "}
-              <a
-                href="https://www.kapruka.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-kap-yellow/60 hover:text-kap-yellow"
-              >
-                Kapruka
-              </a>
-            </p>
+              What would you like<br className="hidden sm:block" /> to gift today?
+            </h1>
+            <p className="text-white/40 text-sm">Live Kapruka catalog · Real delivery · Checkout</p>
           </div>
-          <div className="hidden items-center justify-between rounded-xl px-4 text-[11px] font-semibold lg:flex" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}>
-            <span>Powered by Kapruka</span>
-            <span className="text-kira-leaf">Live products</span>
-            <span>Real checkout</span>
+
+          {/* Input */}
+          <div className="w-full max-w-2xl animate-fade-up" style={{ animationDelay: "60ms" }}>
+            <KiraChatInput
+              onSendMessage={sendMessage}
+              isLoading={isLoading}
+              onCancel={cancelActiveResponse}
+            />
+          </div>
+
+          {/* Category + occasion chips */}
+          <div className="mt-4 w-full max-w-2xl animate-fade-up space-y-3" style={{ animationDelay: "120ms" }}>
+            {/* Category row */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+              {CATEGORIES.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.label}
+                    type="button"
+                    onClick={() => sendMessage(cat.value)}
+                    className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/60 transition-all hover:text-white/90 hover:bg-white/[0.09] active:scale-95"
+                    style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,100,255,0.18)" }}
+                  >
+                    <Icon className="size-4" />
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 px-2">
+              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.06)" }} />
+              <span className="text-[10px] font-medium uppercase tracking-widest text-white/25">or</span>
+              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.06)" }} />
+            </div>
+
+            {/* Occasion / quick-start chips */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {OCCASION_CHIPS.map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => sendMessage(chip.value)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                    chip.urgent
+                      ? "border-kap-yellow bg-kap-yellow text-gray-950"
+                      : "border-white/[0.12] bg-white/[0.04] text-white/50 hover:text-white/80 hover:bg-white/[0.07]"
+                  )}
+                >
+                  {stripDecorativeGlyphs(chip.label)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* ── Chat view ── */
+        <>
+          <main
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation with Kira"
+            className="relative z-10 min-h-0 flex-1 overflow-y-auto"
+            style={{ background: "transparent" }}
+          >
+            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-5 sm:px-6">
+              {messages.map((msg) => (
+                <div key={msg.id}>
+                  {msg.role === "assistant" && msg.thinkingMs && (
+                    <ThinkingDone
+                      thinkingMs={msg.thinkingMs}
+                      steps={msg.steps}
+                    />
+                  )}
+                  <ChatMessage
+                    message={msg}
+                    cart={cart}
+                    onAddToCart={handleAddToCart}
+                    onOpenProduct={setSelectedProduct}
+                    deliveryCity={deliveryCity}
+                  />
+                </div>
+              ))}
+              {isLoading && !isStreaming && (
+                <ThinkingLive
+                  steps={liveSteps}
+                  showProductSkeleton={showProductSkeleton}
+                />
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </main>
+
+          <div
+            className="glass-nav relative z-10 shrink-0"
+            style={{ borderTop: "1px solid rgba(148,100,255,0.18)", background: "rgba(10,6,20,0.72)" }}
+          >
+            <div className="mx-auto w-full max-w-3xl px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+              <KiraChatInput
+                onSendMessage={sendMessage}
+                isLoading={isLoading}
+                onCancel={cancelActiveResponse}
+              />
+              <p className="mt-2 text-center text-[10px] text-white/25">
+                Powered by{" "}
+                <a
+                  href="https://www.kapruka.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-kap-yellow/50 hover:text-kap-yellow"
+                >
+                  Kapruka
+                </a>
+              </p>
+            </div>
+          </div>
+        </>
+      )}
 
       {selectedProduct && (
         <ProductQuickView
@@ -767,7 +840,7 @@ function GiftConciergeWelcome({
   return (
     <div className="flex flex-1 flex-col justify-center pb-3">
       <div className="grid gap-3 lg:grid-cols-12">
-        <section className="gift-slip rounded-xl p-5 sm:p-6 lg:col-span-8" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+        <section className="gift-slip glass-card-hero rounded-xl p-5 sm:p-6 lg:col-span-8 lg:p-8">
           <div className="mb-4 flex items-center gap-2">
             <span className="flex size-9 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
               <Gift className="size-4" />
@@ -782,7 +855,10 @@ function GiftConciergeWelcome({
             </div>
           </div>
 
-          <h1 className="max-w-2xl text-balance font-display text-3xl leading-[1.05] text-white/92 sm:text-5xl">
+          <h1
+            className="max-w-2xl text-balance font-display text-3xl leading-[1.05] sm:text-5xl lg:text-[3.5rem]"
+            style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(210,190,255,0.88) 60%, rgba(248,218,8,0.85) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+          >
             Send a better gift, without the catalog hunt.
           </h1>
           <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-white/60 sm:text-base">
@@ -809,9 +885,9 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-xl p-4 lg:col-span-4" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-4 lg:p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase text-white/40">
+            <p className="text-xs font-bold uppercase tracking-wider text-white/40">
               Start with a route
             </p>
             <Search className="size-4 text-white/30" />
@@ -824,8 +900,8 @@ function GiftConciergeWelcome({
                   key={prompt.label}
                   type="button"
                   onClick={() => onPrompt(prompt.value)}
-                  className="group flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all hover:bg-white/5"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  className="group flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all hover:bg-white/[0.07]"
+                  style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,100,255,0.15)" }}
                 >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-md" style={{ background: "rgba(255,255,255,0.08)" }}>
                     <Icon className="size-4" />
@@ -845,12 +921,13 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-xl p-4 lg:col-span-8" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-8 lg:p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold text-white/85">
               Shop by gift type
             </h2>
-            <span className="text-[11px] font-semibold text-white/35">
+            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
+              <Search className="size-3" />
               Live Kapruka search
             </span>
           </div>
@@ -862,8 +939,8 @@ function GiftConciergeWelcome({
                   key={category.label}
                   type="button"
                   onClick={() => onPrompt(category.value)}
-                  className="flex min-h-24 flex-col justify-between rounded-lg p-3 text-left transition-all hover:bg-white/5 text-white/75"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  className="flex min-h-24 flex-col justify-between rounded-lg p-3 text-left transition-all hover:bg-white/[0.07] text-white/80"
+                  style={{ background: "rgba(255,255,255,0.065)", border: "1px solid rgba(148,100,255,0.15)" }}
                 >
                   <Icon className="size-5" />
                   <span className="text-sm font-bold">{category.label}</span>
@@ -873,9 +950,9 @@ function GiftConciergeWelcome({
           </div>
         </section>
 
-        <section className="rounded-xl p-4 lg:col-span-4" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-4 lg:p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase text-white/40">
+            <p className="text-xs font-bold uppercase tracking-wider text-white/40">
               Popular now
             </p>
             <Sparkles className="size-4 text-purple-400" />
@@ -890,7 +967,7 @@ function GiftConciergeWelcome({
                   "rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
                   chip.urgent
                     ? "border-kap-yellow bg-kap-yellow text-gray-950"
-                    : "border-white/10 text-white/65 hover:text-white hover:bg-white/5 hover:border-white/20"
+                    : "border-white/[0.14] bg-white/[0.055] text-white/70 hover:text-white hover:bg-white/[0.09] hover:border-white/25"
                 )}
               >
                 {stripDecorativeGlyphs(chip.label)}
@@ -913,7 +990,7 @@ function BriefRow({
   value: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-lg p-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="flex min-w-0 items-center gap-3 rounded-lg p-3" style={{ background: "rgba(64,41,112,0.18)", border: "1px solid rgba(148,100,255,0.18)" }}>
       <span className="flex size-8 shrink-0 items-center justify-center rounded-md text-purple-300" style={{ background: "rgba(64,41,112,0.4)" }}>
         <Icon className="size-4" />
       </span>

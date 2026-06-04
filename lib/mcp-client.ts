@@ -2,6 +2,17 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const KAPRUKA_MCP_URL = "https://mcp.kapruka.com/mcp";
+const CONNECT_TIMEOUT_MS = 8_000;
+const TOOL_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`MCP ${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
 
 export async function createMcpClient(): Promise<Client> {
   let lastErr: unknown;
@@ -9,7 +20,7 @@ export async function createMcpClient(): Promise<Client> {
     const client = new Client({ name: "kira", version: "1.0.0" });
     const transport = new StreamableHTTPClientTransport(new URL(KAPRUKA_MCP_URL));
     try {
-      await client.connect(transport);
+      await withTimeout(client.connect(transport), CONNECT_TIMEOUT_MS, "connect");
       return client;
     } catch (err) {
       lastErr = err;
@@ -29,6 +40,9 @@ export async function callMcpTool(
   name: string,
   args: Record<string, unknown>
 ) {
-  const result = await client.callTool({ name, arguments: args });
-  return result;
+  return withTimeout(
+    client.callTool({ name, arguments: args }),
+    TOOL_TIMEOUT_MS,
+    `tool ${name}`
+  );
 }

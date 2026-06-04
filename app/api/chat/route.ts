@@ -226,14 +226,29 @@ export async function POST(req: NextRequest) {
 
         type GroqMessage = Groq.Chat.Completions.ChatCompletionMessageParam;
 
-        // Keep only the last 12 messages (6 turns) to avoid context bloat on long conversations.
-        const trimmedMessages = messages.slice(-12);
+        // Context compaction: keep a verbatim sliding window of recent turns and
+        // prepend a structural summary of older turns so Kira retains cross-turn
+        // memory (budget, city, occasion, shown products) without bloating context.
+        const HISTORY_WINDOW = 8;   // recent turns always kept verbatim
+        const COMPACT_THRESHOLD = 12; // compact when history exceeds this
+        const recentMessages = messages.slice(-HISTORY_WINDOW);
+        const olderMessages =
+          messages.length > COMPACT_THRESHOLD
+            ? messages.slice(0, -HISTORY_WINDOW)
+            : [];
+        const compactSummary =
+          olderMessages.length > 0 ? buildCompactSummary(olderMessages) : "";
+
+        const systemContent =
+          KIRA_SYSTEM_PROMPT +
+          cartContext +
+          deliveryContext +
+          deliveryDateContext +
+          (compactSummary ? `\n\n${compactSummary}` : "");
+
         const currentMessages: GroqMessage[] = [
-          {
-            role: "system",
-            content: KIRA_SYSTEM_PROMPT + cartContext + deliveryContext + deliveryDateContext,
-          },
-          ...trimmedMessages.map((m) => ({
+          { role: "system", content: systemContent },
+          ...recentMessages.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
           })),
@@ -353,16 +368,18 @@ export async function POST(req: NextRequest) {
                 if (tracking) controller.enqueue(sse("tracking", tracking));
               }
 
-              return { toolCall, resultText };
+              return { toolCall, toolName, resultText };
             })
           );
 
           // Push tool results to currentMessages in original call order.
-          for (const { toolCall, resultText } of results) {
+          // truncateForModel strips non-essential fields so the model receives
+          // a lean payload while SSE side-effects (above) used the full content.
+          for (const { toolCall, toolName, resultText } of results) {
             currentMessages.push({
               role: "tool",
               tool_call_id: toolCall.id,
-              content: resultText,
+              content: truncateForModel(toolName, resultText),
             });
           }
         }
@@ -371,9 +388,14 @@ export async function POST(req: NextRequest) {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
-          try {
-            // Last-resort model has tight TPM — drop tool schemas so the request fits.
-            // Inject a system note so it doesn't hallucinate product results.
+          // ── Model call with clean fallback ──────────────────────────────────
+          // Inner loop retries with the next model on 429/413 WITHOUT consuming
+          // a round slot — replaces the old `round--` hack. Labels let us break
+          // or continue both loops independently.
+          let rateExhausted = false;
+          let failedGenHandled = false;
+
+          callLoop: while (true) {
             const isLastModel = modelIndex === MODELS.length - 1;
             const reqTools = !isLastModel && tools.length > 0 ? tools : undefined;
             const reqMessages = isLastModel
@@ -387,76 +409,84 @@ export async function POST(req: NextRequest) {
                   ...currentMessages.slice(1),
                 ]
               : currentMessages;
-            response = await getGroq().chat.completions.create({
-              model: MODELS[modelIndex],
-              messages: reqMessages,
-              tools: reqTools,
-              tool_choice: reqTools ? "auto" : undefined,
-              max_tokens: 1024,
-            });
-          } catch (err) {
-            type ErrBody = { code?: string; failed_generation?: string };
-            const apiErr = err as {
-              status?: number;
-              error?: ErrBody & { error?: ErrBody };
-            };
-            const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
 
-            if (apiErr?.status === 429 || apiErr?.status === 413) {
-              if (modelIndex < MODELS.length - 1) {
-                modelIndex++;
-                round--;
-                continue;
-              }
-              // All models rate-limited or request too large — graceful in-character message
-              finalText =
-                "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?";
-              break;
-            }
-            if (
-              apiErr?.status === 400 &&
-              inner.code === "tool_use_failed" &&
-              inner.failed_generation
-            ) {
-              type RawCall = {
-                name: string;
-                parameters?: Record<string, unknown>;
+            try {
+              response = await getGroq().chat.completions.create({
+                model: MODELS[modelIndex],
+                messages: reqMessages,
+                tools: reqTools,
+                tool_choice: reqTools ? "auto" : undefined,
+                max_tokens: 1024,
+              });
+              break callLoop; // success — exit inner loop
+            } catch (err) {
+              type ErrBody = { code?: string; failed_generation?: string };
+              const apiErr = err as {
+                status?: number;
+                error?: ErrBody & { error?: ErrBody };
               };
-              let rawCalls: RawCall[] = [];
-              try {
-                rawCalls = JSON.parse(inner.failed_generation) as RawCall[];
-              } catch {
-                const match = inner.failed_generation.match(/\[[\s\S]*\]/);
-                if (match) {
-                  try {
-                    rawCalls = JSON.parse(match[0]) as RawCall[];
-                  } catch { /* unparseable */ }
+              const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
+
+              if (apiErr?.status === 429 || apiErr?.status === 413) {
+                if (modelIndex < MODELS.length - 1) {
+                  modelIndex++;
+                  continue callLoop; // retry same round with next model
+                }
+                finalText =
+                  "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?";
+                rateExhausted = true;
+                break callLoop;
+              }
+
+              if (
+                apiErr?.status === 400 &&
+                inner.code === "tool_use_failed" &&
+                inner.failed_generation
+              ) {
+                type RawCall = {
+                  name: string;
+                  parameters?: Record<string, unknown>;
+                };
+                let rawCalls: RawCall[] = [];
+                try {
+                  rawCalls = JSON.parse(inner.failed_generation) as RawCall[];
+                } catch {
+                  const match = inner.failed_generation.match(/\[[\s\S]*\]/);
+                  if (match) {
+                    try {
+                      rawCalls = JSON.parse(match[0]) as RawCall[];
+                    } catch { /* unparseable */ }
+                  }
+                }
+                if (rawCalls.length > 0) {
+                  const fakeCalls: Groq.Chat.Completions.ChatCompletionMessageToolCall[] =
+                    rawCalls.map((rc, i) => ({
+                      id: `coerced-${round}-${i}`,
+                      type: "function" as const,
+                      function: {
+                        name: rc.name,
+                        arguments: JSON.stringify(rc.parameters ?? {}),
+                      },
+                    }));
+                  currentMessages.push({
+                    role: "assistant",
+                    content: null,
+                    tool_calls: fakeCalls,
+                  });
+                  await executeToolCalls(fakeCalls);
+                  failedGenHandled = true;
+                  break callLoop;
                 }
               }
 
-              if (rawCalls.length > 0) {
-                const fakeCalls: Groq.Chat.Completions.ChatCompletionMessageToolCall[] =
-                  rawCalls.map((rc, i) => ({
-                    id: `coerced-${round}-${i}`,
-                    type: "function" as const,
-                    function: {
-                      name: rc.name,
-                      arguments: JSON.stringify(rc.parameters ?? {}),
-                    },
-                  }));
-                currentMessages.push({
-                  role: "assistant",
-                  content: null,
-                  tool_calls: fakeCalls,
-                });
-                await executeToolCalls(fakeCalls);
-                continue;
-              }
+              throw err;
             }
-            throw err;
-          }
+          } // end callLoop
 
-          const choice = response.choices[0];
+          if (rateExhausted) break;       // all models exhausted — exit round loop
+          if (failedGenHandled) continue; // tool calls recovered — next round
+
+          const choice = response!.choices[0];
           const msg = choice.message;
 
           if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
@@ -464,6 +494,31 @@ export async function POST(req: NextRequest) {
             finalText = raw
               .replace(/<function=[^>]+>[\s\S]*?<\/function>/g, "")
               .trim();
+
+            // ── Hallucination stop-hook ───────────────────────────────────────
+            // If the response quotes LKR amounts but no search/product tool ran
+            // this turn and no products were collected, the model is likely
+            // inventing prices. Inject a firm correction and retry one round.
+            if (
+              finalText &&
+              /LKR\s*[\d,]+/.test(finalText) &&
+              collectedProducts.length === 0 &&
+              checkoutInfo === undefined &&
+              round < MAX_TOOL_ROUNDS - 1
+            ) {
+              currentMessages.push({ role: "assistant", content: finalText });
+              currentMessages.push({
+                role: "user",
+                content:
+                  "You mentioned LKR prices but haven't called " +
+                  "kapruka_search_products or kapruka_check_delivery yet this " +
+                  "turn. Do not quote any prices you haven't fetched from " +
+                  "Kapruka. Search now, then respond.",
+              });
+              finalText = "";
+              continue; // retry with correction injected
+            }
+
             break;
           }
 
@@ -530,13 +585,13 @@ export async function POST(req: NextRequest) {
 // Matches short "show me" / "can i see them" re-show requests with no product query.
 const RESHOW_RE = /^(show\s*(me|them|these)?|can\s+i\s+see(\s+them)?|let\s+me\s+see(\s+them)?)[\.\?\!]?$/i;
 
-// Matches "show me those/them as pictures/cards/photos/images" and similar referential re-show requests.
+// Matches "show me those/them as pictures/cards/photos/images/listings" and similar referential re-show requests.
 // These refer to previously mentioned specific products, not a new search.
 const RESHOW_AS_CARDS_RE =
-  /\b(show|see|view|display)\b.{0,30}\b(those|them|it|the[ms]e)\b.{0,30}\b(picture|photo|image|card|visual|pic)\b/i;
-// Also catches "can u show me those two items as pictures" etc.
+  /\b(show|see|view|display)\b.{0,40}\b(those|them|it|the[ms]e)\b.{0,40}\b(picture|photo|image|card|visual|pic|listing|listings)\b/i;
+// Also catches "can u show them to me", "can u show me those two items as pictures" etc.
 const RESHOW_THOSE_RE =
-  /\b(show\s+me|show\s+us|can\s+(?:you|u)\s+show\s+me|let\s+me\s+see)\b.{0,20}\b(those|them|the[ms]e|the\s+(?:two|three|four|\d))\b/i;
+  /\b(show\s+me|show\s+us|can\s+(?:you|u)\s+show(?:\s+(?:me|them|those|it))?\b|let\s+me\s+see)\b.{0,30}\b(those|them|the[ms]e|the\s+(?:two|three|four|\d))\b/i;
 
 async function tryHandleDeterministicPrompt({
   text,
@@ -599,7 +654,7 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  // "Show me those as pictures / can u show me those two items as cards" —
+  // "Show me those as pictures / can u show me those two items as cards / show them as listings" —
   // re-emit the last known products without a new MCP search.
   if (RESHOW_AS_CARDS_RE.test(trimmed) || RESHOW_THOSE_RE.test(trimmed)) {
     if (lastProducts && lastProducts.length > 0) {
@@ -611,7 +666,38 @@ async function tryHandleDeterministicPrompt({
       controller.enqueue(sse("done"));
       return true;
     }
-    // No cached products — fall through to LLM so it can explain
+    // No real products cached (LLM may have described them without calling MCP).
+    // Do a real MCP search using context from conversation history so we don't
+    // fall through to the LLM and risk it hallucinating products again.
+    const ctx = extractLastSearchContext(messages, trimmed);
+    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}"`));
+    const reshowResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: ctx.query,
+        limit: 6,
+        in_stock_only: true,
+        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    if (reshowProducts.length === 0) {
+      await streamWords(
+        controller,
+        `I checked Kapruka live for "${ctx.query}" — nothing in stock right now. Want to try a different category?`
+      );
+    } else {
+      const budgetText = ctx.maxPrice
+        ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
+        : "";
+      await streamWords(
+        controller,
+        `Here are the real listings${budgetText} from Kapruka — ${reshowProducts.length} in stock right now.`
+      );
+      controller.enqueue(sse("products", reshowProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
   }
 
   if (lower.includes("ready to checkout") || lower.includes("complete the order")) {
@@ -814,7 +900,10 @@ function extractLastSearchContext(
     if (/\bchocolat/.test(msgLow)) { query = "chocolate"; break; }
     if (/\bhamper\b/.test(msgLow)) { query = "gift hamper"; break; }
     if (/\btoy\b/.test(msgLow)) { query = "toy"; break; }
-    if (/\bfashion|clothing\b/.test(msgLow)) { query = "fashion"; break; }
+    if (/\bsari|saree|sarree|sare\b/.test(msgLow)) { query = "saree"; break; }
+    if (/\bjewel|necklace|bracelet|ring\b/.test(msgLow)) { query = "jewellery"; break; }
+    if (/\bperfume|fragrance\b/.test(msgLow)) { query = "perfume"; break; }
+    if (/\bfashion|clothing|wear|dress|shirt\b/.test(msgLow)) { query = "fashion"; break; }
     if (/\belectronic|phone|gadget\b/.test(msgLow)) { query = "electronics"; break; }
 
     // Stop if we at least found a price
@@ -933,6 +1022,99 @@ async function streamWords(
     controller.enqueue(sse("token", word));
     await new Promise((resolve) => setTimeout(resolve, 12));
   }
+}
+
+// ─── Context compaction ──────────────────────────────────────────────────────
+// Scans messages that fell outside the active window and extracts structured
+// facts (budget, city, occasion, recipient, whether products were shown) so
+// Kira retains cross-turn memory without bloating the active context window.
+function buildCompactSummary(
+  messages: { role: string; content: string }[]
+): string {
+  const facts: string[] = [];
+  const seen = new Set<string>();
+  const push = (f: string) => {
+    if (!seen.has(f)) { seen.add(f); facts.push(`• ${f}`); }
+  };
+
+  for (const msg of messages) {
+    const t = typeof msg.content === "string" ? msg.content : "";
+    const lo = t.toLowerCase();
+
+    if (msg.role === "user") {
+      const budget = t.match(
+        /\b(?:under|below|max(?:imum)?|budget)[:\s]+(?:lkr\s*)?([\d,]+)/i
+      );
+      if (budget) push(`Budget ceiling: LKR ${budget[1].replace(/,/g, "")}`);
+
+      const city = t.match(SERVER_CITY_REGEX);
+      if (city) push(`Delivery city mentioned: ${city[1]}`);
+
+      const occ = t.match(
+        /\b(birthday|wedding|anniversary|christmas|vesak|avurudu|father'?s\s+day|mother'?s\s+day|new\s+year)\b/i
+      );
+      if (occ) push(`Occasion: ${occ[1]}`);
+
+      const rec = t.match(
+        /\bfor\s+(?:my\s+)?(mum|mom|amma|dad|father|mother|wife|husband|friend|sister|brother|daughter|son|boss|colleague)\b/i
+      );
+      if (rec) push(`Recipient: ${rec[1]}`);
+    }
+
+    if (msg.role === "assistant") {
+      if (/\d+\s+picks?|showing\s+\d+|here\s+are\s+\d+/i.test(lo))
+        push("Products were shown from Kapruka search");
+      if (/delivery\s+(?:to\s+\w+\s+)?(?:is\s+)?lkr\s*[\d,]+/i.test(lo))
+        push("Delivery fee was confirmed");
+      if (/order\s+(?:has\s+been\s+)?placed|checkout\s+link/i.test(lo))
+        push("An order was placed or a checkout link was shared");
+    }
+  }
+
+  if (facts.length === 0) return "";
+  return `[Earlier conversation summary]\n${facts.join("\n")}`;
+}
+
+// ─── Tool result truncation ───────────────────────────────────────────────────
+// Applied AFTER SSE side-effects (which read from the full resultContent) and
+// BEFORE currentMessages.push so the model receives a lean payload.
+// For product search results this can cut 4–6 KB down to ~600 bytes.
+function truncateForModel(toolName: string, resultText: string): string {
+  if (
+    toolName === "kapruka_search_products" ||
+    toolName === "kapruka_list_categories"
+  ) {
+    try {
+      const data = JSON.parse(resultText) as Record<string, unknown>;
+      const raw =
+        (data.products ?? data.results ?? data.items) as unknown[] | undefined;
+      if (Array.isArray(raw)) {
+        type P = Record<string, unknown>;
+        const slim = (raw as P[]).map((p) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price ?? p.sale_price,
+          url: p.url ?? p.product_url,
+          in_stock: p.in_stock ?? p.available,
+        }));
+        return JSON.stringify({ ...data, products: slim });
+      }
+    } catch { /* fall through to char cap */ }
+  }
+
+  const CAP: Record<string, number> = {
+    kapruka_get_product: 1200,
+    kapruka_check_delivery: 700,
+    kapruka_list_delivery_cities: 500,
+    kapruka_track_order: 900,
+    kapruka_create_order: 900,
+  };
+  const limit = CAP[toolName] ?? 2000;
+  if (resultText.length <= limit) return resultText;
+  return (
+    resultText.slice(0, limit) +
+    `\n…[${resultText.length - limit} chars omitted]`
+  );
 }
 
 function coerceArgTypes(
