@@ -195,14 +195,14 @@ export default function AgentPlan({ tasks: propTasks }: AgentPlanProps) {
         duration: 0.25,
         staggerChildren: prefersReducedMotion ? 0 : 0.05,
         when: "beforeChildren",
-        ease: [0.2, 0.65, 0.3, 0.9],
+        ease: [0.2, 0.65, 0.3, 0.9] as [number, number, number, number],
       },
     },
     exit: {
       height: 0,
       opacity: 0,
       overflow: "hidden",
-      transition: { duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] },
+      transition: { duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] as [number, number, number, number] },
     },
   };
 

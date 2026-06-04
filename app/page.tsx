@@ -10,7 +10,7 @@ import {
   ChatInputSubmit,
 } from "./components/ui/chat-input";
 import { getContextualGreeting } from "@/lib/kira-prompt";
-import type { KiraMessage, CartItem, KiraProduct, ChatResponse } from "@/types";
+import type { KiraMessage, CartItem, KiraProduct, DeliveryQuote, OrderTracking } from "@/types";
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = [
@@ -18,7 +18,12 @@ const OCCASION_CHIPS = [
   { label: "🎂 Birthday gift", value: "I need to send a birthday gift" },
   { label: "💐 Flowers & cake", value: "I want to send flowers and a cake" },
   { label: "🛍️ Just browsing", value: "What's popular on Kapruka right now?" },
+  { label: "📦 Track an order", value: "I want to track my order" },
 ];
+
+// Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
+const CITY_REGEX =
+  /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
 const CATEGORIES = [
   { icon: "🎂", label: "Cakes" },
@@ -45,11 +50,13 @@ export default function KiraChat() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [cartOpen, setCartOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
   const thinkingStartRef = useRef<number>(0);
+  const streamingMsgIdRef = useRef<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +91,17 @@ export default function KiraChat() {
       setMessages((prev) => [...prev, userMsg]);
       setInput("");
       setIsLoading(true);
+      setIsStreaming(false);
+      streamingMsgIdRef.current = null;
       thinkingStartRef.current = Date.now();
+
+      if (!deliveryCity) {
+        const m = trimmed.match(CITY_REGEX);
+        if (m) {
+          const city = m[1].replace(/\b\w/g, (c) => c.toUpperCase());
+          setDeliveryCity(city);
+        }
+      }
 
       try {
         const history = [...messages, userMsg]
@@ -96,41 +113,168 @@ export default function KiraChat() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: history, cart, deliveryCity }),
         });
-        if (!res.ok) throw new Error("API error");
-        const data: ChatResponse = await res.json();
+        if (!res.ok || !res.body) throw new Error("API error");
 
-        if (!deliveryCity) {
-          const m = trimmed.match(
-            /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i
-          );
-          if (m) setDeliveryCity(m[1]);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buf += decoder.decode(value, { stream: true });
+          const parts = buf.split("\n\n");
+          buf = parts.pop() ?? "";
+
+          for (const part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            try {
+              const payload = JSON.parse(part.slice(6)) as {
+                t: string;
+                v?: unknown;
+              };
+
+              if (payload.t === "token") {
+                if (!streamingMsgIdRef.current) {
+                  const msgId = `kira-${Date.now()}`;
+                  streamingMsgIdRef.current = msgId;
+                  setIsStreaming(true);
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: msgId,
+                      role: "assistant",
+                      content: payload.v as string,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                } else {
+                  const id = streamingMsgIdRef.current;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, content: m.content + (payload.v as string) }
+                        : m
+                    )
+                  );
+                }
+              } else if (payload.t === "products") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, products: payload.v as KiraProduct[] }
+                        : m
+                    )
+                  );
+              } else if (payload.t === "delivery") {
+                const info = payload.v as DeliveryQuote;
+                if (info?.city) setDeliveryCity(info.city);
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id ? { ...m, deliveryInfo: info } : m
+                    )
+                  );
+              } else if (payload.t === "tracking") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, tracking: payload.v as OrderTracking }
+                        : m
+                    )
+                  );
+              } else if (payload.t === "payLink") {
+                const id = streamingMsgIdRef.current;
+                if (id)
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? { ...m, payLink: payload.v as string }
+                        : m
+                    )
+                  );
+              } else if (payload.t === "done") {
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id
+                        ? {
+                            ...m,
+                            thinkingMs: Date.now() - thinkingStartRef.current,
+                          }
+                        : m
+                    )
+                  );
+                } else {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `kira-${Date.now()}`,
+                      role: "assistant",
+                      content: "Aiyo, something went wrong. Try again?",
+                      timestamp: Date.now(),
+                      thinkingMs: Date.now() - thinkingStartRef.current,
+                    },
+                  ]);
+                }
+                setIsLoading(false);
+                setIsStreaming(false);
+              } else if (payload.t === "error") {
+                const errMsg =
+                  (payload.v as string) ||
+                  "Aiyo, something went wrong. Try again?";
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === id ? { ...m, content: errMsg } : m))
+                  );
+                } else {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `err-${Date.now()}`,
+                      role: "assistant",
+                      content: errMsg,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                }
+                setIsLoading(false);
+                setIsStreaming(false);
+              }
+            } catch {
+              /* malformed SSE chunk — skip */
+            }
+          }
         }
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `kira-${Date.now()}`,
-            role: "assistant",
-            content: data.message,
-            products: data.products,
-            payLink: data.payLink,
-            timestamp: Date.now(),
-            thinkingMs: Date.now() - thinkingStartRef.current,
-          },
-        ]);
       } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            role: "assistant",
-            content: "Aiyo, something went wrong on my end. Try again?",
-            timestamp: Date.now(),
-            thinkingMs: Date.now() - thinkingStartRef.current,
-          },
-        ]);
+        const errMsg = "Aiyo, something went wrong on my end. Try again?";
+        const id = streamingMsgIdRef.current;
+        if (id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, content: errMsg } : m))
+          );
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `err-${Date.now()}`,
+              role: "assistant",
+              content: errMsg,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       } finally {
         setIsLoading(false);
+        setIsStreaming(false);
       }
     },
     [messages, cart, deliveryCity, isLoading]
@@ -156,6 +300,8 @@ export default function KiraChat() {
         {cartCount > 0 ? (
           <button
             onClick={() => setCartOpen((o) => !o)}
+            aria-label={`${cartOpen ? "Close" : "Open"} cart — ${cartCount} item${cartCount === 1 ? "" : "s"}, total LKR ${cartTotal.toLocaleString()}`}
+            aria-expanded={cartOpen}
             className={cn(
               "flex items-center gap-1.5 bg-kap-yellow text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full transition-transform shadow-sm",
               cartBounce ? "scale-110" : "scale-100"
@@ -171,12 +317,16 @@ export default function KiraChat() {
 
       {/* ── Cart drawer ────────────────────────────────────────────── */}
       {cartOpen && cartCount > 0 && (
-        <div className="shrink-0 bg-white border-b border-kira-border px-4 py-3 animate-fade-up shadow-sm z-10">
+        <div
+          role="region"
+          aria-label="Your cart"
+          className="shrink-0 bg-white border-b border-kira-border px-4 py-3 animate-fade-up shadow-sm z-10"
+        >
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] uppercase tracking-widest font-semibold text-kira-muted">
               Your cart
             </p>
-            <button onClick={() => setCartOpen(false)}>
+            <button onClick={() => setCartOpen(false)} aria-label="Close cart">
               <X className="w-3.5 h-3.5 text-kira-muted hover:text-kira-text" />
             </button>
           </div>
@@ -201,10 +351,14 @@ export default function KiraChat() {
       )}
 
       {/* ── Messages ───────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 dot-grid">
+      <main
+        role="log"
+        aria-live="polite"
+        aria-label="Conversation with Kira"
+        className="flex-1 overflow-y-auto px-4 py-4 dot-grid"
+      >
         {messages.map((msg) => (
           <div key={msg.id}>
-            {/* Thinking summary above each Kira reply */}
             {msg.role === "assistant" && msg.thinkingMs && (
               <ThinkingDone thinkingMs={msg.thinkingMs} />
             )}
@@ -216,7 +370,7 @@ export default function KiraChat() {
             />
           </div>
         ))}
-        {isLoading && <ThinkingLive />}
+        {isLoading && !isStreaming && <ThinkingLive />}
         <div ref={bottomRef} />
       </main>
 
@@ -249,7 +403,7 @@ export default function KiraChat() {
         </div>
       )}
 
-      {/* ── Chat input (from 21st.dev Alwurts/chat-input) ──────────── */}
+      {/* ── Chat input ──────────────────────────────────────────────── */}
       <div className="shrink-0 px-4 pb-4 pt-3 bg-white border-t border-kira-border">
         <ChatInput
           value={input}

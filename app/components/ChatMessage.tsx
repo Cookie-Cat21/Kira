@@ -1,12 +1,8 @@
 "use client";
 
-/**
- * ChatMessage — inspired by jakobhoeg/chat-bubble on 21st.dev
- * Clean bubbles: Kira on left (lavender bg), user on right (Kapruka purple).
- */
-
 import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
+import OrderTracker from "./OrderTracker";
 import type { KiraMessage, KiraProduct, CartItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +21,6 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
 
-  /* ── User bubble ─────────────────────────────────────────────── */
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
@@ -36,7 +31,6 @@ export default function ChatMessage({
     );
   }
 
-  /* ── Kira bubble ─────────────────────────────────────────────── */
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
@@ -63,19 +57,31 @@ export default function ChatMessage({
 
         {/* Product cards carousel */}
         {message.products && message.products.length > 0 && (
-          <div className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4">
+          <div
+            role="list"
+            aria-label={`${message.products.length} product suggestions`}
+            className="flex gap-3 overflow-x-auto pb-1 -mr-4 pr-4"
+          >
             {message.products.map((product, i) => (
-              <div key={product.id} style={{ animationDelay: `${i * 0.07}s` }}>
+              <div
+                key={product.id}
+                role="listitem"
+                style={{ animationDelay: `${i * 0.07}s` }}
+              >
                 <ProductCard
                   product={product}
                   cart={cart}
                   onAddToCart={onAddToCart}
                   deliveryCity={deliveryCity}
+                  deliveryInfo={message.deliveryInfo}
                 />
               </div>
             ))}
           </div>
         )}
+
+        {/* Order tracking timeline */}
+        {message.tracking && <OrderTracker tracking={message.tracking} />}
 
         {/* Pay link CTA */}
         {message.payLink && (
