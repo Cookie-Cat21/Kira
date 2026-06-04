@@ -85,6 +85,12 @@ export async function POST(req: NextRequest) {
           if (!props) return schema;
           const relaxed = Object.fromEntries(
             Object.entries(props).map(([k, v]) => {
+              // Strip enum constraints on strings — the model may pass valid-but-unlisted
+              // values (e.g. sort:"popular") that cause Groq 400 schema rejections.
+              if (v.type === "string" && v.enum) {
+                const { enum: _e, ...rest } = v;
+                return [k, rest];
+              }
               if (v.type === "integer" || v.type === "number") {
                 const { type: _t, ...rest } = v;
                 return [k, { ...rest, anyOf: [{ type: v.type }, { type: "string" }] }];
@@ -290,11 +296,26 @@ export async function POST(req: NextRequest) {
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
           try {
+            // Last-resort model has tight TPM — drop tool schemas so the request fits.
+            // Inject a system note so it doesn't hallucinate product results.
+            const isLastModel = modelIndex === MODELS.length - 1;
+            const reqTools = !isLastModel && tools.length > 0 ? tools : undefined;
+            const reqMessages = isLastModel
+              ? [
+                  {
+                    ...currentMessages[0],
+                    content:
+                      (currentMessages[0].content as string) +
+                      "\n\nIMPORTANT: You currently have NO access to the Kapruka catalog. Do NOT invent, list, or describe any products, prices, or availability. Instead tell the user you're having trouble connecting to Kapruka right now and ask them to try again in a moment.",
+                  },
+                  ...currentMessages.slice(1),
+                ]
+              : currentMessages;
             response = await getGroq().chat.completions.create({
               model: MODELS[modelIndex],
-              messages: currentMessages,
-              tools: tools.length > 0 ? tools : undefined,
-              tool_choice: tools.length > 0 ? "auto" : undefined,
+              messages: reqMessages,
+              tools: reqTools,
+              tool_choice: reqTools ? "auto" : undefined,
               max_tokens: 512,
             });
           } catch (err) {
@@ -305,13 +326,13 @@ export async function POST(req: NextRequest) {
             };
             const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
 
-            if (apiErr?.status === 429) {
+            if (apiErr?.status === 429 || apiErr?.status === 413) {
               if (modelIndex < MODELS.length - 1) {
                 modelIndex++;
                 round--;
                 continue;
               }
-              // All models rate-limited — return a graceful in-character message
+              // All models rate-limited or request too large — graceful in-character message
               finalText =
                 "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?";
               break;
