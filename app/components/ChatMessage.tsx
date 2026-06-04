@@ -52,7 +52,7 @@ function ProductCarousel({
   if (!message.products?.length) return null;
 
   return (
-    <div className="relative max-w-[400px] overflow-hidden">
+    <div className="relative max-w-full overflow-hidden">
       {/* Left arrow */}
       {canLeft && (
         <button
