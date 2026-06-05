@@ -153,7 +153,7 @@ export default function CartDrawer() {
                                 updateQty(item.product.id, item.quantity - 1)
                               }
                               aria-label={`Decrease quantity for ${item.product.name}`}
-                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-white text-kira-text transition-colors hover:border-kap-purple/40"
+                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-kira-surface text-kira-text transition-colors hover:border-kap-purple/40"
                             >
                               <Minus className="size-3" />
                             </button>
@@ -166,7 +166,7 @@ export default function CartDrawer() {
                                 updateQty(item.product.id, item.quantity + 1)
                               }
                               aria-label={`Increase quantity for ${item.product.name}`}
-                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-white text-kira-text transition-colors hover:border-kap-purple/40"
+                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-kira-surface text-kira-text transition-colors hover:border-kap-purple/40"
                             >
                               <Plus className="size-3" />
                             </button>

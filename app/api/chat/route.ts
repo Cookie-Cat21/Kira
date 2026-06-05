@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts } = body;
+        const { messages, cart, deliveryCity, deliveryDate, lastProducts, language } = body;
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
@@ -239,11 +239,24 @@ export async function POST(req: NextRequest) {
         const compactSummary =
           olderMessages.length > 0 ? buildCompactSummary(olderMessages) : "";
 
+        // Explicit language instruction — no guessing needed.
+        // The user's selector controls response language only; Kira always
+        // understands input in any script (Sinhala Unicode, Romanized Sinhala,
+        // Tanglish, English). Fallback models ignore script-detection heuristics
+        // and hallucinate garbled Sinhala, so we lock the output language here.
+        const langInstruction =
+          language === "si"
+            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Sinhala script (Unicode). Every word of your response must be written in Sinhala Unicode characters. Do NOT use Latin script, Romanized Sinhala, or English in your response. You can understand input in any language or script — only your RESPONSES must be in Sinhala Unicode."
+            : language === "ta"
+            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Tamil script (Unicode). Every word of your response must be written in Tamil Unicode characters. Do NOT use Latin script or English in your response. You can understand input in any language or script — only your RESPONSES must be in Tamil Unicode."
+            : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English (Tanglish is fine — casual English with natural Sinhala/Tamil phrases). Do NOT write Sinhala Unicode script or Tamil Unicode script in your response, regardless of what language the user writes in.";
+
         const systemContent =
           KIRA_SYSTEM_PROMPT +
           cartContext +
           deliveryContext +
           deliveryDateContext +
+          langInstruction +
           (compactSummary ? `\n\n${compactSummary}` : "");
 
         let currentMessages: GroqMessage[] = [
@@ -261,6 +274,10 @@ export async function POST(req: NextRequest) {
         let modelIndex = 0;
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
         let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
+        // Track which tools ran this request so stagnation doesn't misfire
+        // during checkout flows (list_delivery_cities + check_delivery + create_order
+        // are all meaningful progress even though they collect no products).
+        const toolsCalledThisRequest = new Set<string>();
         // Query chain tracking — chainId spans the full request, depth = round index.
         // Logged server-side; emitted as a no-op "chain" SSE the client ignores.
         const chainId = Math.random().toString(36).slice(2, 10);
@@ -329,6 +346,7 @@ export async function POST(req: NextRequest) {
             const needsWrap = toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
             const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
 
+            toolsCalledThisRequest.add(toolName);
             let resultContent: unknown;
             try {
               if (toolName === "kapruka_check_delivery") {
@@ -607,7 +625,14 @@ export async function POST(req: NextRequest) {
           // ── Diminishing returns / stuck detection ─────────────────────────
           // If we've burned 3+ rounds and still have no products and no text,
           // the loop is spinning. Surface a graceful fallback and exit.
-          if (round >= 2 && collectedProducts.length === 0 && !finalText) {
+          // Exception: checkout tool chains (list_delivery_cities → check_delivery
+          // → create_order) make real progress without collecting products — never
+          // fire stagnation while those are in flight.
+          const isCheckoutToolChain =
+            toolsCalledThisRequest.has("kapruka_list_delivery_cities") ||
+            toolsCalledThisRequest.has("kapruka_check_delivery") ||
+            toolsCalledThisRequest.has("kapruka_create_order");
+          if (round >= 2 && collectedProducts.length === 0 && !finalText && !isCheckoutToolChain) {
             console.log(`[Kira ${chainId}] stuck after ${round + 1} rounds — bailing`);
             stagnantRounds++;
             if (stagnantRounds >= 2) {
@@ -1128,7 +1153,26 @@ const CONCURRENT_SAFE_TOOLS = new Set([
 // ─── Tool use summary (8B model) ──────────────────────────────────────────────
 // Fired async after each tool batch. Uses the cheap 8B model so it resolves in
 // ~0.5s — well within the next model call's latency — making it essentially free.
+// Human-readable labels for the ThinkingDone summary shown to users.
+const TOOL_SUMMARY_LABELS: Record<string, string> = {
+  kapruka_search_products: "Searched Kapruka catalog",
+  kapruka_list_categories: "Listed Kapruka categories",
+  kapruka_check_delivery: "Checked delivery availability",
+  kapruka_get_product: "Retrieved product details",
+  kapruka_create_order: "Placed your order",
+  kapruka_list_delivery_cities: "Resolved delivery city",
+  kapruka_track_order: "Fetched order status",
+};
+
 async function generateToolSummary(toolNames: string[]): Promise<string> {
+  // Build summary from deterministic labels first — avoids the 8B model call
+  // leaking internal reasoning into the ThinkingBlock shown to users.
+  const known = toolNames
+    .map((n) => TOOL_SUMMARY_LABELS[n])
+    .filter(Boolean);
+  if (known.length > 0) return known.join(" · ");
+
+  // Fallback: ask 8B model, but sanitise the output before returning.
   try {
     const label = toolNames.map((n) => n.replace("kapruka_", "")).join(", ");
     const res = await getGroq().chat.completions.create({
@@ -1138,12 +1182,15 @@ async function generateToolSummary(toolNames: string[]): Promise<string> {
           role: "user",
           content:
             `Summarize these API calls in ≤8 words, past tense, no articles: ${label}. ` +
-            `Example: "Searched chocolates, checked Colombo delivery". Output the summary only.`,
+            `Example: "Searched chocolates, checked Colombo delivery". Output the summary only — no internal reasoning, no "I need", no "I will".`,
         },
       ],
       max_tokens: 32,
     });
-    return res.choices[0]?.message?.content?.trim() ?? "";
+    const raw = res.choices[0]?.message?.content?.trim() ?? "";
+    // Strip any lines that look like internal monologue (start with "I ")
+    const clean = raw.split(/[.\n]/).filter(l => !/^I\s/i.test(l.trim())).join(". ").trim();
+    return clean;
   } catch {
     return ""; // non-critical — swallow errors silently
   }

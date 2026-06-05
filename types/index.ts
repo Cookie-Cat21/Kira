@@ -117,6 +117,7 @@ export interface ChatRequest {
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  language?: "en" | "si" | "ta";
 }
 
 export interface ChatResponse {

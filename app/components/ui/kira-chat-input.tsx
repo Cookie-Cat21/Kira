@@ -99,6 +99,8 @@ interface KiraChatInputProps {
   onCancel?: () => void;
   placeholder?: string;
   className?: string;
+  language?: "en" | "si" | "ta";
+  onLanguageChange?: (lang: "en" | "si" | "ta") => void;
 }
 
 export function KiraChatInput({
@@ -107,6 +109,8 @@ export function KiraChatInput({
   onCancel,
   placeholder = "Ask for a gift, budget, city, or order number...",
   className,
+  language = "en" as "en" | "si" | "ta",
+  onLanguageChange,
 }: KiraChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<AttachedFile[]>([]);
@@ -273,6 +277,28 @@ export function KiraChatInput({
             </button>
 
             <div className="flex-1" />
+
+            {/* Language toggle */}
+            {onLanguageChange && (
+              <div className="flex items-center rounded-lg border border-white/[0.10] bg-white/[0.05] p-0.5 gap-0.5">
+                {(["en", "si", "ta"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => onLanguageChange(lang)}
+                    className={cn(
+                      "h-7 px-2.5 rounded-md text-[11px] font-semibold tracking-wide transition-all duration-150 active:scale-95",
+                      language === lang
+                        ? "bg-kap-purple text-white shadow-[0_1px_6px_rgba(64,41,112,0.5)]"
+                        : "text-white/35 hover:text-white/60"
+                    )}
+                    aria-label={lang === "en" ? "Reply in English" : lang === "si" ? "Reply in Sinhala" : "Reply in Tamil"}
+                  >
+                    {lang === "en" ? "EN" : lang === "si" ? "සිං" : "தமி"}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Send / Stop */}
             <button

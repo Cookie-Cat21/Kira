@@ -103,7 +103,8 @@ function formatLKR(amount: number) {
 }
 
 function buildOpeningMessage(): KiraMessage {
-  const greeting = stripDecorativeGlyphs(getContextualGreeting());
+  // getContextualGreeting is curated text — don't strip emoji/unicode from it.
+  const greeting = getContextualGreeting();
   return {
     id: "opening",
     role: "assistant",
@@ -136,6 +137,7 @@ export default function KiraChat() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate] = useState<string | undefined>();
@@ -251,6 +253,7 @@ export default function KiraChat() {
             deliveryCity,
             deliveryDate,
             lastProducts: lastWithProducts?.products,
+            language,
           }),
         });
         if (!res.ok || !res.body) throw new Error("API error");
@@ -576,6 +579,8 @@ export default function KiraChat() {
               onSendMessage={sendMessage}
               isLoading={isLoading}
               onCancel={cancelActiveResponse}
+              language={language}
+              onLanguageChange={setLanguage}
             />
           </div>
 
@@ -686,6 +691,8 @@ export default function KiraChat() {
                 onSendMessage={sendMessage}
                 isLoading={isLoading}
                 onCancel={cancelActiveResponse}
+                language={language}
+                onLanguageChange={setLanguage}
               />
               <p className="mt-2 text-center text-[10px] text-white/25">
                 Powered by{" "}
