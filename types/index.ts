@@ -103,6 +103,7 @@ export interface KiraMessage {
   timestamp: number;
   thinkingMs?: number;
   steps?: string[];          // actual tool steps that fired during this turn
+  thinkingSummary?: string;  // AI-generated one-liner summary of the tool batch
 }
 
 export interface CartItem {
