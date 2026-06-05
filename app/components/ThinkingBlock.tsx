@@ -98,9 +98,10 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
 interface ThinkingDoneProps {
   thinkingMs: number;
   steps?: string[];
+  summary?: string; // AI-generated one-liner from the 8B model
 }
 
-export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
+export function ThinkingDone({ thinkingMs, steps, summary }: ThinkingDoneProps) {
   const [open, setOpen] = useState(false);
   const seconds = (thinkingMs / 1000).toFixed(1);
   const hasSteps = steps && steps.length > 0;
@@ -122,7 +123,11 @@ export function ThinkingDone({ thinkingMs, steps }: ThinkingDoneProps) {
         ) : null}
         <span className={hasSteps ? "group-hover:underline underline-offset-2" : ""}>
           Thought for {seconds}s
-          {hasSteps && ` · ${steps!.length} step${steps!.length > 1 ? "s" : ""}`}
+          {summary
+            ? ` · ${summary}`
+            : hasSteps
+            ? ` · ${steps!.length} step${steps!.length > 1 ? "s" : ""}`
+            : ""}
         </span>
       </button>
 

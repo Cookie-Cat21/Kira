@@ -10,36 +10,25 @@ import {
 import Image from "next/image";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
   BadgeCheck,
   CakeSlice,
-  CalendarDays,
   Flower2,
   Gift,
-  MapPin,
   Package,
-  PackageCheck,
-  Search,
   Shirt,
   ShoppingBag,
-  ShoppingCart,
   Smartphone,
-  Sparkles,
   Truck,
-  UserRound,
-  Wallet,
 } from "lucide-react";
 import KiraLoader from "./components/KiraLoader";
 import McpStatusBadge from "./components/McpStatusBadge";
 import ChatMessage from "./components/ChatMessage";
 import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
-import CommerceRail, { type CommerceContext } from "./components/CommerceRail";
 import KiraChatInput from "./components/ui/kira-chat-input";
 import { useCart } from "./context/CartContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
-  CartItem,
   CheckoutInfo,
   DeliveryQuote,
   KiraMessage,
@@ -56,48 +45,6 @@ const currencyFormatter = new Intl.NumberFormat("en-LK", {
 });
 
 type KiraIcon = ComponentType<{ className?: string }>;
-
-// Client-side heuristic context detection from user message text.
-// Not perfect — server emits ground-truth `context` SSE events for values it
-// can verify (e.g. budget from search params). This gives instant visual feedback.
-function detectContextFromMessage(text: string): Partial<{
-  budget: string;
-  occasion: string;
-  recipient: string;
-}> {
-  const lower = text.toLowerCase();
-  const ctx: Partial<{ budget: string; occasion: string; recipient: string }> = {};
-
-  const budgetMatch = lower.match(
-    /\b(?:budget|under|below|within|max(?:imum)?|up\s*to|less\s*than)\s*(?:lkr\s*)?([\d,]+)/
-  );
-  if (budgetMatch) {
-    const amount = parseInt(budgetMatch[1].replace(/,/g, ""), 10);
-    if (!isNaN(amount) && amount > 0)
-      ctx.budget = `Under LKR ${amount.toLocaleString("en-LK")}`;
-  }
-
-  if (/\bfather'?s?\s*day\b/i.test(lower)) ctx.occasion = "Father's Day";
-  else if (/\bmother'?s?\s*day\b/i.test(lower)) ctx.occasion = "Mother's Day";
-  else if (/\bbirthday\b/i.test(lower)) ctx.occasion = "Birthday";
-  else if (/\banniversary\b/i.test(lower)) ctx.occasion = "Anniversary";
-  else if (/\bchristmas\b/i.test(lower)) ctx.occasion = "Christmas";
-  else if (/\bwedding\b/i.test(lower)) ctx.occasion = "Wedding";
-  else if (/\bvesak\b/i.test(lower)) ctx.occasion = "Vesak";
-  else if (/\bavurudu\b/i.test(lower)) ctx.occasion = "Avurudu";
-  else if (/\bposon\b/i.test(lower)) ctx.occasion = "Poson";
-  else if (/\bnew year\b/i.test(lower)) ctx.occasion = "New Year";
-
-  const recipientMatch = lower.match(
-    /\bfor (?:my )?(dad|appa|thaththa|thaththi|amma|mum|mom|wife|husband|girlfriend|boyfriend|brother|sister|friend|boss|teacher|colleague)\b/
-  );
-  if (recipientMatch) {
-    const r = recipientMatch[1];
-    ctx.recipient = r.charAt(0).toUpperCase() + r.slice(1);
-  }
-
-  return ctx;
-}
 
 // Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
 const CITY_REGEX =
@@ -147,53 +94,12 @@ const CATEGORIES: {
   },
 ];
 
-const CONCIERGE_PROMPTS: {
-  eyebrow: string;
-  label: string;
-  value: string;
-  icon: KiraIcon;
-  tone: string;
-}[] = [
-  {
-    eyebrow: "Fast route",
-    label: "Father's Day under LKR 10,000",
-    value: "Find a Father's Day gift for my dad under LKR 10,000",
-    icon: Gift,
-    tone: "border-kap-yellow/80 bg-kap-yellow/15 text-kira-text",
-  },
-  {
-    eyebrow: "Fresh delivery",
-    label: "Flowers and cake to Colombo",
-    value: "I want to send flowers and a cake to Colombo",
-    icon: Flower2,
-    tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
-  },
-  {
-    eyebrow: "Order help",
-    label: "Track an existing order",
-    value: "I want to track my Kapruka order",
-    icon: PackageCheck,
-    tone: "border-violet-100 bg-violet-50 text-violet-800",
-  },
-];
-
 function stripDecorativeGlyphs(text: string) {
   return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function formatLKR(amount: number) {
   return currencyFormatter.format(amount);
-}
-
-function formatDeliveryDate(raw?: string) {
-  if (!raw) return undefined;
-  const date = new Date(`${raw}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return raw;
-  return date.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
 }
 
 function buildOpeningMessage(): KiraMessage {
@@ -206,6 +112,23 @@ function buildOpeningMessage(): KiraMessage {
   };
 }
 
+function KaprukaSmileMark() {
+  return (
+    <svg
+      viewBox="326 40 114 58"
+      className="mx-auto mb-5 h-auto w-28 sm:w-36"
+      data-testid="kapruka-smile-mark"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="#f8da08"
+        d="M402.986267,67.193703 C411.020386,61.704575 416.238495,54.617882 418.415070,45.324123 C424.890198,45.324123 431.318146,45.324123 437.750275,45.324123 C437.129608,66.508202 416.547272,90.716156 386.719543,92.762413 C356.255249,94.852348 331.226654,71.531693 328.261810,45.118824 C334.079407,45.118824 339.857269,44.962524 345.612488,45.253811 C346.731842,45.310467 348.364868,46.921478 348.743073,48.133221 C353.218384,62.471653 368.281891,74.652725 385.670837,72.854988 C391.454773,72.257019 396.988068,69.234306 402.986267,67.193703 z"
+      />
+    </svg>
+  );
+}
+
 export default function KiraChat() {
   const [appReady, setAppReady] = useState(false);
   const [messages, setMessages] = useState<KiraMessage[]>([
@@ -215,10 +138,7 @@ export default function KiraChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
-  const [deliveryDate, setDeliveryDate] = useState<string | undefined>();
-  const [sessionBudget, setSessionBudget] = useState<string | undefined>();
-  const [sessionOccasion, setSessionOccasion] = useState<string | undefined>();
-  const [sessionRecipient, setSessionRecipient] = useState<string | undefined>();
+  const [deliveryDate] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const {
     cart,
@@ -239,28 +159,13 @@ export default function KiraChat() {
   const pendingTrackingRef = useRef<OrderTracking | null>(null);
   const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
   const pendingProductsRef = useRef<KiraProduct[] | null>(null);
+  const pendingStepSummaryRef = useRef<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
-
-  const commerceContext: CommerceContext = {
-    city: deliveryCity,
-    deliveryDate,
-    budget: sessionBudget,
-    occasion: sessionOccasion,
-    recipient: sessionRecipient,
-  };
-
-  function handleCommerceChange(updates: Partial<CommerceContext>) {
-    if ("city" in updates) setDeliveryCity(updates.city);
-    if ("deliveryDate" in updates) setDeliveryDate(updates.deliveryDate);
-    if ("budget" in updates) setSessionBudget(updates.budget);
-    if ("occasion" in updates) setSessionOccasion(updates.occasion);
-    if ("recipient" in updates) setSessionRecipient(updates.recipient);
-  }
 
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
@@ -297,12 +202,6 @@ export default function KiraChat() {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || isLoading) return;
-
-      // Instant context extraction — rail updates before Kira even responds
-      const detected = detectContextFromMessage(trimmed);
-      if (detected.budget) setSessionBudget(detected.budget);
-      if (detected.occasion) setSessionOccasion(detected.occasion);
-      if (detected.recipient) setSessionRecipient(detected.recipient);
 
       const userMsg: KiraMessage = {
         id: `user-${Date.now()}`,
@@ -429,8 +328,7 @@ export default function KiraChat() {
                   pendingProductsRef.current = payload.v as KiraProduct[];
                 }
               } else if (payload.t === "context") {
-                const ctx = payload.v as { budget?: string; city?: string };
-                if (ctx?.budget) setSessionBudget(ctx.budget);
+                const ctx = payload.v as { city?: string };
                 if (ctx?.city) setDeliveryCity(ctx.city);
               } else if (payload.t === "delivery") {
                 const info = payload.v as DeliveryQuote;
@@ -487,15 +385,19 @@ export default function KiraChat() {
                         : m
                     )
                   );
+              } else if (payload.t === "stepSummary") {
+                pendingStepSummaryRef.current = payload.v as string;
               } else if (payload.t === "done") {
                 const id = streamingMsgIdRef.current;
                 const elapsed = Date.now() - thinkingStartRef.current;
+                const stepSummary = pendingStepSummaryRef.current ?? undefined;
+                pendingStepSummaryRef.current = null;
                 setLiveSteps((completedSteps) => {
                   if (id) {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === id
-                          ? { ...m, thinkingMs: elapsed, steps: completedSteps }
+                          ? { ...m, thinkingMs: elapsed, steps: completedSteps, thinkingSummary: stepSummary }
                           : m
                       )
                     );
@@ -509,6 +411,7 @@ export default function KiraChat() {
                         timestamp: Date.now(),
                         thinkingMs: elapsed,
                         steps: completedSteps,
+                        thinkingSummary: stepSummary,
                       },
                     ]);
                   }
@@ -609,15 +512,12 @@ export default function KiraChat() {
           <Image
             src="/kira-logo.svg"
             alt="Kira"
-            width={96}
-            height={40}
+            width={120}
+            height={56}
             className="object-contain"
-            style={{ width: "auto", height: "2rem" }}
+            style={{ width: "auto", height: "2.75rem" }}
             priority
           />
-          <span className="font-display text-2xl leading-none text-kira-text">
-            Kira
-          </span>
           <div className="hidden h-8 items-center gap-2.5 border-l border-white/10 pl-3.5 sm:flex">
             <span className="text-xs font-semibold tracking-wide text-white/35">
               by Kapruka
@@ -656,41 +556,22 @@ export default function KiraChat() {
         )}
       </header>
 
-      {!isOnlyOpening && (
-        <CommerceRail context={commerceContext} onChange={handleCommerceChange} />
-      )}
-
       {isOnlyOpening ? (
-        /* ── Welcome screen: centered floating input ── */
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
-          {/* Greeting */}
           <div className="mb-8 text-center animate-fade-up">
-            <div className="mb-5 flex justify-center">
-              <Image
-                src="/kira-logo.svg"
-                alt="Kira"
-                width={64}
-                height={64}
-                className="object-contain opacity-90"
-                style={{ width: "auto", height: "3.5rem" }}
-              />
-            </div>
-            <h1
-              className="font-display text-4xl sm:text-5xl leading-[1.05] mb-3"
-              style={{
-                background: "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(210,190,255,0.9) 60%, rgba(248,218,8,0.85) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
+            <KaprukaSmileMark />
+            <h1 className="mb-3 font-display text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
               What would you like<br className="hidden sm:block" /> to gift today?
             </h1>
-            <p className="text-white/40 text-sm">Live Kapruka catalog · Real delivery · Checkout</p>
+            <p className="text-white/40 text-sm">
+              Live Kapruka catalog · Real delivery · Checkout
+            </p>
           </div>
 
-          {/* Input */}
-          <div className="w-full max-w-2xl animate-fade-up" style={{ animationDelay: "60ms" }}>
+          <div
+            className="w-full max-w-2xl animate-fade-up"
+            style={{ animationDelay: "60ms" }}
+          >
             <KiraChatInput
               onSendMessage={sendMessage}
               isLoading={isLoading}
@@ -698,56 +579,64 @@ export default function KiraChat() {
             />
           </div>
 
-          {/* Category + occasion chips */}
-          <div className="mt-4 w-full max-w-2xl animate-fade-up space-y-3" style={{ animationDelay: "120ms" }}>
-            {/* Category row */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-none">
-              {CATEGORIES.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.label}
-                    type="button"
-                    onClick={() => sendMessage(cat.value)}
-                    className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/60 transition-all hover:text-white/90 hover:bg-white/[0.09] active:scale-95"
-                    style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,100,255,0.18)" }}
-                  >
-                    <Icon className="size-4" />
-                    {cat.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 px-2">
-              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <span className="text-[10px] font-medium uppercase tracking-widest text-white/25">or</span>
-              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.06)" }} />
-            </div>
-
-            {/* Occasion / quick-start chips */}
-            <div className="flex flex-wrap justify-center gap-2">
-              {OCCASION_CHIPS.map((chip) => (
+          <div
+            className="mt-4 flex w-full max-w-2xl flex-wrap justify-center gap-2 animate-fade-up"
+            style={{ animationDelay: "120ms" }}
+          >
+            {[
+              // Lead with time-sensitive occasions (urgent chip first), then categories
+              ...OCCASION_CHIPS.slice(0, 4)
+                .map((chip) => ({
+                  label: stripDecorativeGlyphs(chip.label),
+                  value: chip.value,
+                  Icon: null,
+                  urgent: chip.urgent,
+                }))
+                .filter(
+                  (option) =>
+                    option.label !== "Flowers & cake" &&
+                    option.label !== "Just browsing"
+                )
+                .sort((a, b) => Number(b.urgent) - Number(a.urgent)),
+              ...CATEGORIES.slice(0, 4).map((category) => ({
+                label: category.label,
+                value: category.value,
+                Icon: category.icon,
+                urgent: false,
+              })),
+            ].map((option) => {
+              const Icon = option.Icon;
+              return (
                 <button
-                  key={chip.label}
+                  key={option.label}
                   type="button"
-                  onClick={() => sendMessage(chip.value)}
+                  onClick={() => sendMessage(option.value)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                    chip.urgent
-                      ? "border-kap-yellow bg-kap-yellow text-gray-950"
-                      : "border-white/[0.12] bg-white/[0.04] text-white/50 hover:text-white/80 hover:bg-white/[0.07]"
+                    "glass-chip inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold",
+                    option.urgent
+                      ? "text-gray-950"
+                      : "text-white/85 hover:text-white"
                   )}
+                  style={
+                    option.urgent
+                      ? {
+                          background:
+                            "linear-gradient(180deg, rgba(255,245,116,0.94), rgba(248,218,8,0.82))",
+                          borderColor: "rgba(255,246,126,0.95)",
+                          boxShadow:
+                            "inset 0 1px 0 rgba(255,255,255,0.58), inset 0 -1px 0 rgba(94,76,0,0.18), 0 12px 28px rgba(248,218,8,0.18)",
+                        }
+                      : undefined
+                  }
                 >
-                  {stripDecorativeGlyphs(chip.label)}
+                  {Icon && <Icon className="size-3.5" />}
+                  {option.label}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       ) : (
-        /* ── Chat view ── */
         <>
           <main
             role="log"
@@ -763,6 +652,7 @@ export default function KiraChat() {
                     <ThinkingDone
                       thinkingMs={msg.thinkingMs}
                       steps={msg.steps}
+                      summary={msg.thinkingSummary}
                     />
                   )}
                   <ChatMessage
@@ -786,7 +676,10 @@ export default function KiraChat() {
 
           <div
             className="glass-nav relative z-10 shrink-0"
-            style={{ borderTop: "1px solid rgba(148,100,255,0.18)", background: "rgba(10,6,20,0.72)" }}
+            style={{
+              borderTop: "1px solid rgba(148,100,255,0.18)",
+              background: "rgba(10,6,20,0.72)",
+            }}
           >
             <div className="mx-auto w-full max-w-3xl px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
               <KiraChatInput
@@ -819,189 +712,6 @@ export default function KiraChat() {
           onClose={() => setSelectedProduct(null)}
         />
       )}
-    </div>
-  );
-}
-
-function GiftConciergeWelcome({
-  greeting,
-  context,
-  onPrompt,
-}: {
-  greeting: string;
-  context: CommerceContext;
-  onPrompt: (text: string) => void;
-}) {
-  const deliveryValue =
-    context.city && context.deliveryDate
-      ? `${context.city}, ${formatDeliveryDate(context.deliveryDate)}`
-      : context.city ?? formatDeliveryDate(context.deliveryDate) ?? "Pick city and date";
-
-  return (
-    <div className="flex flex-1 flex-col justify-center pb-3">
-      <div className="grid gap-3 lg:grid-cols-12">
-        <section className="gift-slip glass-card-hero rounded-xl p-5 sm:p-6 lg:col-span-8 lg:p-8">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
-              <Gift className="size-4" />
-            </span>
-            <div>
-              <p className="text-xs font-bold uppercase text-white/40">
-                Kira gift desk
-              </p>
-              <p className="text-sm font-semibold text-kira-leaf">
-                Kapruka catalog, delivery, checkout
-              </p>
-            </div>
-          </div>
-
-          <h1
-            className="max-w-2xl text-balance font-display text-3xl leading-[1.05] sm:text-5xl lg:text-[3.5rem]"
-            style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(210,190,255,0.88) 60%, rgba(248,218,8,0.85) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-          >
-            Send a better gift, without the catalog hunt.
-          </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-sm leading-6 text-white/60 sm:text-base">
-            {greeting}
-          </p>
-
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
-            <BriefRow
-              icon={Sparkles}
-              label="Occasion"
-              value={context.occasion ?? "Father's Day, birthday, thank you"}
-            />
-            <BriefRow
-              icon={UserRound}
-              label="Recipient"
-              value={context.recipient ?? "Dad, amma, friend, colleague"}
-            />
-            <BriefRow
-              icon={Wallet}
-              label="Budget"
-              value={context.budget ?? "Any range"}
-            />
-            <BriefRow icon={MapPin} label="Delivery" value={deliveryValue} />
-          </div>
-        </section>
-
-        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-4 lg:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/40">
-              Start with a route
-            </p>
-            <Search className="size-4 text-white/30" />
-          </div>
-          <div className="space-y-2">
-            {CONCIERGE_PROMPTS.map((prompt) => {
-              const Icon = prompt.icon;
-              return (
-                <button
-                  key={prompt.label}
-                  type="button"
-                  onClick={() => onPrompt(prompt.value)}
-                  className="group flex w-full items-center gap-3 rounded-lg p-3 text-left transition-all hover:bg-white/[0.07]"
-                  style={{ background: "rgba(255,255,255,0.055)", border: "1px solid rgba(148,100,255,0.15)" }}
-                >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md" style={{ background: "rgba(255,255,255,0.08)" }}>
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase text-white/40">
-                      {prompt.eyebrow}
-                    </span>
-                    <span className="line-clamp-2 block text-sm font-bold leading-snug">
-                      {prompt.label}
-                    </span>
-                  </span>
-                  <ArrowRight className="size-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5 group-hover:opacity-80" />
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-8 lg:p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold text-white/85">
-              Shop by gift type
-            </h2>
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/30">
-              <Search className="size-3" />
-              Live Kapruka search
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {CATEGORIES.map((category) => {
-              const Icon = category.icon;
-              return (
-                <button
-                  key={category.label}
-                  type="button"
-                  onClick={() => onPrompt(category.value)}
-                  className="flex min-h-24 flex-col justify-between rounded-lg p-3 text-left transition-all hover:bg-white/[0.07] text-white/80"
-                  style={{ background: "rgba(255,255,255,0.065)", border: "1px solid rgba(148,100,255,0.15)" }}
-                >
-                  <Icon className="size-5" />
-                  <span className="text-sm font-bold">{category.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="glass-card-vivid rounded-xl p-4 lg:col-span-4 lg:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/40">
-              Popular now
-            </p>
-            <Sparkles className="size-4 text-purple-400" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {OCCASION_CHIPS.map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                onClick={() => onPrompt(chip.value)}
-                className={cn(
-                  "rounded-lg border px-3 py-2 text-xs font-bold transition-colors",
-                  chip.urgent
-                    ? "border-kap-yellow bg-kap-yellow text-gray-950"
-                    : "border-white/[0.14] bg-white/[0.055] text-white/70 hover:text-white hover:bg-white/[0.09] hover:border-white/25"
-                )}
-              >
-                {stripDecorativeGlyphs(chip.label)}
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function BriefRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: KiraIcon;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-center gap-3 rounded-lg p-3" style={{ background: "rgba(64,41,112,0.18)", border: "1px solid rgba(148,100,255,0.18)" }}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md text-purple-300" style={{ background: "rgba(64,41,112,0.4)" }}>
-        <Icon className="size-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[10px] font-bold uppercase text-white/35">
-          {label}
-        </span>
-        <span className="block truncate text-sm font-semibold text-white/80">
-          {value}
-        </span>
-      </span>
     </div>
   );
 }

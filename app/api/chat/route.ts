@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
           deliveryDateContext +
           (compactSummary ? `\n\n${compactSummary}` : "");
 
-        const currentMessages: GroqMessage[] = [
+        let currentMessages: GroqMessage[] = [
           { role: "system", content: systemContent },
           ...recentMessages.map((m) => ({
             role: m.role as "user" | "assistant",
@@ -259,6 +259,11 @@ export async function POST(req: NextRequest) {
         let checkoutInfo: CheckoutInfo | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
+        let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
+        let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
+        // Query chain tracking — chainId spans the full request, depth = round index.
+        // Logged server-side; emitted as a no-op "chain" SSE the client ignores.
+        const chainId = Math.random().toString(36).slice(2, 10);
 
         const JSON_FORMAT_TOOLS = [
           "kapruka_search_products",
@@ -304,73 +309,97 @@ export async function POST(req: NextRequest) {
             return { toolCall, toolName, toolArgs };
           });
 
-          // Run all MCP calls concurrently. Results are collected in original
-          // order so currentMessages.push order matches the assistant's tool_calls
-          // array — Groq requires tool_result messages to align with tool_use IDs.
-          const results = await Promise.all(
-            parsedCalls.map(async ({ toolCall, toolName, toolArgs: rawArgs }) => {
-              let toolArgs = { ...rawArgs };
+          // Single-tool executor — shared by both the safe (parallel) and
+          // exclusive (sequential) paths below.
+          type ParsedCall = { toolCall: Groq.Chat.Completions.ChatCompletionMessageToolCall; toolName: string; toolArgs: Record<string, unknown> };
+          async function executeSingleTool({ toolCall, toolName, toolArgs: rawArgs }: ParsedCall) {
+            let toolArgs = { ...rawArgs };
 
-              if (JSON_FORMAT_TOOLS.includes(toolName)) {
-                toolArgs = { ...toolArgs, response_format: "json" };
-              }
+            if (JSON_FORMAT_TOOLS.includes(toolName)) {
+              toolArgs = { ...toolArgs, response_format: "json" };
+            }
 
-              const toolIndex = mcpTools.findIndex((t) => t.name === toolName);
-              const flatSchema =
-                toolIndex >= 0
-                  ? (tools[toolIndex]?.function?.parameters as Record<string, unknown>)
-                  : null;
-              if (flatSchema) toolArgs = coerceArgTypes(toolArgs, flatSchema);
+            const toolIndex = mcpTools.findIndex((t) => t.name === toolName);
+            const flatSchema =
+              toolIndex >= 0
+                ? (tools[toolIndex]?.function?.parameters as Record<string, unknown>)
+                : null;
+            if (flatSchema) toolArgs = coerceArgTypes(toolArgs, flatSchema);
 
-              const needsWrap = toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
-              const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
+            const needsWrap = toolIndex >= 0 && toolMeta[toolIndex]?.needsParamsWrap;
+            const mcpArgs = needsWrap ? { params: toolArgs } : toolArgs;
 
-              let resultContent: unknown;
-              try {
-                if (toolName === "kapruka_check_delivery") {
-                  const city = String(toolArgs.city ?? "").toLowerCase().trim();
-                  const date = String(toolArgs.delivery_date ?? "").trim();
-                  const product = String(toolArgs.product_id ?? "").trim();
-                  const cacheKey = `${city}|${date}|${product}`;
-                  if (city && deliveryCacheStore.has(cacheKey)) {
-                    resultContent = deliveryCacheStore.get(cacheKey);
-                  } else {
-                    const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
-                    resultContent = toolResult.content;
-                    if (city) deliveryCacheStore.set(cacheKey, toolResult.content);
-                  }
+            let resultContent: unknown;
+            try {
+              if (toolName === "kapruka_check_delivery") {
+                const city = String(toolArgs.city ?? "").toLowerCase().trim();
+                const date = String(toolArgs.delivery_date ?? "").trim();
+                const product = String(toolArgs.product_id ?? "").trim();
+                const cacheKey = `${city}|${date}|${product}`;
+                if (city && deliveryCacheStore.has(cacheKey)) {
+                  resultContent = deliveryCacheStore.get(cacheKey);
                 } else {
                   const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
                   resultContent = toolResult.content;
+                  if (city) deliveryCacheStore.set(cacheKey, toolResult.content);
                 }
-              } catch (mcpErr) {
-                const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
-                resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
+              } else {
+                const toolResult = await callMcpTool(mcpClient!, toolName, mcpArgs);
+                resultContent = toolResult.content;
               }
+            } catch (mcpErr) {
+              const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
+              resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
+            }
 
-              // Emit SSE side-effects as each tool completes (order doesn't matter
-              // for the UI — delivery/products/tracking cards are independent).
-              const resultText = formatMcpContentForModel(resultContent);
+            // Emit SSE side-effects as each tool completes.
+            const resultText = formatMcpContentForModel(resultContent);
 
-              if (toolName === "kapruka_check_delivery") {
-                const deliveryInfo = extractDeliveryInfoFromMcp(resultContent);
-                if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
-              }
-              if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
-                collectedProducts.push(...extractProductsFromMcp(resultContent));
-              }
-              if (toolName === "kapruka_create_order") {
-                checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
-                payLink = checkoutInfo?.checkoutUrl;
-              }
-              if (toolName === "kapruka_track_order") {
-                const tracking = extractTrackingFromMcp(resultContent);
-                if (tracking) controller.enqueue(sse("tracking", tracking));
-              }
+            if (toolName === "kapruka_check_delivery") {
+              const deliveryInfo = extractDeliveryInfoFromMcp(resultContent);
+              if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+            }
+            if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
+              collectedProducts.push(...extractProductsFromMcp(resultContent));
+            }
+            if (toolName === "kapruka_create_order") {
+              checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
+              payLink = checkoutInfo?.checkoutUrl;
+            }
+            if (toolName === "kapruka_track_order") {
+              const tracking = extractTrackingFromMcp(resultContent);
+              if (tracking) controller.enqueue(sse("tracking", tracking));
+            }
 
-              return { toolCall, toolName, resultText };
-            })
+            return { toolCall, toolName, resultText };
+          }
+
+          // Concurrency-classified execution:
+          // - Safe (read-only) tools run in parallel via Promise.all
+          // - Exclusive tools (create_order) run sequentially after, never overlapping
+          // Results are merged back into original call order for currentMessages.
+          const safeCalls = parsedCalls.filter((c) => CONCURRENT_SAFE_TOOLS.has(c.toolName));
+          const exclusiveCalls = parsedCalls.filter((c) => !CONCURRENT_SAFE_TOOLS.has(c.toolName));
+
+          // Fire summary generation concurrently with tool execution — 8B model
+          // resolves in ~0.5s, well within the tool call latency window.
+          const summaryPromise = generateToolSummary(parsedCalls.map((c) => c.toolName));
+
+          const safeResults = await Promise.all(safeCalls.map(executeSingleTool));
+          const exclusiveResults: typeof safeResults = [];
+          for (const call of exclusiveCalls) {
+            exclusiveResults.push(await executeSingleTool(call));
+          }
+
+          // Merge in original call order (required by Groq's tool_result ordering).
+          const byId = new Map(
+            [...safeResults, ...exclusiveResults].map((r) => [r.toolCall.id, r]),
           );
+          const results = parsedCalls.map((c) => byId.get(c.toolCall.id)!);
+
+          // Emit the summary — should already be resolved since tool calls take longer.
+          const summary = await summaryPromise;
+          if (summary) controller.enqueue(sse("stepSummary", summary));
 
           // Push tool results to currentMessages in original call order.
           // truncateForModel strips non-essential fields so the model receives
@@ -486,8 +515,38 @@ export async function POST(req: NextRequest) {
           if (rateExhausted) break;       // all models exhausted — exit round loop
           if (failedGenHandled) continue; // tool calls recovered — next round
 
+          // Query chain tracking — round depth logged for observability.
+          console.log(
+            `[Kira ${chainId}] round=${round} model=${MODELS[modelIndex]} ` +
+            `prompt=${response!.usage?.prompt_tokens ?? "?"} ` +
+            `completion=${response!.usage?.completion_tokens ?? "?"}`,
+          );
+          controller.enqueue(sse("chain", { id: chainId, depth: round }));
+
           const choice = response!.choices[0];
           const msg = choice.message;
+
+          // ── Max-output-tokens recovery ────────────────────────────────────
+          // finish_reason === "length" means Groq cut the response at max_tokens.
+          // Inject a resume nudge and continue if round budget allows.
+          if (
+            choice.finish_reason === "length" &&
+            !msg.tool_calls?.length &&
+            round < MAX_TOOL_ROUNDS - 1
+          ) {
+            const partial = (msg.content ?? "").trim();
+            if (partial) {
+              currentMessages.push({ role: "assistant", content: partial });
+              currentMessages.push({
+                role: "user",
+                content:
+                  "Output was cut short by the token limit. Resume directly " +
+                  "from where you stopped — no apology, no recap. Pick up " +
+                  "mid-sentence if needed.",
+              });
+            }
+            continue;
+          }
 
           if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
             const raw = msg.content ?? "";
@@ -499,13 +558,16 @@ export async function POST(req: NextRequest) {
             // If the response quotes LKR amounts but no search/product tool ran
             // this turn and no products were collected, the model is likely
             // inventing prices. Inject a firm correction and retry one round.
+            // Circuit breaker: fires at most once per turn to prevent a 5-round spin.
             if (
               finalText &&
               /LKR\s*[\d,]+/.test(finalText) &&
               collectedProducts.length === 0 &&
               checkoutInfo === undefined &&
-              round < MAX_TOOL_ROUNDS - 1
+              round < MAX_TOOL_ROUNDS - 1 &&
+              hallucinationRetries < 1
             ) {
+              hallucinationRetries++;
               currentMessages.push({ role: "assistant", content: finalText });
               currentMessages.push({
                 role: "user",
@@ -529,6 +591,33 @@ export async function POST(req: NextRequest) {
           });
 
           await executeToolCalls(msg.tool_calls);
+
+          // ── Context window trim ───────────────────────────────────────────
+          // After each tool round, check actual token usage from Groq's response
+          // and drop oldest messages if we're approaching the model's context limit.
+          const usedTokens = response!.usage?.prompt_tokens;
+          if (usedTokens) {
+            currentMessages = trimContextIfNeeded(
+              currentMessages,
+              usedTokens,
+              MODELS[modelIndex],
+            );
+          }
+
+          // ── Diminishing returns / stuck detection ─────────────────────────
+          // If we've burned 3+ rounds and still have no products and no text,
+          // the loop is spinning. Surface a graceful fallback and exit.
+          if (round >= 2 && collectedProducts.length === 0 && !finalText) {
+            console.log(`[Kira ${chainId}] stuck after ${round + 1} rounds — bailing`);
+            stagnantRounds++;
+            if (stagnantRounds >= 2) {
+              finalText =
+                "Aiyo, I'm having a bit of trouble finding that right now — could you try rephrasing?";
+              break;
+            }
+          } else {
+            stagnantRounds = 0;
+          }
         }
 
         if (!finalText) {
@@ -1022,6 +1111,84 @@ async function streamWords(
     controller.enqueue(sse("token", word));
     await new Promise((resolve) => setTimeout(resolve, 12));
   }
+}
+
+// ─── Tool concurrency classification ─────────────────────────────────────────
+// Read-only MCP tools are safe to run concurrently. kapruka_create_order has
+// side-effects (places a real order) and must run alone after safe tools finish.
+const CONCURRENT_SAFE_TOOLS = new Set([
+  "kapruka_search_products",
+  "kapruka_list_categories",
+  "kapruka_check_delivery",
+  "kapruka_get_product",
+  "kapruka_list_delivery_cities",
+  "kapruka_track_order",
+]);
+
+// ─── Tool use summary (8B model) ──────────────────────────────────────────────
+// Fired async after each tool batch. Uses the cheap 8B model so it resolves in
+// ~0.5s — well within the next model call's latency — making it essentially free.
+async function generateToolSummary(toolNames: string[]): Promise<string> {
+  try {
+    const label = toolNames.map((n) => n.replace("kapruka_", "")).join(", ");
+    const res = await getGroq().chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        {
+          role: "user",
+          content:
+            `Summarize these API calls in ≤8 words, past tense, no articles: ${label}. ` +
+            `Example: "Searched chocolates, checked Colombo delivery". Output the summary only.`,
+        },
+      ],
+      max_tokens: 32,
+    });
+    return res.choices[0]?.message?.content?.trim() ?? "";
+  } catch {
+    return ""; // non-critical — swallow errors silently
+  }
+}
+
+// ─── Context window arithmetic ───────────────────────────────────────────────
+// Groq model context limits. We reserve OUTPUT_TOKEN_RESERVE tokens so the
+// model always has headroom to finish its response.
+const MODEL_CONTEXT_LIMITS: Record<string, number> = {
+  "llama-3.3-70b-versatile": 128_000,
+  "meta-llama/llama-4-scout-17b-16e-instruct": 131_000,
+  "llama-3.1-8b-instant": 128_000,
+};
+const OUTPUT_TOKEN_RESERVE = 1_500;
+const TRIM_TRIGGER_PCT = 0.75; // start trimming at 75% usage
+const TRIM_TARGET_PCT  = 0.60; // trim back to 60%
+
+// Dynamically trims the oldest non-system messages from currentMessages when
+// the previous round's prompt_tokens shows we're approaching the context limit.
+// Operates on message count with an avg-token estimate — good enough for Kira's
+// short messages; no per-message tokenizer needed.
+function trimContextIfNeeded(
+  messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
+  promptTokens: number,
+  model: string,
+): Groq.Chat.Completions.ChatCompletionMessageParam[] {
+  const effective = (MODEL_CONTEXT_LIMITS[model] ?? 128_000) - OUTPUT_TOKEN_RESERVE;
+  if (promptTokens < effective * TRIM_TRIGGER_PCT) return messages;
+
+  const system = messages[0];
+  const rest = messages.slice(1);
+  if (rest.length <= 2) return messages; // nothing safe to drop
+
+  const avgTokensPerMessage = promptTokens / messages.length;
+  const targetTokens = effective * TRIM_TARGET_PCT;
+  const toDrop = Math.min(
+    Math.ceil((promptTokens - targetTokens) / avgTokensPerMessage),
+    rest.length - 2, // always keep ≥ 2 recent messages
+  );
+
+  if (toDrop <= 0) return messages;
+  console.log(
+    `[Kira] context trim: ${promptTokens}/${effective} tokens — dropping ${toDrop} messages`,
+  );
+  return [system, ...rest.slice(toDrop)];
 }
 
 // ─── Context compaction ──────────────────────────────────────────────────────
