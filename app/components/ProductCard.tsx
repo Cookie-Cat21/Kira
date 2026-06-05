@@ -80,7 +80,7 @@ export default function ProductCard({
             <Gift className="size-8" />
           </div>
         )}
-        {product.category && (
+        {product.category && product.category.toLowerCase() !== "general" && (
           <span className="absolute left-2 top-2 rounded-md bg-kap-purple px-2 py-1 text-[10px] font-bold text-white shadow-sm">
             {product.category}
           </span>

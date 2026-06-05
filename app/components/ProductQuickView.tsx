@@ -103,7 +103,7 @@ export default function ProductQuickView({
         role="dialog"
         aria-modal="true"
         aria-label={`${product.name} details`}
-        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-kira-line bg-white shadow-2xl animate-fade-up"
+        className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-kira-line bg-kira-paper shadow-2xl animate-fade-up"
       >
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-kira-line px-4">
           <div className="min-w-0">
@@ -125,7 +125,7 @@ export default function ProductQuickView({
         <div className="overflow-y-auto">
           <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-3">
-              <div className="relative aspect-square overflow-hidden rounded-lg border border-kira-line bg-kira-paper">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-kira-line bg-kira-surface">
                 {selectedImage ? (
                   <Image
                     src={selectedImage}
@@ -200,8 +200,8 @@ export default function ProductQuickView({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold",
                       display.inStock
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-red-50 text-red-700"
+                        ? "bg-emerald-900/40 text-emerald-400"
+                        : "bg-red-900/40 text-red-400"
                     )}
                   >
                     {display.inStock ? (
@@ -216,7 +216,7 @@ export default function ProductQuickView({
 
               {state === "loading" && <QuickViewSkeleton />}
               {state === "error" && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <div className="rounded-lg border border-amber-500/30 bg-amber-900/40 px-3 py-2 text-sm text-amber-300">
                   {error}
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function ProductQuickView({
                   ) : (
                     <>
                     <ShoppingCart className="size-4" />
-                      Add to cart
+                      Add to tray
                     </>
                   )}
                 </button>

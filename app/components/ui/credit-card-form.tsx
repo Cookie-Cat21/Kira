@@ -189,7 +189,7 @@ function Field({
         inputMode={inputMode}
         autoComplete={autoComplete}
         className={cn(
-          "h-11 w-full rounded-lg border bg-white px-3 text-sm font-semibold text-kira-text outline-none transition-all placeholder:text-kira-muted",
+          "h-11 w-full rounded-lg border bg-kira-surface px-3 text-sm font-semibold text-kira-text outline-none transition-all placeholder:text-kira-muted",
           valid
             ? "border-kira-line focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
             : "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ExternalLink,
   Gift,
+  Loader2,
   X,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
@@ -18,6 +19,7 @@ import {
   type CardValidity,
 } from "./ui/credit-card-form";
 import { cn } from "@/lib/utils";
+import type { CheckoutInfo } from "@/types";
 
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
@@ -65,7 +67,10 @@ export default function CheckoutModal({
     address: "",
   });
   const [cardValid, setCardValid] = useState(false);
-  const checkoutUrl = payLink ?? contextPayLink;
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState("");
+  const [modalCheckoutInfo, setModalCheckoutInfo] = useState<CheckoutInfo | undefined>();
+  const checkoutUrl = modalCheckoutInfo?.checkoutUrl ?? payLink ?? contextPayLink;
   const stepIndex = STEPS.indexOf(step);
 
   const handleCardChange = useCallback(
@@ -78,6 +83,8 @@ export default function CheckoutModal({
   function handleClose() {
     setStep("review");
     setCardValid(false);
+    setPlaceError("");
+    setModalCheckoutInfo(undefined);
     onClose();
   }
 
@@ -87,12 +94,34 @@ export default function CheckoutModal({
     else handleClose();
   }
 
-  function goNext() {
+  async function goNext() {
     if (step === "review" && cart.length > 0) setStep("delivery");
     if (step === "delivery" && delivery.name.trim() && delivery.city.trim()) {
       setStep("payment");
     }
-    if (step === "payment" && cardValid) setStep("confirm");
+    if (step === "payment" && cardValid) {
+      // Call the checkout API directly — no LLM round-trip needed.
+      setPlacing(true);
+      setPlaceError("");
+      try {
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cart, delivery }),
+        });
+        const data = (await res.json()) as { checkoutInfo?: CheckoutInfo; error?: string };
+        if (!res.ok || !data.checkoutInfo) {
+          setPlaceError(data.error ?? "Couldn't place the order — try again.");
+          return;
+        }
+        setModalCheckoutInfo(data.checkoutInfo);
+        setStep("confirm");
+      } catch {
+        setPlaceError("Network error — check your connection and try again.");
+      } finally {
+        setPlacing(false);
+      }
+    }
   }
 
   return (
@@ -180,7 +209,7 @@ export default function CheckoutModal({
                         </p>
                       </div>
                     ) : (
-                      <div className="mt-4 divide-y divide-kira-line rounded-xl border border-kira-line bg-white">
+                      <div className="mt-4 divide-y divide-kira-line rounded-xl border border-kira-line bg-kira-surface">
                         {cart.map((item) => (
                           <div
                             key={item.product.id}
@@ -278,11 +307,16 @@ export default function CheckoutModal({
                     <h2 className="font-display text-2xl text-kira-text">
                       Payment
                     </h2>
-                    <p className="mb-4 mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                      Kira will complete the order through Kapruka&apos;s secure
-                      checkout. Card details here are only validated in the
-                      browser for this prototype flow.
+                    <p className="mb-4 mt-2 rounded-lg border border-amber-500/30 bg-amber-900/30 px-3 py-2 text-xs leading-5 text-amber-300">
+                      Kira will place the order through Kapruka&apos;s secure
+                      checkout. Card details are validated in the browser only —
+                      payment is completed on Kapruka&apos;s site.
                     </p>
+                    {placeError && (
+                      <p className="mb-3 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-xs text-red-300">
+                        {placeError}
+                      </p>
+                    )}
                     <CreditCardForm
                       ring1="#402970"
                       ring2="#f8da08"
@@ -325,7 +359,7 @@ export default function CheckoutModal({
                         <ExternalLink className="size-4" />
                       </a>
                     ) : (
-                      <p className="max-w-sm rounded-xl border border-kira-line bg-white px-4 py-3 text-xs leading-5 text-kira-muted">
+                      <p className="max-w-sm rounded-xl border border-kira-line bg-kira-surface px-4 py-3 text-xs leading-5 text-kira-text-2">
                         Ask Kira &quot;I&apos;m ready to checkout&quot; to
                         generate your secure Kapruka payment link.
                       </p>
@@ -350,6 +384,7 @@ export default function CheckoutModal({
                   type="button"
                   onClick={goNext}
                   disabled={
+                    placing ||
                     (step === "review" && cart.length === 0) ||
                     (step === "delivery" &&
                       (!delivery.name.trim() || !delivery.city.trim())) ||
@@ -357,8 +392,22 @@ export default function CheckoutModal({
                   }
                   className="flex items-center gap-1.5 rounded-xl bg-kap-purple px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-kap-purple/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {step === "payment" ? "Review order" : "Continue"}
-                  <ChevronRight className="size-4" />
+                  {placing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Placing order…
+                    </>
+                  ) : step === "payment" ? (
+                    <>
+                      Place order
+                      <ChevronRight className="size-4" />
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ChevronRight className="size-4" />
+                    </>
+                  )}
                 </button>
               )}
             </footer>
@@ -392,7 +441,7 @@ function DeliveryField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-kira-line bg-white px-4 py-3 text-sm text-kira-text outline-none transition-all placeholder:text-kira-muted focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
+        className="w-full rounded-xl border border-kira-line bg-kira-surface px-4 py-3 text-sm text-kira-text outline-none transition-all placeholder:text-kira-muted focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
       />
     </label>
   );
