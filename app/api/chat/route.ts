@@ -171,6 +171,21 @@ const LS: Record<string, Record<string, string>> = {
     si: "Kapruka connect කරන්නේ ටිකක් problem — ටිකක් ඉස්සෙල්ලා try කරන්නකෝ.",
     ta: "Kapruka இணைப்பில் சிறு பிரச்சனை — கொஞ்சம் நேரம் கழித்து மீண்டும் try செய்யுங்கள்.",
   },
+  emptyGreeting: {
+    en: "Hey! I'm Kira — your Kapruka shopping helper 🎁 Tell me what you're looking for: a gift, cakes, flowers, or something else?",
+    si: "හෙලෝ! මම Kira — ඔබේ Kapruka shopping helper 🎁 Gift, cakes, flowers, නැතිනම් වෙන දෙයක් හොයනවාද?",
+    ta: "வணக்கம்! நான் Kira — உங்கள் Kapruka shopping helper 🎁 Gift, cakes, flowers, அல்லது வேறு எதாவது தேடுகிறீர்களா?",
+  },
+  jailbreakRedirect: {
+    en: "Ha, I'm just Kira — one personality is plenty for me! Anything I can find for you on Kapruka? 🛍️",
+    si: "හා, මම Kira විතරයි — එක personality ම ඇති! Kapruka ගෙන් මොකක්හරි හොයා දෙන්නද? 🛍️",
+    ta: "ஹா, நான் Kira மட்டும்தான் — ஒரே personality போதும்! Kapruka-ல் ஏதாவது தேடி தரட்டுமா? 🛍️",
+  },
+  trustAffirmation: {
+    en: "Absolutely — Kapruka has been Sri Lanka's biggest online gifting platform since 2010. Totally legit, secure payments, real delivery. Want to browse what's in stock? 🎁",
+    si: "Bilkul — Kapruka 2010 ඉඳන් Sri Lanka's biggest online gifting platform. Totally legit, secure payments, real delivery. Stock check කරමුද? 🎁",
+    ta: "நிச்சயமாக — Kapruka 2010 முதல் Sri Lanka-ன் மிகப்பெரிய online gifting platform. Totally legit, secure payments, real delivery. Stock பார்க்கலாமா? 🎁",
+  },
 };
 
 function L(key: string, lang: string): string {
@@ -1082,7 +1097,7 @@ async function tryHandleDeterministicPrompt({
   // ── Empty / whitespace input ─────────────────────────────────────────────
   // Return a friendly prompt rather than a terse one-liner.
   if (!trimmed) {
-    await streamWords(controller, "Hey! I'm Kira — your Kapruka shopping helper 🎁 Tell me what you're looking for: a gift, cakes, flowers, or something else?");
+    await streamWords(controller, L("emptyGreeting", language));
     controller.enqueue(sse("done"));
     return true;
   }
@@ -1092,7 +1107,7 @@ async function tryHandleDeterministicPrompt({
   // Catch before any search logic so the LLM never gets a chance to comply.
   const JAILBREAK_RE = /\b(pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai)\b/i;
   if (JAILBREAK_RE.test(lower)) {
-    await streamWords(controller, "Ha, I'm just Kira — one personality is plenty for me! Anything I can find for you on Kapruka? 🛍️");
+    await streamWords(controller, L("jailbreakRedirect", language));
     controller.enqueue(sse("done"));
     return true;
   }
@@ -1104,7 +1119,7 @@ async function tryHandleDeterministicPrompt({
   // "is Kapruka legit?" ✓  "is Kapruka a legit site?" ✓  "is this a safe site?" ✓
   const TRUST_RE = /\b(is\s+(kapruka|this|it)(\s+\w+){0,3}\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
   if (TRUST_RE.test(lower)) {
-    await streamWords(controller, "Absolutely — Kapruka has been Sri Lanka's biggest online gifting platform since 2010. Totally legit, secure payments, real delivery. Want to browse what's in stock? 🎁");
+    await streamWords(controller, L("trustAffirmation", language));
     controller.enqueue(sse("done"));
     return true;
   }

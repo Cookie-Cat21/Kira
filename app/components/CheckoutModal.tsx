@@ -138,7 +138,7 @@ export default function CheckoutModal({
 
   async function goNext() {
     if (step === "review" && cart.length > 0) setStep("delivery");
-    if (step === "delivery" && delivery.name.trim() && delivery.city.trim()) {
+    if (step === "delivery" && delivery.name.trim() && delivery.city.trim() && delivery.address.trim()) {
       setStep("payment");
     }
     if (step === "payment" && cardValid) {
@@ -280,7 +280,7 @@ export default function CheckoutModal({
                               </p>
                               <p className="text-sm font-bold text-kap-purple">
                                 {lkrFormatter.format(
-                                  item.product.price * item.quantity
+                                  (item.product.price ?? 0) * item.quantity
                                 )}
                               </p>
                             </div>
@@ -484,7 +484,7 @@ export default function CheckoutModal({
                     placing ||
                     (step === "review" && cart.length === 0) ||
                     (step === "delivery" &&
-                      (!delivery.name.trim() || !delivery.city.trim())) ||
+                      (!delivery.name.trim() || !delivery.city.trim() || !delivery.address.trim())) ||
                     (step === "payment" && !cardValid)
                   }
                   className="flex items-center gap-1.5 rounded-xl bg-kap-purple px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-kap-purple/90 disabled:cursor-not-allowed disabled:opacity-50"

@@ -191,7 +191,12 @@ export default function KiraChat() {
     setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
   }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
-  const [deliveryDate] = useState<string | undefined>();
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
+    // Default to tomorrow so the delivery API always receives a valid date.
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0]; // YYYY-MM-DD
+  });
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const {
@@ -550,6 +555,11 @@ export default function KiraChat() {
           ]);
         }
       } finally {
+        // Always clear pending buffered events so they don't bleed into the next request.
+        pendingDeliveryRef.current = null;
+        pendingTrackingRef.current = null;
+        pendingCheckoutRef.current = null;
+        pendingProductsRef.current = null;
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
         }
