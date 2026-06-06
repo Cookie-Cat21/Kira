@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { ProductCardSkeleton } from "./ProductCard";
+import { ShiningText } from "./ui/shining-text";
 
 /* ── Live indicator — shown while API is streaming ── */
 interface ThinkingLiveProps {
-  steps: string[]; // real-time steps received from SSE so far
+  steps: string[];
   showProductSkeleton?: boolean;
 }
 
@@ -15,80 +16,75 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs text-kap-yellow" style={{ background: "rgba(64,41,112,0.5)", backdropFilter: "blur(10px)", border: "1px solid rgba(248,218,8,0.2)" }}>
+      <div
+        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs text-kap-yellow"
+        style={{
+          background: "rgba(64,41,112,0.5)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(248,218,8,0.2)",
+        }}
+      >
         <Sparkles className="size-4" />
       </div>
 
-      <div className="flex-1 max-w-[88%]">
-        <div className="overflow-hidden rounded-xl" style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-          {/* Header */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-60" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-400" />
-            </span>
-            <span className="text-xs font-semibold text-purple-300">
-              Kira is thinking…
-            </span>
-          </div>
-
-          {/* Steps — only rendered when at least one has arrived */}
-          {steps.length > 0 && (
-            <div className="px-4 py-3 space-y-2">
-              <AnimatePresence initial={false}>
-                {steps.map((label, i) => {
-                  const isDone = i < steps.length - 1;
-                  const isActive = i === steps.length - 1;
-                  return (
-                    <motion.div
-                      key={label + i}
-                      className="flex items-center gap-2"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25 }}
-                    >
-                      <span className="shrink-0 w-4 flex justify-center">
-                        {isDone ? (
-                          <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-emerald-500"
-                          >
-                            <Check className="size-3" />
-                          </motion.span>
-                        ) : isActive ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-kap-purple animate-pulse" />
-                        ) : null}
-                      </span>
-                      <span
-                        className={`text-xs ${
-                          isDone
-                            ? "text-white/35 line-through decoration-white/20"
-                            : "text-purple-300 font-medium"
-                        }`}
-                      >
-                        {label}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {showProductSkeleton && (
-            <div className="px-4 pb-4 pt-1">
-              <div
-                className="flex gap-3 overflow-hidden"
-                aria-label="Loading product suggestions"
-              >
-                {[0, 1, 2].map((i) => (
-                  <ProductCardSkeleton key={i} />
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="flex-1 max-w-[88%] pt-1.5">
+        {/* Shining "Kira is thinking…" label */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="relative flex h-1.5 w-1.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-50" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-400" />
+          </span>
+          <ShiningText text="Kira is thinking…" className="bg-[linear-gradient(110deg,rgba(255,255,255,0.2),35%,rgba(200,180,255,0.95),50%,rgba(255,255,255,0.2),75%,rgba(255,255,255,0.2))] bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent" />
         </div>
+
+        {/* Steps — left-bordered, no box */}
+        {steps.length > 0 && (
+          <div
+            className="pl-3 space-y-1.5"
+            style={{ borderLeft: "2px solid rgba(156,132,198,0.3)" }}
+          >
+            <AnimatePresence initial={false}>
+              {steps.map((label, i) => {
+                const isDone = i < steps.length - 1;
+                const isActive = i === steps.length - 1;
+                return (
+                  <motion.div
+                    key={label + i}
+                    className="flex items-center gap-1.5"
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {isDone ? (
+                      <Check className="size-2.5 shrink-0 text-emerald-500/70" />
+                    ) : isActive ? (
+                      <span className="size-1 rounded-full bg-purple-300/60 shrink-0 animate-pulse" />
+                    ) : null}
+                    <span
+                      className={`text-[11px] leading-snug ${
+                        isDone
+                          ? "text-white/25 line-through decoration-white/15"
+                          : "text-white/55"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {showProductSkeleton && (
+          <div className="mt-3">
+            <div className="flex gap-3 overflow-hidden" aria-label="Loading product suggestions">
+              {[0, 1, 2].map((i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -98,30 +94,30 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
 interface ThinkingDoneProps {
   thinkingMs: number;
   steps?: string[];
-  summary?: string; // AI-generated one-liner from the 8B model
+  summary?: string;
 }
 
 export function ThinkingDone({ thinkingMs, steps, summary }: ThinkingDoneProps) {
   const [open, setOpen] = useState(false);
-  const seconds = (thinkingMs / 1000).toFixed(1);
+  const rawS = thinkingMs / 1000;
+  const seconds = rawS >= 10 ? Math.round(rawS).toString() : rawS.toFixed(1);
   const hasSteps = steps && steps.length > 0;
 
   return (
-    <div className="mb-2 ml-9">
+    <div className="mb-2 ml-10">
       <button
         onClick={() => hasSteps && setOpen((o) => !o)}
-        className={`flex items-center gap-1.5 text-xs text-white/35 transition-colors group ${
-          hasSteps ? "hover:text-white/60 cursor-pointer" : "cursor-default"
+        className={`flex items-center gap-1 text-[11px] text-white/30 transition-colors group ${
+          hasSteps ? "hover:text-white/50 cursor-pointer" : "cursor-default"
         }`}
       >
-        {hasSteps ? (
-          open ? (
+        {hasSteps &&
+          (open ? (
             <ChevronDown className="w-3 h-3" />
           ) : (
             <ChevronRight className="w-3 h-3" />
-          )
-        ) : null}
-        <span className={hasSteps ? "group-hover:underline underline-offset-2" : ""}>
+          ))}
+        <span className={hasSteps ? "group-hover:text-white/50" : ""}>
           Thought for {seconds}s
           {summary
             ? ` · ${summary}`
@@ -138,16 +134,17 @@ export function ThinkingDone({ thinkingMs, steps, summary }: ThinkingDoneProps) 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] }}
-              className="overflow-hidden mt-2"
+              transition={{ duration: 0.18, ease: [0.2, 0.65, 0.3, 0.9] }}
+              className="overflow-hidden"
             >
-              <div className="space-y-2 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div
+                className="pt-2 pb-0.5 pl-3 space-y-1.5"
+                style={{ borderLeft: "2px solid rgba(156,132,198,0.2)" }}
+              >
                 {steps!.map((label, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="flex w-4 justify-center text-emerald-500">
-                      <Check className="size-3" />
-                    </span>
-                    <span className="text-xs text-white/35 line-through decoration-white/20">
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Check className="size-2.5 shrink-0 text-emerald-500/50" />
+                    <span className="text-[11px] text-white/25 line-through decoration-white/10 leading-snug">
                       {label}
                     </span>
                   </div>

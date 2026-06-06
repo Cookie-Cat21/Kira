@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, Plus_Jakarta_Sans, Noto_Sans_Sinhala } from "next/font/google";
+import { DM_Serif_Display, Noto_Sans_Sinhala } from "next/font/google";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
 import { CartProvider } from "./context/CartContext";
@@ -9,12 +9,6 @@ const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
   subsets: ["latin"],
   weight: "400",
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 const notoSinhala = Noto_Sans_Sinhala({
@@ -48,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerif.variable} ${jakarta.variable} ${notoSinhala.variable} h-full antialiased`}
+      className={`${dmSerif.variable} ${notoSinhala.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">
         <CartProvider>

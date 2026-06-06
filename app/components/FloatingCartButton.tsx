@@ -21,7 +21,7 @@ export default function FloatingCartButton() {
           ref={cartButtonRef}
           type="button"
           onClick={openCart}
-          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[70] flex items-center gap-3 rounded-full border border-kap-purple/20 bg-kira-paper px-4 py-2.5 shadow-xl transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 z-[70] flex items-center gap-3 rounded-full border border-kap-purple/20 bg-kira-paper px-4 py-2.5 shadow-xl transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:left-6"
           initial={{ opacity: 0, scale: 0.75, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.75, y: 12 }}

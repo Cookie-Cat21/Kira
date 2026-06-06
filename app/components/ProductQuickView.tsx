@@ -176,7 +176,7 @@ export default function ProductQuickView({
                     {display.category}
                   </span>
                 )}
-                <h2 className="text-xl font-display leading-tight text-kira-text">
+                <h2 className="text-xl font-sans leading-tight text-kira-text">
                   {display.name}
                 </h2>
                 {display.summary && (

@@ -55,7 +55,7 @@ export default function ProductCard({
   return (
     <article
       className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl transition-shadow hover:shadow-[0_8px_32px_rgba(64,41,112,0.4)]"
-      style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.1)" }}
+      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
     >
       {/* Image */}
       <button
@@ -184,15 +184,15 @@ export default function ProductCard({
 export function ProductCardSkeleton() {
   return (
     <div
-      className="flex w-56 shrink-0 animate-pulse flex-col overflow-hidden rounded-xl"
+      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl"
       style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
     >
-      <div className="aspect-square" style={{ background: "rgba(255,255,255,0.04)" }} />
+      <div className="shimmer aspect-square" />
       <div className="flex flex-col gap-2 p-3">
-        <div className="h-3 rounded-full w-11/12" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <div className="h-3 rounded-full w-8/12" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <div className="h-4 rounded-full w-5/12" style={{ background: "rgba(255,255,255,0.08)" }} />
-        <div className="mt-1 h-8 rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }} />
+        <div className="shimmer h-3 rounded-full w-11/12" />
+        <div className="shimmer h-3 rounded-full w-8/12" style={{ animationDelay: "0.1s" }} />
+        <div className="shimmer h-4 rounded-full w-5/12" style={{ animationDelay: "0.2s" }} />
+        <div className="shimmer mt-1 h-8 rounded-lg" style={{ animationDelay: "0.15s" }} />
       </div>
     </div>
   );

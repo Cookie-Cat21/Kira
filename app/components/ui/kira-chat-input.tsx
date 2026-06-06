@@ -75,7 +75,7 @@ const PastedContentCard: React.FC<{
   onRemove: (id: string) => void;
 }> = ({ content, onRemove }) => (
   <div className="relative group flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden border border-white/10 bg-white/[0.07] p-3 flex flex-col justify-between animate-pop-in">
-    <p className="text-[10px] text-white/35 leading-[1.4] font-mono break-words whitespace-pre-wrap line-clamp-4 select-none">
+    <p className="text-[10px] text-white/35 leading-[1.4] font-sans break-words whitespace-pre-wrap line-clamp-4 select-none">
       {content.content}
     </p>
     <div className="inline-flex items-center justify-center px-1.5 py-[2px] rounded border border-white/10 self-start">

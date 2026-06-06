@@ -124,9 +124,7 @@ export default function ChatMessage({
         <div
           className="max-w-[75%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed text-white"
           style={{
-            background: "linear-gradient(135deg, rgba(64,41,112,0.9), rgba(90,55,160,0.9))",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            background: "linear-gradient(135deg, rgba(64,41,112,0.95), rgba(90,55,160,0.95))",
             border: "1px solid rgba(148,100,255,0.3)",
             boxShadow: "0 4px 24px rgba(64,41,112,0.4)",
           }}
@@ -171,9 +169,7 @@ export default function ChatMessage({
               "[&_li]:text-white/85"
             )}
             style={{
-              background: "rgba(255,255,255,0.07)",
-              backdropFilter: "blur(30px) saturate(180%)",
-              WebkitBackdropFilter: "blur(30px) saturate(180%)",
+              background: "rgba(255,255,255,0.09)",
               border: "1px solid rgba(255,255,255,0.1)",
               boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
               color: "rgba(255,255,255,0.85)",
@@ -214,7 +210,7 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
   return (
     <div
       className="max-w-xs rounded-2xl px-4 py-3"
-      style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(30px)", WebkitBackdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}
+      style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="flex size-8 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">

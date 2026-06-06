@@ -158,10 +158,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const triggerFly = useCallback((sourceRect: DOMRect, imageUrl: string) => {
     const targetRect = cartButtonRef.current?.getBoundingClientRect();
-    const toX = targetRect
-      ? targetRect.left + targetRect.width / 2
-      : window.innerWidth - 32;
-    const toY = targetRect ? targetRect.top + targetRect.height / 2 : 32;
+    const toX = targetRect ? targetRect.left + targetRect.width / 2 : 80;
+    const toY = targetRect
+      ? targetRect.top + targetRect.height / 2
+      : window.innerHeight - 110;
 
     setFlyItems((prev) => [
       ...prev,

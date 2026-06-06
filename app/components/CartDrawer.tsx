@@ -2,18 +2,12 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  Gift,
-  Minus,
-  Plus,
-  ShoppingBag,
-  Trash2,
-  X,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, Gift, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import CheckoutModal from "./CheckoutModal";
+
+const SF = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif';
 
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
@@ -22,15 +16,7 @@ const lkrFormatter = new Intl.NumberFormat("en-LK", {
 });
 
 export default function CartDrawer() {
-  const {
-    cart,
-    cartTotal,
-    cartCount,
-    isOpen,
-    closeCart,
-    removeFromCart,
-    updateQty,
-  } = useCart();
+  const { cart, cartTotal, cartCount, isOpen, closeCart, removeFromCart, updateQty } = useCart();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
@@ -39,181 +25,217 @@ export default function CartDrawer() {
 
   useEffect(() => {
     if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeCart();
-    };
-
+    const prev = document.body.style.overflow;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeCart(); };
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
     };
   }, [closeCart, isOpen]);
 
   return (
     <>
-      {isOpen && !checkoutOpen && (
-        <motion.div
-          className="fixed inset-0 z-[80] flex justify-end"
-          initial={false}
-        >
-          <motion.button
-            type="button"
-            aria-label="Close gift tray"
-            className="absolute inset-0 bg-kira-text/50 backdrop-blur-sm"
-            onClick={closeCart}
+      <AnimatePresence>
+        {isOpen && !checkoutOpen && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.18 }}
-          />
-
-          <motion.aside
-            role="dialog"
-            aria-modal="true"
-            aria-label="Gift tray"
-            className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-kira-line bg-kira-paper shadow-2xl"
-            initial={{ x: 0 }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
           >
-              <header className="flex items-center justify-between border-b border-kira-line px-5 py-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
-                    <ShoppingBag className="size-4" />
-                  </span>
-                  <div>
-                    <h2 className="font-display text-lg leading-tight text-kira-text">
-                      Gift tray
-                    </h2>
-                    <p className="text-[11px] text-kira-muted">
-                      {cartCount} item{cartCount === 1 ? "" : "s"}
-                    </p>
-                  </div>
+            {/* Backdrop */}
+            <motion.button
+              type="button"
+              aria-label="Close gift tray"
+              className="absolute inset-0"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              onClick={closeCart}
+            />
+
+            {/* Drawer */}
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Gift tray"
+              className="relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
+              style={{ background: "#1C1C1E", fontFamily: SF }}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 32, stiffness: 320, mass: 0.9 }}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between px-6 pb-4 pt-10">
+                <div>
+                  <h2
+                    className="text-[28px] font-bold leading-none tracking-tight text-white"
+                  >
+                    Gift tray
+                  </h2>
+                  <p className="mt-1 text-[15px]" style={{ color: "rgba(235,235,245,0.6)" }}>
+                    {cartCount} item{cartCount === 1 ? "" : "s"}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={closeCart}
-                  aria-label="Close gift tray"
-                  className="flex size-8 items-center justify-center rounded-lg text-kira-muted transition-colors hover:bg-kira-bg hover:text-kira-text"
+                  aria-label="Close"
+                  className="mt-1 flex size-[30px] shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70 active:opacity-50"
+                  style={{ background: "#3A3A3C" }}
                 >
-                  <X className="size-4" />
+                  <X className="size-3.5" style={{ color: "rgba(235,235,245,0.7)" }} strokeWidth={2.5} />
                 </button>
-              </header>
+              </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              {/* Hairline separator */}
+              <div style={{ height: "0.5px", background: "rgba(84,84,88,0.65)", marginInline: "24px" }} />
+
+              {/* Items list */}
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 {cart.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center">
-                    <div className="flex size-16 items-center justify-center rounded-2xl bg-kira-bg text-kira-muted">
-                      <Gift className="size-7" />
+                  <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+                    <div
+                      className="flex size-[72px] items-center justify-center rounded-[20px]"
+                      style={{ background: "#2C2C2E" }}
+                    >
+                      <ShoppingBag className="size-8" style={{ color: "rgba(235,235,245,0.25)" }} />
                     </div>
-                    <p className="text-sm font-semibold text-kira-text">
-                      Your tray is empty
-                    </p>
-                    <p className="text-xs text-kira-muted">
-                      Ask Kira to find the perfect gift.
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-[17px] font-semibold text-white">
+                        Your tray is empty
+                      </p>
+                      <p className="text-[15px]" style={{ color: "rgba(235,235,245,0.5)" }}>
+                        Ask Kira to find the perfect gift.
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="divide-y divide-kira-line">
-                    {cart.map((item) => (
-                      <div key={item.product.id} className="flex gap-3 py-4">
-                        <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-kira-line bg-kira-bg">
-                          {item.product.image ? (
-                            <Image
-                              src={item.product.image}
-                              alt={item.product.name}
-                              fill
-                              sizes="64px"
-                              className="object-contain p-1"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-kira-muted">
-                              <Gift className="size-5" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold leading-snug text-kira-text">
-                            {item.product.name}
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-kap-purple">
-                            {lkrFormatter.format(
-                              item.product.price * item.quantity
+                  <div className="px-6 py-2">
+                    {cart.map((item, i) => (
+                      <div key={item.product.id}>
+                        {i > 0 && (
+                          <div style={{ height: "0.5px", background: "rgba(84,84,88,0.65)", marginLeft: "76px" }} />
+                        )}
+                        <div className="flex gap-4 py-[14px]">
+                          {/* Thumbnail */}
+                          <div
+                            className="relative size-[60px] shrink-0 overflow-hidden rounded-[14px]"
+                            style={{ background: "#2C2C2E" }}
+                          >
+                            {item.product.image ? (
+                              <Image
+                                src={item.product.image}
+                                alt={item.product.name}
+                                fill
+                                sizes="60px"
+                                className="object-contain p-1.5"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <Gift className="size-5" style={{ color: "rgba(235,235,245,0.25)" }} />
+                              </div>
                             )}
-                          </p>
+                          </div>
 
-                          <div className="mt-2 flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQty(item.product.id, item.quantity - 1)
-                              }
-                              aria-label={`Decrease quantity for ${item.product.name}`}
-                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-kira-surface text-kira-text transition-colors hover:border-kap-purple/40"
-                            >
-                              <Minus className="size-3" />
-                            </button>
-                            <span className="w-6 text-center text-sm font-bold text-kira-text">
-                              {item.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQty(item.product.id, item.quantity + 1)
-                              }
-                              aria-label={`Increase quantity for ${item.product.name}`}
-                              className="flex size-7 items-center justify-center rounded-md border border-kira-line bg-kira-surface text-kira-text transition-colors hover:border-kap-purple/40"
-                            >
-                              <Plus className="size-3" />
-                            </button>
+                          {/* Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p
+                                className="line-clamp-2 text-[15px] font-medium leading-snug text-white"
+                              >
+                                {item.product.name}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => removeFromCart(item.product.id)}
+                                aria-label={`Remove ${item.product.name}`}
+                                className="mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-60 active:opacity-40"
+                                style={{ background: "rgba(120,120,128,0.36)" }}
+                              >
+                                <Trash2 className="size-3" style={{ color: "rgba(235,235,245,0.6)" }} />
+                              </button>
+                            </div>
+
+                            <div className="mt-2.5 flex items-center justify-between">
+                              <p
+                                className="text-[15px] font-semibold"
+                                style={{ color: "#f8da08" }}
+                              >
+                                {lkrFormatter.format(item.product.price * item.quantity)}
+                              </p>
+
+                              {/* iOS-style stepper */}
+                              <div
+                                className="flex items-center overflow-hidden rounded-full"
+                                style={{ background: "#3A3A3C" }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(item.product.id, item.quantity - 1)}
+                                  aria-label={`Decrease quantity for ${item.product.name}`}
+                                  className="flex size-[30px] items-center justify-center transition-opacity hover:opacity-70 active:opacity-40"
+                                >
+                                  <Minus className="size-3 text-white" strokeWidth={2.5} />
+                                </button>
+                                <span
+                                  className="min-w-[26px] text-center text-[13px] font-semibold tabular-nums text-white"
+                                >
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateQty(item.product.id, item.quantity + 1)}
+                                  aria-label={`Increase quantity for ${item.product.name}`}
+                                  className="flex size-[30px] items-center justify-center transition-opacity hover:opacity-70 active:opacity-40"
+                                >
+                                  <Plus className="size-3 text-white" strokeWidth={2.5} />
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => removeFromCart(item.product.id)}
-                          aria-label={`Remove ${item.product.name}`}
-                          className="flex size-7 shrink-0 items-center justify-center rounded-md text-kira-muted transition-colors hover:bg-red-50 hover:text-red-500"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
+              {/* Footer */}
               {cart.length > 0 && (
-                <footer className="shrink-0 space-y-3 border-t border-kira-line bg-kira-paper px-5 py-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-kira-muted">Subtotal</span>
-                    <span className="font-bold text-kira-text">
+                <div
+                  className="shrink-0 px-6 pb-10 pt-4"
+                  style={{ borderTop: "0.5px solid rgba(84,84,88,0.65)" }}
+                >
+                  <div className="mb-1 flex items-baseline justify-between">
+                    <span className="text-[15px]" style={{ color: "rgba(235,235,245,0.6)" }}>
+                      Subtotal
+                    </span>
+                    <span className="text-[22px] font-bold tracking-tight text-white">
                       {lkrFormatter.format(cartTotal)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-kira-muted">
-                    Delivery fee is confirmed by Kapruka based on city.
+                  <p className="mb-5 text-[12px]" style={{ color: "rgba(235,235,245,0.3)" }}>
+                    Delivery fee confirmed by Kapruka based on city.
                   </p>
+
                   <button
                     type="button"
-                    onClick={() => {
-                      closeCart();
-                      setCheckoutOpen(true);
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-kap-purple py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-kap-purple/90 active:scale-[0.98]"
+                    onClick={() => { closeCart(); setCheckoutOpen(true); }}
+                    className="flex w-full items-center justify-center gap-2 rounded-[16px] py-[17px] text-[17px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-75"
+                    style={{ background: "#402970" }}
                   >
                     Proceed to checkout
-                    <ArrowRight className="size-4" />
+                    <ArrowRight className="size-[18px]" strokeWidth={2} />
                   </button>
-                </footer>
+                </div>
               )}
-          </motion.aside>
-        </motion.div>
-      )}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <CheckoutModal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} />
     </>

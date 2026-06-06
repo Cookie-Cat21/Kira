@@ -198,7 +198,7 @@ export default function CheckoutModal({
               <AnimatePresence mode="wait">
                 {step === "review" && (
                   <motion.div key="review" {...slideProps} className="p-5">
-                    <h2 className="font-display text-2xl text-kira-text">
+                    <h2 className="font-sans text-2xl text-kira-text">
                       Review your tray
                     </h2>
                     {cart.length === 0 ? (
@@ -260,7 +260,7 @@ export default function CheckoutModal({
                     {...slideProps}
                     className="space-y-4 p-5"
                   >
-                    <h2 className="font-display text-2xl text-kira-text">
+                    <h2 className="font-sans text-2xl text-kira-text">
                       Delivery details
                     </h2>
                     <div className="grid gap-3">
@@ -304,7 +304,7 @@ export default function CheckoutModal({
 
                 {step === "payment" && (
                   <motion.div key="payment" {...slideProps} className="p-5">
-                    <h2 className="font-display text-2xl text-kira-text">
+                    <h2 className="font-sans text-2xl text-kira-text">
                       Payment
                     </h2>
                     <p className="mb-4 mt-2 rounded-lg border border-amber-500/30 bg-amber-900/30 px-3 py-2 text-xs leading-5 text-amber-300">
@@ -337,7 +337,7 @@ export default function CheckoutModal({
                       <Check className="size-10 text-kira-leaf" strokeWidth={2.5} />
                     </span>
                     <div>
-                      <h2 className="font-display text-2xl text-kira-text">
+                      <h2 className="font-sans text-2xl text-kira-text">
                         All set
                       </h2>
                       <p className="mt-1 text-sm text-kira-muted">
