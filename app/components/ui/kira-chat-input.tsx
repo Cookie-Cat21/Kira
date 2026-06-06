@@ -259,7 +259,7 @@ export function KiraChatInput({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               rows={1}
-              className="w-full bg-transparent border-0 outline-none text-white/90 text-sm placeholder:text-white/30 resize-none overflow-hidden py-0 leading-relaxed block font-normal"
+              className="w-full bg-transparent border-0 outline-none text-white/90 text-base sm:text-sm placeholder:text-white/30 resize-none overflow-hidden py-0 leading-relaxed block font-normal"
               style={{ minHeight: "1.5em" }}
             />
           </div>

@@ -42,6 +42,9 @@ import type {
 import { cn } from "@/lib/utils";
 
 const OCCASION_CHIPS = getOccasionChips();
+// An occasion is active iff getOccasionChips surfaced an urgent chip. When it
+// is, the hero headline already announces it — so we drop the duplicate chip.
+const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
 const currencyFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
   currency: "LKR",
@@ -107,12 +110,17 @@ function formatLKR(amount: number) {
 }
 
 function buildOpeningMessage(): KiraMessage {
-  // getContextualGreeting is curated text — don't strip emoji/unicode from it.
-  const greeting = getContextualGreeting();
+  // loadSession() is called before localStorage.removeItem in the "New chat"
+  // handler, so isReturning is true when the user explicitly starts a new chat.
+  const isReturning = !!loadSession();
+  const greeting = getContextualGreeting(isReturning);
+  const tail = isReturning
+    ? "What are we finding today?"
+    : "Tell me who it is for, your budget, and where it needs to go.";
   return {
     id: "opening",
     role: "assistant",
-    content: `${greeting} Tell me who it is for, your budget, and where it needs to go.`,
+    content: `${greeting} ${tail}`,
     timestamp: Date.now(),
   };
 }
@@ -171,15 +179,20 @@ export default function KiraChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>(undefined);
+  // Contextual greeting for the splash hero. Computed client-only (uses Date +
+  // Math.random) to avoid a hydration mismatch — null until mount.
+  const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
 
   // Restore session from localStorage after hydration (client only).
   useEffect(() => {
     const session = loadSession();
     if (session?.messages?.length) setMessages(session.messages);
     if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+    setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
   }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate] = useState<string | undefined>();
+  const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const {
     cart,
@@ -216,6 +229,7 @@ export default function KiraChat() {
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
       addToCart(product);
+      setA11yAnnounce(`${product.name} added to cart`);
     },
     [addToCart]
   );
@@ -469,7 +483,7 @@ export default function KiraChat() {
                       {
                         id: `kira-${Date.now()}`,
                         role: "assistant",
-                        content: "Aiyo, something went wrong. Try again?",
+                        content: "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?",
                         timestamp: Date.now(),
                         thinkingMs: elapsed,
                         steps: completedSteps,
@@ -485,7 +499,7 @@ export default function KiraChat() {
               } else if (payload.t === "error") {
                 const errMsg =
                   (payload.v as string) ||
-                  "Aiyo, something went wrong. Try again?";
+                  "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?";
                 const id = streamingMsgIdRef.current;
                 if (id) {
                   setMessages((prev) =>
@@ -518,7 +532,7 @@ export default function KiraChat() {
         ) {
           return;
         }
-        const errMsg = "Aiyo, something went wrong on my end. Try again?";
+        const errMsg = "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?";
         const id = streamingMsgIdRef.current;
         if (id) {
           setMessages((prev) =>
@@ -545,7 +559,7 @@ export default function KiraChat() {
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink]
+    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language]
   );
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
@@ -561,6 +575,8 @@ export default function KiraChat() {
   return (
     <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden" style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
+      {/* Screen-reader live region for cart / order events */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
       {/* Ambient blobs */}
       <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
       <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
@@ -622,8 +638,8 @@ export default function KiraChat() {
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
           <div className="mb-8 text-center animate-fade-up">
             <KaprukaSmileMark />
-            <h1 className="mb-3 font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
-              What would you like<br className="hidden sm:block" /> to gift today?
+            <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
+              {heroGreeting ?? "Hello! 👋"}
             </h1>
             <p className="text-white/40 text-sm">
               Live Kapruka catalog · Real delivery · Checkout
@@ -648,7 +664,8 @@ export default function KiraChat() {
             style={{ animationDelay: "120ms" }}
           >
             {[
-              // Lead with time-sensitive occasions (urgent chip first), then categories
+              // The hero headline already announces any active occasion, so drop
+              // the redundant urgent occasion chip and lead with categories.
               ...OCCASION_CHIPS.slice(0, 4)
                 .map((chip) => ({
                   label: stripDecorativeGlyphs(chip.label),
@@ -659,10 +676,11 @@ export default function KiraChat() {
                 .filter(
                   (option) =>
                     option.label !== "Flowers & cake" &&
-                    option.label !== "Just browsing"
+                    option.label !== "Just browsing" &&
+                    !(HAS_ACTIVE_OCCASION && option.urgent)
                 )
                 .sort((a, b) => Number(b.urgent) - Number(a.urgent)),
-              ...CATEGORIES.slice(0, 4).map((category) => ({
+              ...CATEGORIES.slice(0, HAS_ACTIVE_OCCASION ? 5 : 4).map((category) => ({
                 label: category.label,
                 value: category.value,
                 Icon: category.icon,

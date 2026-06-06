@@ -12,6 +12,8 @@ export interface CheckoutRequest {
     address: string;
     date?: string; // YYYY-MM-DD, defaults to tomorrow
   };
+  giftMessage?: string;
+  senderName?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -19,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body: CheckoutRequest = await req.json();
-    const { cart, delivery } = body;
+    const { cart, delivery, giftMessage, senderName } = body;
 
     if (!cart?.length) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
@@ -80,7 +82,10 @@ export async function POST(req: NextRequest) {
         date: deliveryDate,
       },
       cart: items,
-      sender: { name: "Anonymous", anonymous: true },
+      sender: senderName?.trim()
+        ? { name: senderName.trim(), anonymous: false }
+        : { name: "Anonymous", anonymous: true },
+      ...(giftMessage?.trim() ? { gift_message: giftMessage.trim() } : {}),
       response_format: "json",
     };
 

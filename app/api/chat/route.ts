@@ -26,7 +26,7 @@ const MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "llama-3.1-8b-instant",
 ];
-const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_ROUNDS = 4;
 
 const SERVER_CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
@@ -393,14 +393,24 @@ export async function POST(req: NextRequest) {
           language === "si"
             ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Sinhala script (Unicode, U+0D80–U+0DFF). Every word of your response must be written in Sinhala Unicode characters. Do NOT use Latin script, Romanized Sinhala, or English in your response. You can understand input in any language or script — only your RESPONSES must be in Sinhala Unicode."
             : language === "ta"
-            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Tamil script (Unicode, U+0B80–U+0BFF). Every word must be in Tamil Unicode characters. Do NOT use Sinhala, English, or any Latin script — Tamil ONLY, NOT Sinhala. You can understand any input language — only your RESPONSES must be in Tamil Unicode."
+            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond primarily in Tamil script (Unicode, U+0B80–U+0BFF). Tamil Unicode characters must appear in every response — do not respond in pure English. For product names or individual words you cannot write in Tamil, you may include the English word; but frame the sentence in Tamil. NEVER use Sinhala Unicode (U+0D80–U+0DFF) — Sinhala and Tamil are completely different scripts. Example of acceptable format: 'Kapruka-இல் 3 options — stock-இல் உள்ளவை.'"
             : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English or Tanglish. Tanglish means casual English mixed with ROMANIZED Sinhala/Tamil words only (e.g. 'aiyo', 'machang', 'amma', 'podi', 'nona') — NOT Unicode script. Under NO circumstances write Sinhala Unicode (U+0D80–U+0DFF) or Tamil Unicode (U+0B80–U+0BFF) characters, even if the user writes in those scripts. The selected language mode OVERRIDES the input script.";
+
+        // Authoritative per-request date. KIRA_SYSTEM_PROMPT bakes `new Date()` at
+        // module-load time, which goes stale after a cold start; this line is
+        // evaluated on every request and overrides it for delivery-date logic.
+        const today = new Date();
+        const tomorrow = new Date(today.getTime() + 86_400_000);
+        const dateContext =
+          `\n\n[CURRENT DATE: ${today.toISOString().slice(0, 10)} — treat this as today for ALL delivery-date logic. ` +
+          `Delivery date must be today or later; if the user gives no date, default to tomorrow (${tomorrow.toISOString().slice(0, 10)}) and confirm.]`;
 
         const systemContent =
           KIRA_SYSTEM_PROMPT +
           cartContext +
           deliveryContext +
           deliveryDateContext +
+          dateContext +
           langInstruction +
           (compactSummary ? `\n\n${compactSummary}` : "");
 
@@ -409,9 +419,12 @@ export async function POST(req: NextRequest) {
           content: m.content,
         }));
 
-        // When EN mode is selected but the user typed non-Latin Unicode (Sinhala/Tamil),
-        // prepend a hard per-message lock so the model doesn't mirror the input script.
-        if (language === "en" && /[඀-෿஀-௿]/.test(latestUserText)) {
+        // EN mode: always prepend a hard script lock on the latest user message.
+        // The lock is ~15 tokens and prevents the model from code-switching to Sinhala/Tamil
+        // Unicode when it recognises cultural keywords (Vesak, amma, avurudu, etc.).
+        // Without this, Llama infers a "Sinhala-speaker context" from topic words alone and
+        // replies in Unicode even when the system prompt says otherwise.
+        if (language === "en") {
           const lastIdx = mappedRecent.length - 1;
           if (lastIdx >= 0 && mappedRecent[lastIdx].role === "user") {
             mappedRecent[lastIdx] = {
@@ -643,6 +656,10 @@ export async function POST(req: NextRequest) {
               const sToolMap = new Map<number, { id: string; name: string; args: string }>();
               let sFinish = "";
               let sUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+              // Lookahead buffer — hold the first HAL_LOOKAHEAD chars before committing
+              // tokens to SSE so the post-stream hallucination check can still fire.
+              const pendingBuf: string[] = [];
+              const HAL_LOOKAHEAD = 150;
 
               const groqStream = await getGroq().chat.completions.create({
                 model: MODELS[modelIndex],
@@ -665,8 +682,25 @@ export async function POST(req: NextRequest) {
                 };
                 if (delta.content) {
                   sContent += delta.content;
-                  controller.enqueue(sse("token", delta.content));
-                  streamedText = true;
+                  if (!streamedText) {
+                    pendingBuf.push(delta.content);
+                    // One-time lookahead check once we have enough chars.
+                    if (sContent.length >= HAL_LOOKAHEAD) {
+                      const earlyHal =
+                        /LKR\s*[\d,]+/.test(sContent) &&
+                        collectedProducts.length === 0 &&
+                        checkoutInfo === undefined &&
+                        hallucinationRetries < 1;
+                      if (!earlyHal) {
+                        for (const t of pendingBuf) controller.enqueue(sse("token", t));
+                        pendingBuf.length = 0;
+                        streamedText = true;
+                      }
+                      // else: keep buffering silently — post-loop hook fires the retry.
+                    }
+                  } else {
+                    controller.enqueue(sse("token", delta.content));
+                  }
                 }
                 if (delta.tool_calls) {
                   for (const tc of delta.tool_calls) {
@@ -676,6 +710,22 @@ export async function POST(req: NextRequest) {
                     if (tc.function?.name) entry.name += tc.function.name;
                     if (tc.function?.arguments) entry.args += tc.function.arguments;
                   }
+                }
+              }
+
+              // Flush lookahead buffer if the completed response looks clean.
+              // If it still matches the hallucination pattern, leave the buffer
+              // unset so streamedText stays false and the post-loop hook can retry.
+              if (pendingBuf.length > 0) {
+                const postHal =
+                  /LKR\s*[\d,]+/.test(sContent) &&
+                  collectedProducts.length === 0 &&
+                  checkoutInfo === undefined &&
+                  hallucinationRetries < 1;
+                if (!postHal) {
+                  for (const t of pendingBuf) controller.enqueue(sse("token", t));
+                  pendingBuf.length = 0;
+                  streamedText = true;
                 }
               }
 
@@ -930,9 +980,14 @@ export async function POST(req: NextRequest) {
           const hasSinhala = SINHALA_RE.test(finalText);
           const hasTamil   = TAMIL_RE.test(finalText);
           if (language === "en" && (hasSinhala || hasTamil)) {
-            // Any Sinhala/Tamil in an EN-mode response means the model ignored the instruction.
-            // Full replacement is safer than stripping (stripped text can look garbled).
-            finalText = L("troubleConnecting", "en");
+            // Kapruka product names are often in Sinhala/Tamil script, so a small number
+            // of foreign-script chars in an EN reply is expected and correct. Only replace
+            // if foreign script makes up > 20% of the response — a clear language violation.
+            const sChars = (finalText.match(/[඀-෿]/g) ?? []).length;
+            const tChars = (finalText.match(/[஀-௿]/g) ?? []).length;
+            if ((sChars + tChars) / Math.max(finalText.length, 1) > 0.20) {
+              finalText = L("troubleConnecting", "en");
+            }
           } else if (language === "si" && !hasSinhala) {
             finalText = L("troubleConnecting", "si");
           } else if (language === "ta" && !hasTamil) {
@@ -1024,12 +1079,18 @@ async function tryHandleDeterministicPrompt({
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
 
-  if (!trimmed) return false;
+  // ── Empty / whitespace input ─────────────────────────────────────────────
+  // Return a friendly prompt rather than a terse one-liner.
+  if (!trimmed) {
+    await streamWords(controller, "Hey! I'm Kira — your Kapruka shopping helper 🎁 Tell me what you're looking for: a gift, cakes, flowers, or something else?");
+    controller.enqueue(sse("done"));
+    return true;
+  }
 
   // ── Jailbreak / persona-change intercept ─────────────────────────────────
   // "pretend you're a different AI", "act as X", "ignore your instructions" etc.
   // Catch before any search logic so the LLM never gets a chance to comply.
-  const JAILBREAK_RE = /\b(pretend\s+(you'?re?|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai)\b/i;
+  const JAILBREAK_RE = /\b(pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai)\b/i;
   if (JAILBREAK_RE.test(lower)) {
     await streamWords(controller, "Ha, I'm just Kira — one personality is plenty for me! Anything I can find for you on Kapruka? 🛍️");
     controller.enqueue(sse("done"));
@@ -1039,7 +1100,9 @@ async function tryHandleDeterministicPrompt({
   // ── Platform trust questions intercept ───────────────────────────────────
   // "is Kapruka legit?", "can I trust this?", "is this safe?" etc.
   // Answer warmly without calling any tools.
-  const TRUST_RE = /\b(is\s+(kapruka|this|it)\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
+  // Allows optional article/adjective between subject and quality word:
+  // "is Kapruka legit?" ✓  "is Kapruka a legit site?" ✓  "is this a safe site?" ✓
+  const TRUST_RE = /\b(is\s+(kapruka|this|it)(\s+\w+){0,3}\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
   if (TRUST_RE.test(lower)) {
     await streamWords(controller, "Absolutely — Kapruka has been Sri Lanka's biggest online gifting platform since 2010. Totally legit, secure payments, real delivery. Want to browse what's in stock? 🎁");
     controller.enqueue(sse("done"));
@@ -1277,6 +1340,26 @@ async function tryHandleDeterministicPrompt({
       if (giftDelivery) controller.enqueue(sse("delivery", giftDelivery));
     }
 
+    // If q:"gift" returned nothing, try common gift categories before giving up.
+    if (giftProducts.length === 0) {
+      for (const fallbackQ of ["chocolate", "flowers", "hamper", "cake"]) {
+        const fb = await callMcpTool(mcpClient, "kapruka_search_products", {
+          params: {
+            q: fallbackQ,
+            limit: 6,
+            in_stock_only: true,
+            ...(giftMaxPrice ? { max_price: giftMaxPrice } : {}),
+            response_format: "json",
+          },
+        });
+        const fbProducts = dedupeProducts(extractProductsFromMcp(fb.content));
+        if (fbProducts.length > 0) {
+          giftProducts.push(...fbProducts);
+          break;
+        }
+      }
+    }
+
     if (giftProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: "gift" }));
     } else {
@@ -1313,6 +1396,48 @@ async function tryHandleDeterministicPrompt({
     }
     controller.enqueue(sse("done"));
     return true;
+  }
+
+  // Bare "product under budget" fast-path — catches queries like "birthday cake under 2000",
+  // "chocolates under 3000", "flowers under 1500" that lack a "show me" prefix and therefore
+  // fall through parseSearchIntent. Prevents the LLM from asking for city before searching.
+  const BARE_PRODUCT_BUDGET_RE =
+    /\b(cake|birthday\s+cake|chocolate|flowers?|bouquet|roses?|hamper|gift\s+hamper|perfume|saree|toys?|electronics?|teddy|candles?|cookie|biscuit)\b.{0,40}\b(under|below|max|budget)\s*(?:lkr\s*)?([\d,]+)/i;
+  const bareMatch = BARE_PRODUCT_BUDGET_RE.exec(lower);
+  if (bareMatch) {
+    const bareQuery = bareMatch[1].trim().toLowerCase().replace(/\s+/g, " ");
+    const bareMaxPrice = Number(bareMatch[3].replace(/,/g, ""));
+    if (bareMaxPrice >= 100 && bareMaxPrice <= 500_000) {
+      controller.enqueue(sse("step", `Searching Kapruka for "${bareQuery}"`));
+      let bareProducts: KiraProduct[] = [];
+      for (const q of [bareQuery, fallbackQuery(bareQuery)]) {
+        if (!q) continue;
+        const r = await callMcpTool(mcpClient, "kapruka_search_products", {
+          params: { q, limit: 6, in_stock_only: true, max_price: bareMaxPrice, response_format: "json" },
+        });
+        bareProducts = dedupeProducts(extractProductsFromMcp(r.content));
+        if (bareProducts.length > 0) break;
+      }
+      const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+      if (bareProducts.length === 0) {
+        await streamWords(controller, Lf("searchNothingFound", language, { query: bareQuery }));
+      } else {
+        const budgetText = ` under LKR ${bareMaxPrice.toLocaleString("en-LK")}`;
+        const cityText = cityHint ? ` to ${cityHint}` : "";
+        const key = bareProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+        await streamWords(controller, Lf(key, language, { n: bareProducts.length, budget: budgetText, city: cityText, date: "" }));
+        controller.enqueue(sse("products", bareProducts));
+        if (cityHint && bareProducts[0]) {
+          const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+            params: { city: cityHint, product_id: bareProducts[0].id, response_format: "json" },
+          });
+          const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+          if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+        }
+      }
+      controller.enqueue(sse("done"));
+      return true;
+    }
   }
 
   const searchIntent = parseSearchIntent(trimmed);
@@ -1534,11 +1659,16 @@ function extractFirstCity(content: unknown): string | undefined {
 }
 
 function extractOrderNumber(text: string): string | undefined {
-  // Match Kapruka order IDs: letters-first (e.g. KAP12345) or digits-first (e.g. 102jidas).
-  // Must be at least 5 chars and contain both letters and digits (avoids matching plain words).
+  // Match Kapruka order IDs: 5–20 chars. Prefer an alphanumeric token containing
+  // BOTH letters and digits (e.g. KAP12345, 102jidas). Fall back to a purely
+  // numeric token (e.g. 10234567) so numeric-only order numbers are still tracked.
+  // Never fall back to an all-letters token — that would treat plain words
+  // ("track", "order") as order numbers.
   const m = text.match(/\b([A-Z0-9]{5,20})\b/gi);
   if (!m) return undefined;
-  const candidate = m.find((s) => /[A-Z]/i.test(s) && /\d/.test(s));
+  const candidate =
+    m.find((s) => /[A-Z]/i.test(s) && /\d/.test(s)) ??
+    m.find((s) => /^\d{5,20}$/.test(s));
   return candidate?.toUpperCase();
 }
 

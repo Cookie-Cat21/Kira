@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Check,
   ChevronLeft,
@@ -10,6 +10,9 @@ import {
   ExternalLink,
   Gift,
   Loader2,
+  MessageSquare,
+  Share2,
+  User,
   X,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
@@ -59,6 +62,8 @@ export default function CheckoutModal({
   payLink,
 }: CheckoutModalProps) {
   const { cart, cartTotal, clearCart, payLink: contextPayLink } = useCart();
+  const prefersReduced = useReducedMotion();
+  const dialogRef = useRef<HTMLElement>(null);
   const [step, setStep] = useState<Step>("review");
   const [delivery, setDelivery] = useState({
     name: "",
@@ -66,12 +71,47 @@ export default function CheckoutModal({
     city: "",
     address: "",
   });
+  const [giftMessage, setGiftMessage] = useState("");
+  const [senderName, setSenderName] = useState("");
   const [cardValid, setCardValid] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState("");
   const [modalCheckoutInfo, setModalCheckoutInfo] = useState<CheckoutInfo | undefined>();
   const checkoutUrl = modalCheckoutInfo?.checkoutUrl ?? payLink ?? contextPayLink;
   const stepIndex = STEPS.indexOf(step);
+
+  // Focus trap — keep keyboard focus inside the modal
+  useEffect(() => {
+    if (!open) return;
+    const el = dialogRef.current;
+    if (!el) return;
+    const prev = document.activeElement as HTMLElement | null;
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable[0]?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Tab" || !el) return;
+      const nodes = Array.from(
+        el.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prev?.focus();
+    };
+  }, [open]);
 
   const handleCardChange = useCallback(
     (_state: CardState, validity: CardValidity) => {
@@ -85,6 +125,8 @@ export default function CheckoutModal({
     setCardValid(false);
     setPlaceError("");
     setModalCheckoutInfo(undefined);
+    setGiftMessage("");
+    setSenderName("");
     onClose();
   }
 
@@ -107,7 +149,7 @@ export default function CheckoutModal({
         const res = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cart, delivery }),
+          body: JSON.stringify({ cart, delivery, giftMessage, senderName }),
         });
         const data = (await res.json()) as { checkoutInfo?: CheckoutInfo; error?: string };
         if (!res.ok || !data.checkoutInfo) {
@@ -143,6 +185,7 @@ export default function CheckoutModal({
           />
 
           <motion.section
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Checkout"
@@ -298,6 +341,37 @@ export default function CheckoutModal({
                           setDelivery((current) => ({ ...current, address }))
                         }
                       />
+                      <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-kira-muted">
+                          <MessageSquare className="size-3" />
+                          Gift message
+                          <span className="ml-auto font-normal normal-case text-kira-muted/60">optional</span>
+                        </label>
+                        <textarea
+                          value={giftMessage}
+                          onChange={(e) => setGiftMessage(e.target.value)}
+                          placeholder="Happy birthday amma! Wishing you all the love 🎂"
+                          rows={3}
+                          maxLength={300}
+                          className="w-full resize-none rounded-xl border border-kira-line bg-kira-surface px-4 py-3 text-sm text-kira-text outline-none transition-all placeholder:text-kira-muted focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
+                        />
+                        {giftMessage.length > 0 && (
+                          <p className="mt-0.5 text-right text-[10px] text-kira-muted">{giftMessage.length}/300</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-kira-muted">
+                          <User className="size-3" />
+                          From (your name)
+                          <span className="ml-auto font-normal normal-case text-kira-muted/60">optional</span>
+                        </label>
+                        <input
+                          value={senderName}
+                          onChange={(e) => setSenderName(e.target.value)}
+                          placeholder="Leave blank to send anonymously"
+                          className="w-full rounded-xl border border-kira-line bg-kira-surface px-4 py-3 text-sm text-kira-text outline-none transition-all placeholder:text-kira-muted focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
+                        />
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -331,17 +405,27 @@ export default function CheckoutModal({
                   <motion.div
                     key="confirm"
                     {...slideProps}
-                    className="flex flex-col items-center gap-5 p-8 text-center"
+                    className="relative flex flex-col items-center gap-5 overflow-hidden p-8 text-center"
                   >
-                    <span className="flex size-20 items-center justify-center rounded-full bg-kira-leaf/10">
+                    {/* Confetti burst — skipped for prefers-reduced-motion */}
+                    {!prefersReduced && <ConfettiBlast />}
+
+                    <motion.span
+                      className="flex size-20 items-center justify-center rounded-full bg-kira-leaf/10"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 320, damping: 20 }}
+                    >
                       <Check className="size-10 text-kira-leaf" strokeWidth={2.5} />
-                    </span>
+                    </motion.span>
                     <div>
                       <h2 className="font-sans text-2xl text-kira-text">
-                        All set
+                        🎉 Order placed!
                       </h2>
                       <p className="mt-1 text-sm text-kira-muted">
-                        Complete your payment securely on Kapruka.
+                        {giftMessage
+                          ? `Your note — "${giftMessage.slice(0, 60)}${giftMessage.length > 60 ? "…" : ""}" — is attached.`
+                          : "Complete your payment securely on Kapruka."}
                       </p>
                     </div>
                     {checkoutUrl ? (
@@ -363,6 +447,19 @@ export default function CheckoutModal({
                         Ask Kira &quot;I&apos;m ready to checkout&quot; to
                         generate your secure Kapruka payment link.
                       </p>
+                    )}
+                    {/* WhatsApp share — let the sender tell the family */}
+                    {checkoutUrl && (
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(`I just sent you a gift via Kapruka! 🎁 Your order is on its way — track it here: ${checkoutUrl}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-xl border border-kira-line bg-kira-surface px-5 py-2.5 text-xs font-semibold text-kira-text transition-colors hover:bg-kira-bg"
+                        aria-label="Share order on WhatsApp"
+                      >
+                        <Share2 className="size-3.5 text-green-500" />
+                        Tell them it&apos;s coming — share on WhatsApp
+                      </a>
                     )}
                   </motion.div>
                 )}
@@ -415,6 +512,39 @@ export default function CheckoutModal({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+const CONFETTI_COLORS = ["#f8da08", "#402970", "#10b981", "#f43f5e", "#3b82f6", "#f97316"];
+const CONFETTI_COUNT = 28;
+
+function ConfettiBlast() {
+  const particles = Array.from({ length: CONFETTI_COUNT }, (_, i) => {
+    const angle = (i / CONFETTI_COUNT) * 360 + (Math.random() * 30 - 15);
+    const rad = (angle * Math.PI) / 180;
+    const dist = 110 + Math.random() * 80;
+    return {
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      x: Math.cos(rad) * dist,
+      y: Math.sin(rad) * dist,
+      rotate: Math.random() * 720 - 360,
+      scale: 0.4 + Math.random() * 0.6,
+    };
+  });
+
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden>
+      {particles.map((p, i) => (
+        <motion.span
+          key={i}
+          className="absolute size-2.5 rounded-sm"
+          style={{ background: p.color }}
+          initial={{ x: 0, y: 0, scale: 0, rotate: 0, opacity: 1 }}
+          animate={{ x: p.x, y: p.y, scale: p.scale, rotate: p.rotate, opacity: 0 }}
+          transition={{ duration: 0.8 + Math.random() * 0.4, ease: "easeOut", delay: i * 0.012 }}
+        />
+      ))}
+    </div>
   );
 }
 

@@ -3,6 +3,11 @@ const SCRIPT_RANGES = {
   ta: /[\u0B80-\u0BFF]/,
 };
 
+// Rate-limit / connection fallback strings (en/si/ta). Mirrors the SENTINEL_RE in
+// test-personas.mjs. A response matching this is not a real answer \u2014 score as ERR.
+const SENTINEL_RE =
+  /I'?m a bit slammed|thinking servers|ran out of time|trouble reaching Kapruka|trouble finding that right now|something went wrong on my end|\u0DA7\u0DD2\u0D9A(\u0D9A\u0DCA)? busy|\u0D9A\u0DDC\u0DA4|\u0DB1\u0DD0\u0DC0\u0DAD try|\u0DA7\u0DD2\u0D9A\u0D9A\u0DCA problem|\u0B95\u0BCA\u0B9E\u0BCD\u0B9A\u0BAE\u0BCD busy|\u0BA8\u0BC7\u0BB0\u0BAE\u0BCD \u0B95\u0BB4\u0BBF\u0BA4\u0BCD\u0BA4\u0BC1|\u0B9A\u0BBF\u0BB1\u0BC1 \u0BAA\u0BBF\u0BB0\u0B9A\u0BCD\u0B9A\u0BA9\u0BC8|\u0B87\u0BA3\u0BC8\u0BAA\u0BCD\u0BAA\u0BBF\u0BB2\u0BCD/i;
+
 const CHECKS = {
   hasEvent(events, responseText, type, predicate) {
     const found = events.some((event) => {
@@ -98,6 +103,15 @@ const CHECKS = {
 };
 
 export function evaluateTest(testCase, runResult) {
+  // Rate-limit / connection fallbacks are not real answers — score as ERR, not PASS/FAIL.
+  if (SENTINEL_RE.test(runResult.responseText ?? "")) {
+    return {
+      passed: false,
+      isErr: true,
+      failedChecks: [{ check: "sentinel", reason: "Rate-limit or connection fallback — re-run with --concurrency 1" }],
+    };
+  }
+
   const failedChecks = [];
 
   if (runResult.error) {

@@ -13,7 +13,7 @@ npm run lint     # ESLint
 
 # Testing
 node scripts/run-tests.mjs                           # Core suite — 50 feature tests
-node scripts/test-personas.mjs --concurrency 1       # Persona suite — 50 real-world messages
+node scripts/test-personas.mjs --concurrency 1       # Persona suite — 100 real-world personas (groups A–E)
 node scripts/test-mcp.mjs                            # MCP endpoint probe (no Groq needed)
 ```
 
@@ -31,7 +31,7 @@ This is a single-page chat app. The entire UI lives in `app/page.tsx`. There is 
 
 **Data flow:**
 1. User message → `POST /api/chat` (`app/api/chat/route.ts`)
-2. Server opens an MCP connection to `https://mcp.kapruka.com/mcp`, runs an agentic Groq loop (up to 5 tool rounds), streams SSE events back
+2. Server opens an MCP connection to `https://mcp.kapruka.com/mcp`, runs an agentic Groq loop (up to 4 tool rounds — `MAX_TOOL_ROUNDS`), streams SSE events back
 3. Client (`app/page.tsx`) consumes the SSE stream and updates React state in-place on the current message
 
 **SSE event types** (emitted by route, consumed by page):

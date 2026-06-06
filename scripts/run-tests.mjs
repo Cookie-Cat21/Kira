@@ -24,7 +24,7 @@ for (let i = 0; i < TESTS.length; i++) {
   const result = toResult(test, runResult, evaluation);
   results.push(result);
 
-  const icon = result.passed ? "✓" : "✗";
+  const icon = result.passed ? "✓" : result.isErr ? "~" : "✗";
   console.log(
     `${icon} [${i + 1}/${TESTS.length}] ${test.name} (${result.durationMs}ms)`
   );
@@ -38,12 +38,14 @@ for (let i = 0; i < TESTS.length; i++) {
   }
 }
 
-const passed = results.filter((result) => result.passed).length;
-const failed = results.length - passed;
+const passed = results.filter((r) => r.passed).length;
+const errs   = results.filter((r) => r.isErr).length;
+const failed = results.length - passed - errs;
 const payload = {
   runAt: new Date().toISOString(),
   passed,
   failed,
+  errs,
   results,
 };
 
@@ -54,6 +56,7 @@ console.log("Summary");
 console.log("-------");
 console.log(`Passed: ${passed}`);
 console.log(`Failed: ${failed}`);
+console.log(`Errors: ${errs}  (rate-limit/fallback — re-run individually)`);
 console.log(`Total:  ${results.length}`);
 console.log(`Wrote:  ${RESULTS_PATH}`);
 
@@ -64,6 +67,7 @@ function toResult(test, runResult, evaluation) {
     group: test.group,
     subgroup: test.subgroup,
     passed: evaluation.passed,
+    ...(evaluation.isErr ? { isErr: true } : {}),
     durationMs: runResult.durationMs,
     failedChecks: evaluation.failedChecks,
     responseText: runResult.responseText,

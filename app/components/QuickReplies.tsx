@@ -123,6 +123,21 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     return [];
   }
 
+  // Error state — always give a recovery path, never strand the user
+  if (
+    text.includes("something went wrong") ||
+    text.includes("try again") ||
+    text.includes("aiyo") ||
+    text.includes("couldn't connect") ||
+    text.includes("network error")
+  ) {
+    return [
+      { label: "Try again", value: "Can you try that again?" },
+      { label: "Browse gifts", value: "Show me popular gifts" },
+      { label: "Track order", value: "I want to track my order" },
+    ];
+  }
+
   // Opening / first reply — show entry-point categories
   if (isFirstReply || text.includes("what") || text.includes("help") || text.includes("looking for")) {
     return [

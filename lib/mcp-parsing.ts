@@ -74,8 +74,11 @@ export function extractProductsFromMcp(content: unknown): KiraProduct[] {
   if (!parsed.ok) return [];
 
   const inner = parsed.data;
+  // The live MCP returns the array under `results`; tolerate `products` / `items`
+  // / `data` too so a server-side rename can't silently zero out the carousel
+  // (truncateForModel already reads all of these shapes).
   const candidates = isRecord(inner)
-    ? asArray(inner.results)
+    ? asArray(inner.results ?? inner.products ?? inner.items ?? inner.data)
     : Array.isArray(inner)
     ? inner
     : [];

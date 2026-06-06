@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   Package,
+  Share2,
   Truck,
   Video,
 } from "lucide-react";
@@ -91,6 +92,7 @@ export default function OrderTracker({ tracking }: Props) {
                     ? "bg-kap-purple border-kap-purple animate-pulse"
                     : "bg-white border-kira-border"
                 )}
+                aria-label={event.done ? "Done" : isCurrent ? "Current" : "Pending"}
               >
                 {event.done ? (
                   <Check className="size-2.5 text-white" />
@@ -130,6 +132,20 @@ export default function OrderTracker({ tracking }: Props) {
           {tracking.hasDeliveryPhoto && <MediaPill icon={Camera} label="Photo" />}
           {tracking.hasDeliveryVideo && <MediaPill icon={Video} label="Video" />}
         </div>
+      )}
+
+      {/* WhatsApp share — let the sender loop in family */}
+      {tracking.orderNumber && (
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(`Tracking Kapruka order #${tracking.orderNumber} — current status: ${tracking.statusDisplay ?? tracking.currentStatus}. Check live: https://www.kapruka.com/order/${tracking.orderNumber}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-kira-line bg-kira-bg px-3 py-2 text-[11px] font-semibold text-kira-muted transition-colors hover:text-kira-text"
+          aria-label="Share tracking on WhatsApp"
+        >
+          <Share2 className="size-3 text-green-500" />
+          Share tracking on WhatsApp
+        </a>
       )}
     </div>
   );

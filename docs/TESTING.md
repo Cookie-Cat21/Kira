@@ -36,25 +36,40 @@ node scripts/run-tests.mjs --id 31  # single test
 
 ## 2. Persona suite — `test-personas.mjs`
 
-50 real-world personas stress-testing edge behaviour:
+**100 real-world personas** across five groups, stress-testing the full e2e surface:
 - **Group A (25)** — vague / indirect gift messages (e.g. "just a gift", "something for my friend")
 - **Group B (25)** — completely out-of-scope messages (e.g. "book me a flight", "write a poem")
+- **Group C (25)** — feature / transactional flows: search, delivery, checkout (incl. cart + multi-turn), tracking, browse, sort, spelling correction
+- **Group D (12)** — multilingual: Sinhala/Tamil output gating, Unicode + romanized input, mode-vs-script precedence
+- **Group E (13)** — adversarial / robustness / edge: prompt injection, jailbreak, gibberish, long input, mixed scripts
 
 ```bash
-node scripts/test-personas.mjs                      # all 50
-node scripts/test-personas.mjs --group a            # Group A only
-node scripts/test-personas.mjs --group b            # Group B only
-node scripts/test-personas.mjs --id A03,B13         # specific personas
-node scripts/test-personas.mjs --concurrency 1      # safe for Groq free tier
+node scripts/test-personas.mjs                      # all 100 (concurrency defaults to 1)
+node scripts/test-personas.mjs --group c            # one group (a|b|c|d|e)
+node scripts/test-personas.mjs --id A03,C19,E01     # specific personas
+node scripts/test-personas.mjs --concurrency 1      # explicit (already the default)
 ```
 
-> ⚠️ **Always use `--concurrency 1`** for reliable results. At concurrency ≥ 2, Groq rate-limits cause empty responses that look like failures but are not.
+> ⚠️ **Concurrency defaults to 1** (Groq free tier ~30 RPM). At concurrency ≥ 2 the model
+> returns rate-limit fallbacks. These are now **detected and scored as `ERR` (re-run), never
+> `PASS`** — see `SENTINEL_RE` in the script. Each errored case is also retried once automatically.
 
-### Pass criteria
+### Scoring
+
+- **PASS / FAIL / ERR.** `ERR` = a rate-limit / connection / fallback response (the model never ran).
+  Errored cases are excluded from the pass count and reported separately; the process exit code is
+  driven only by *genuine* failures, so an infra blip won't red-flag CI.
+- Personas in groups C/D/E use a small declarative check vocabulary
+  (`products`, `noProducts`, `productsOrHonestEmpty`, `delivery`, `tracking`, `noTools`,
+  `noHallucination`, `["text", /re/]`, `["lang","si"]`, `["noLang","ta"]`, …).
+- Personas can carry a full `request` (multi-message history, `cart`, `language`) so transactional
+  and multilingual flows run end-to-end, not just single one-liners.
+
+### Pass criteria (A / B)
 
 | Group | Passes when |
 |---|---|
-| A — vague | No "nothing in stock" response · `expect:ask` cases don't show products unprompted · `expect:search` cases return products |
+| A — vague | No "nothing in stock" response · `expect:ask` cases **must** ask a clarifying question and not show products · `expect:search` cases return products |
 | B — out-of-scope | Zero tool calls · Response ≤ 220 chars OR contains a shopping redirect keyword |
 
 ### Persona list
@@ -119,11 +134,15 @@ node scripts/test-personas.mjs --concurrency 1      # safe for Groq free tier
 | B24 | `I need a doctor's appointment` | One-liner redirect |
 | B25 | `can you call someone for me?` | One-liner redirect |
 
+(Groups C/D/E are defined in `scripts/test-personas.mjs` with declarative `checks` arrays — see the
+header comment in that file for the full token vocabulary.)
+
 ---
 
 ## Adding new test cases
 
 **Core suite** — add to `scripts/test-suite.mjs` using the `test()` factory:
+
 ```js
 test({
   id: 51,
@@ -135,7 +154,13 @@ test({
 })
 ```
 
-**Persona suite** — add to `GROUP_A` or `GROUP_B` in `scripts/test-personas.mjs`:
+**Persona suite** — add to a group in `scripts/test-personas.mjs`:
+
 ```js
+// Group A/B keep the `expect` form:
 { id: "A26", msg: "something for my boss", expect: "ask", note: "Recipient = boss, no context" }
+
+// Groups C/D/E use declarative checks (and may carry a full `request`):
+{ id: "C26", msg: "show me teddy bears on Kapruka", checks: ["products"], note: "Search" }
+{ id: "D13", request: { messages: [{ role: "user", content: "hello" }], language: "si" }, checks: [["lang", "si"]], note: "SI greeting" }
 ```
