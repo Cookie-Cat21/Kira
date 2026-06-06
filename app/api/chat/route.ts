@@ -1,7 +1,7 @@
 import Groq from "groq-sdk";
 import { NextRequest } from "next/server";
 import { KIRA_SYSTEM_PROMPT } from "@/lib/kira-prompt";
-import { createMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
+import { getMcpClient, invalidateMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
 import {
   extractCheckoutInfoFromMcp,
   extractDeliveryInfoFromMcp,
@@ -44,6 +44,149 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
   hamper: "gift hamper",
 };
 
+// Common misspellings corrected before hitting MCP search.
+const SEARCH_SPELLING_MAP: Record<string, string> = {
+  stationary: "stationery",
+  jewllery: "jewellery",
+  jewlery: "jewellery",
+  jewlry: "jewellery",
+  choclate: "chocolate",
+  chocalate: "chocolate",
+  baloons: "balloons",
+  ballon: "balloon",
+  teddybear: "teddy bear",
+};
+
+// ─── Localized UI strings ────────────────────────────────────────────────────
+// All fixed-text messages surfaced to users, in en / si / ta.
+// Use L(key, lang) for static strings, Lf(key, lang, vars) for templated ones.
+const LS: Record<string, Record<string, string>> = {
+  trackingAskOrderNumber: {
+    en: "Sure — send me the Kapruka order number from the confirmation email, and I'll check the status for you.",
+    si: "හොඳයි — confirmation email එකෙන් Kapruka order number එක දෙන්නකෝ, status check කරන්නම්.",
+    ta: "சரி — confirmation email-இல் உள்ள Kapruka ஆர்டர் எண்ணை அனுப்புங்கள், நான் status பார்க்கிறேன்.",
+  },
+  trackingFound: {
+    en: "I found order {orderNumber}: {status}.",
+    si: "Order {orderNumber} හොයාගත්තා: {status}.",
+    ta: "Order {orderNumber} கிடைத்தது: {status}.",
+  },
+  trackingNotFound: {
+    en: "I couldn't track {orderNumber}. {reason}",
+    si: "Order {orderNumber} track කරන්නේ බෑ. {reason}",
+    ta: "Order {orderNumber} track செய்ய முடியவில்லை. {reason}",
+  },
+  checkoutEmptyCart: {
+    en: "Add a product first and I'll help you checkout.",
+    si: "පළමුව product එකක් add කරන්නකෝ, ඊට පස්සේ checkout කරමු.",
+    ta: "முதலில் ஒரு பொருளை சேர்க்கவும், பிறகு checkout செய்யலாம்.",
+  },
+  checkoutNeedName: {
+    en: "Lovely. Before I create a live Kapruka checkout link, I need the recipient's full name.",
+    si: "හොඳයි! Live Kapruka checkout link හදන්න recipient ගේ full name ඕනෑ.",
+    ta: "நல்லது! Live Kapruka checkout link உருவாக்க recipient இன் full name தேவை.",
+  },
+  reshowNothingInStock: {
+    en: "Checked Kapruka again — nothing in stock right now. Want to try a different category or search?",
+    si: "Kapruka නැවත check කළා — stock නෑ. වෙනත් category try කරමුද?",
+    ta: "Kapruka மீண்டும் சரிபார்த்தேன் — stock இல்லை. வேறு category try செய்யலாமா?",
+  },
+  reshowNothingFoundQuery: {
+    en: "I checked Kapruka live for \"{query}\" — nothing in stock right now. Want to try a different category?",
+    si: "Kapruka check කළා \"{query}\" — stock නෑ. වෙනත් category try කරමුද?",
+    ta: "Kapruka-ல் \"{query}\" சரிபார்த்தேன் — stock இல்லை. வேறு category try செய்யலாமா?",
+  },
+  reshowRealListings: {
+    en: "Here are the real listings{budget} from Kapruka — {n} in stock right now.",
+    si: "Kapruka real listings{budget} — {n} stock හිඳිනා.",
+    ta: "Kapruka உண்மையான listings{budget} — {n} stock இல் உள்ளவை.",
+  },
+  reshowHereYouGo: {
+    en: "Here you go{budget}! {n} picks from Kapruka.",
+    si: "ඒ මෙන්න{budget}! Kapruka options {n}.",
+    ta: "இதோ{budget}! Kapruka-இல் {n} options.",
+  },
+  reshowHereYouGoOne: {
+    en: "Here you go{budget}! One pick from Kapruka.",
+    si: "ඒ මෙන්න{budget}! Kapruka option.",
+    ta: "இதோ{budget}! Kapruka-இல் ஒரு option.",
+  },
+  reshowHereItems: {
+    en: "Here they are — {n} items with pictures.",
+    si: "ඒ items {n} — pictures සමග.",
+    ta: "இதோ {n} items — pictures உடன்.",
+  },
+  reshowHereItemsSingle: {
+    en: "Here it is — the item with pictures.",
+    si: "ඒ item — picture සමග.",
+    ta: "இதோ item — picture உடன்.",
+  },
+  moreOptionsSamePicks: {
+    en: "Hmm, Kapruka's showing the same picks — want to try a different category or price range?",
+    si: "Hmm, Kapruka ම picks — වෙනත් category හෝ price range try කරමුද?",
+    ta: "Hmm, Kapruka அதே picks — வேறு category அல்லது price range try செய்யலாமா?",
+  },
+  moreOptionsAboutAll: {
+    en: "Honestly, that's about all Kapruka has for {query} right now. Want to try a different category or drop the budget filter?",
+    si: "Honestly, Kapruka {query} — ඒ ඒවාමයි. Category change කරමුද?",
+    ta: "Honestly, Kapruka-இல் {query} க்கு இவை மட்டுமே. வேறு category try செய்யலாமா?",
+  },
+  moreOptionsHere: {
+    en: "Here are some more options{budget} — sorted by price this time.",
+    si: "More options{budget} — price order.",
+    ta: "மேலும் options{budget} — price வரிசையில்.",
+  },
+  searchNothingFound: {
+    en: "Checked Kapruka live - nothing in stock for \"{query}\" right now. Want me to try a different term or category?",
+    si: "Kapruka check කළා — \"{query}\" stock නෑ. වෙනත් term try කරමුද?",
+    ta: "Kapruka சரிபார்த்தேன் — \"{query}\" stock இல்லை. வேறு term try செய்யலாமா?",
+  },
+  searchFoundOne: {
+    en: "Found one option{budget}{city}{date} — here's what's in stock:",
+    si: "Option 1{budget}{city}{date} — stock හිඳිනා:",
+    ta: "ஒரு option{budget}{city}{date} — stock இல் உள்ளது:",
+  },
+  searchFoundMany: {
+    en: "Here are {n} picks{budget}{city}{date} — all in stock on Kapruka right now.",
+    si: "Kapruka {n} options{budget}{city}{date} — stock හිඳිනා.",
+    ta: "Kapruka-இல் {n} options{budget}{city}{date} — stock இல் உள்ளவை.",
+  },
+  rateExhausted: {
+    en: "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?",
+    si: "Aiyo, දැන් ටිකක් busy — ටිකක් ඉස්සෙල්ලා try කරන්නකෝ 🙏",
+    ta: "Aiyo, இப்போது கொஞ்சம் busy — ஒரு நிமிடம் கழித்து try செய்யுங்கள் 🙏",
+  },
+  stagnantFallback: {
+    en: "Aiyo, I'm having a bit of trouble finding that right now — could you try rephrasing?",
+    si: "Aiyo, ඒක හොයාගන්නේ ටිකක් problem — rephrasing කරලා try කරන්නකෝ.",
+    ta: "Aiyo, அதை கண்டுபிடிக்க சிறு சிரமம் — வேறு விதமாக சொல்லி try செய்யுங்கள்.",
+  },
+  timeoutFallback: {
+    en: "Aiyo, I ran out of time processing that. Can you try again?",
+    si: "Aiyo, ටිකක් problem — නැවත try කරන්නකෝ.",
+    ta: "Aiyo, சிறு பிரச்சனை — மீண்டும் try செய்யுங்கள்.",
+  },
+  troubleConnecting: {
+    en: "I'm having a bit of trouble reaching Kapruka right now — please try again in a moment and I'll find real options for you.",
+    si: "Kapruka connect කරන්නේ ටිකක් problem — ටිකක් ඉස්සෙල්ලා try කරන්නකෝ.",
+    ta: "Kapruka இணைப்பில் சிறு பிரச்சனை — கொஞ்சம் நேரம் கழித்து மீண்டும் try செய்யுங்கள்.",
+  },
+};
+
+function L(key: string, lang: string): string {
+  const map = LS[key];
+  if (!map) return key;
+  return map[lang] ?? map.en ?? key;
+}
+
+function Lf(key: string, lang: string, vars: Record<string, string | number>): string {
+  let str = L(key, lang);
+  for (const [k, v] of Object.entries(vars)) {
+    str = str.replaceAll(`{${k}}`, String(v));
+  }
+  return str;
+}
+
 // Cache the MCP tool list across requests (schemas rarely change).
 let mcpToolsCache:
   | { tools: Awaited<ReturnType<typeof listMcpTools>>; ts: number }
@@ -72,13 +215,14 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      let mcpClient: Awaited<ReturnType<typeof createMcpClient>> | undefined;
+      let mcpClient: Awaited<ReturnType<typeof getMcpClient>> | undefined;
       // Per-request delivery cache — keyed by city|date|product to avoid
       // cross-contaminating date-specific quotes across calls.
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts, language } = body;
+        const { messages, cart, deliveryCity, deliveryDate, lastProducts } = body;
+        const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
@@ -93,7 +237,7 @@ export async function POST(req: NextRequest) {
           ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
           : "";
 
-        mcpClient = await createMcpClient();
+        mcpClient = await getMcpClient();
         if (
           await tryHandleDeterministicPrompt({
             text: latestUserText,
@@ -102,6 +246,7 @@ export async function POST(req: NextRequest) {
             deliveryCity,
             deliveryDate,
             lastProducts,
+            language,
             mcpClient,
             controller,
           })
@@ -246,10 +391,10 @@ export async function POST(req: NextRequest) {
         // and hallucinate garbled Sinhala, so we lock the output language here.
         const langInstruction =
           language === "si"
-            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Sinhala script (Unicode). Every word of your response must be written in Sinhala Unicode characters. Do NOT use Latin script, Romanized Sinhala, or English in your response. You can understand input in any language or script — only your RESPONSES must be in Sinhala Unicode."
+            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Sinhala script (Unicode, U+0D80–U+0DFF). Every word of your response must be written in Sinhala Unicode characters. Do NOT use Latin script, Romanized Sinhala, or English in your response. You can understand input in any language or script — only your RESPONSES must be in Sinhala Unicode."
             : language === "ta"
-            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Tamil script (Unicode). Every word of your response must be written in Tamil Unicode characters. Do NOT use Latin script or English in your response. You can understand input in any language or script — only your RESPONSES must be in Tamil Unicode."
-            : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English (Tanglish is fine — casual English with natural Sinhala/Tamil phrases). Do NOT write Sinhala Unicode script or Tamil Unicode script in your response, regardless of what language the user writes in.";
+            ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Tamil script (Unicode, U+0B80–U+0BFF). Every word must be in Tamil Unicode characters. Do NOT use Sinhala, English, or any Latin script — Tamil ONLY, NOT Sinhala. You can understand any input language — only your RESPONSES must be in Tamil Unicode."
+            : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English or Tanglish. Tanglish means casual English mixed with ROMANIZED Sinhala/Tamil words only (e.g. 'aiyo', 'machang', 'amma', 'podi', 'nona') — NOT Unicode script. Under NO circumstances write Sinhala Unicode (U+0D80–U+0DFF) or Tamil Unicode (U+0B80–U+0BFF) characters, even if the user writes in those scripts. The selected language mode OVERRIDES the input script.";
 
         const systemContent =
           KIRA_SYSTEM_PROMPT +
@@ -259,12 +404,26 @@ export async function POST(req: NextRequest) {
           langInstruction +
           (compactSummary ? `\n\n${compactSummary}` : "");
 
+        const mappedRecent = recentMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+
+        // When EN mode is selected but the user typed non-Latin Unicode (Sinhala/Tamil),
+        // prepend a hard per-message lock so the model doesn't mirror the input script.
+        if (language === "en" && /[඀-෿஀-௿]/.test(latestUserText)) {
+          const lastIdx = mappedRecent.length - 1;
+          if (lastIdx >= 0 && mappedRecent[lastIdx].role === "user") {
+            mappedRecent[lastIdx] = {
+              ...mappedRecent[lastIdx],
+              content: "[RESPOND IN ENGLISH/TANGLISH ONLY — NO SINHALA UNICODE, NO TAMIL UNICODE]\n" + mappedRecent[lastIdx].content,
+            };
+          }
+        }
+
         let currentMessages: GroqMessage[] = [
           { role: "system", content: systemContent },
-          ...recentMessages.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
+          ...mappedRecent,
         ];
 
         let finalText = "";
@@ -274,6 +433,7 @@ export async function POST(req: NextRequest) {
         let modelIndex = 0;
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
         let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
+        let streamedText = false;     // true once real streaming emits the first token
         // Track which tools ran this request so stagnation doesn't misfire
         // during checkout flows (list_delivery_cities + check_delivery + create_order
         // are all meaningful progress even though they collect no products).
@@ -336,6 +496,16 @@ export async function POST(req: NextRequest) {
               toolArgs = { ...toolArgs, response_format: "json" };
             }
 
+            // Correct common misspellings in search queries before hitting MCP.
+            if (toolName === "kapruka_search_products" && toolArgs.q) {
+              const corrected = String(toolArgs.q)
+                .toLowerCase()
+                .split(/\s+/)
+                .map((w) => SEARCH_SPELLING_MAP[w] ?? w)
+                .join(" ");
+              toolArgs = { ...toolArgs, q: corrected };
+            }
+
             const toolIndex = mcpTools.findIndex((t) => t.name === toolName);
             const flatSchema =
               toolIndex >= 0
@@ -367,6 +537,10 @@ export async function POST(req: NextRequest) {
               }
             } catch (mcpErr) {
               const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
+              // Connection errors invalidate the singleton so the next request reconnects.
+              if (/connection|transport|closed|econnreset|socket/i.test(msg)) {
+                invalidateMcpClient();
+              }
               resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
             }
 
@@ -431,7 +605,10 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Agentic loop (non-streaming — preserves failed_generation recovery)
+        // Agentic loop — uses Groq streaming so text tokens reach the client in real-time.
+        // Tool-call deltas are buffered and reconstructed into the same ChatCompletion
+        // shape so all post-loop logic (failed_generation recovery, hallucination hook,
+        // context trim, etc.) works unchanged.
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
@@ -458,29 +635,111 @@ export async function POST(req: NextRequest) {
               : currentMessages;
 
             try {
-              response = await getGroq().chat.completions.create({
+              // ── Streaming call ─────────────────────────────────────────────
+              // Text tokens are emitted to SSE as they arrive.
+              // Tool-call deltas are buffered then reconstructed into the same
+              // ChatCompletion shape so all downstream logic stays unchanged.
+              let sContent = "";
+              const sToolMap = new Map<number, { id: string; name: string; args: string }>();
+              let sFinish = "";
+              let sUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+
+              const groqStream = await getGroq().chat.completions.create({
                 model: MODELS[modelIndex],
                 messages: reqMessages,
                 tools: reqTools,
-                tool_choice: reqTools ? "auto" : undefined,
+                tool_choice: reqTools ? ("auto" as const) : undefined,
                 max_tokens: 1024,
+                stream: true,
               });
+
+              for await (const chunk of groqStream) {
+                const chunkAny = chunk as { usage?: typeof sUsage };
+                if (chunkAny.usage) sUsage = chunkAny.usage;
+                const sChoice = chunk.choices[0];
+                if (!sChoice) continue;
+                if (sChoice.finish_reason) sFinish = sChoice.finish_reason;
+                const delta = sChoice.delta as {
+                  content?: string | null;
+                  tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[];
+                };
+                if (delta.content) {
+                  sContent += delta.content;
+                  controller.enqueue(sse("token", delta.content));
+                  streamedText = true;
+                }
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    if (!sToolMap.has(tc.index)) sToolMap.set(tc.index, { id: "", name: "", args: "" });
+                    const entry = sToolMap.get(tc.index)!;
+                    if (tc.id) entry.id = tc.id;
+                    if (tc.function?.name) entry.name += tc.function.name;
+                    if (tc.function?.arguments) entry.args += tc.function.arguments;
+                  }
+                }
+              }
+
+              const sToolCalls = sToolMap.size > 0
+                ? Array.from(sToolMap.entries())
+                    .sort(([a], [b]) => a - b)
+                    .map(([, tc]) => ({
+                      id: tc.id,
+                      type: "function" as const,
+                      function: { name: tc.name, arguments: tc.args },
+                    }))
+                : undefined;
+
+              // Reconstruct ChatCompletion shape so post-loop code works unchanged.
+              response = {
+                choices: [{
+                  finish_reason: (sFinish || "stop") as "stop" | "length" | "tool_calls" | "content_filter",
+                  message: { role: "assistant", content: sContent || null, tool_calls: sToolCalls },
+                  index: 0,
+                  logprobs: null,
+                }],
+                usage: sUsage as Groq.Chat.Completions.ChatCompletion["usage"],
+                id: "",
+                model: MODELS[modelIndex],
+                object: "chat.completion",
+                created: 0,
+              } as Groq.Chat.Completions.ChatCompletion;
+
               break callLoop; // success — exit inner loop
             } catch (err) {
-              type ErrBody = { code?: string; failed_generation?: string };
+              type ErrBody = { code?: string; failed_generation?: string; message?: string };
               const apiErr = err as {
                 status?: number;
                 error?: ErrBody & { error?: ErrBody };
               };
               const inner: ErrBody = apiErr?.error?.error ?? apiErr?.error ?? {};
 
+              // Groq returns 400 with code "context_length_exceeded" or similar for overlong prompts.
+              if (
+                apiErr?.status === 400 &&
+                (inner.code === "context_length_exceeded" ||
+                  inner.message?.toLowerCase().includes("prompt_too_long") ||
+                  inner.message?.toLowerCase().includes("context length"))
+              ) {
+                if (currentMessages.length > 5) {
+                  currentMessages = [currentMessages[0], ...currentMessages.slice(-4)];
+                  continue callLoop;
+                }
+              }
+
+              if (apiErr?.status === 413) {
+                // Context too long — compact to system + last 4 messages and retry once.
+                if (currentMessages.length > 5) {
+                  currentMessages = [currentMessages[0], ...currentMessages.slice(-4)];
+                  continue callLoop;
+                }
+              }
+
               if (apiErr?.status === 429 || apiErr?.status === 413) {
                 if (modelIndex < MODELS.length - 1) {
                   modelIndex++;
                   continue callLoop; // retry same round with next model
                 }
-                finalText =
-                  "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?";
+                finalText = L("rateExhausted", language);
                 rateExhausted = true;
                 break callLoop;
               }
@@ -573,11 +832,10 @@ export async function POST(req: NextRequest) {
               .trim();
 
             // ── Hallucination stop-hook ───────────────────────────────────────
-            // If the response quotes LKR amounts but no search/product tool ran
-            // this turn and no products were collected, the model is likely
-            // inventing prices. Inject a firm correction and retry one round.
-            // Circuit breaker: fires at most once per turn to prevent a 5-round spin.
+            // Only fires when no tokens have been streamed yet — once tokens are
+            // on the wire we can't retract them, so skip correction in that case.
             if (
+              !streamedText &&
               finalText &&
               /LKR\s*[\d,]+/.test(finalText) &&
               collectedProducts.length === 0 &&
@@ -586,6 +844,7 @@ export async function POST(req: NextRequest) {
               hallucinationRetries < 1
             ) {
               hallucinationRetries++;
+              streamedText = false; // reset so next round can stream afresh
               currentMessages.push({ role: "assistant", content: finalText });
               currentMessages.push({
                 role: "user",
@@ -636,8 +895,7 @@ export async function POST(req: NextRequest) {
             console.log(`[Kira ${chainId}] stuck after ${round + 1} rounds — bailing`);
             stagnantRounds++;
             if (stagnantRounds >= 2) {
-              finalText =
-                "Aiyo, I'm having a bit of trouble finding that right now — could you try rephrasing?";
+              finalText = L("stagnantFallback", language);
               break;
             }
           } else {
@@ -646,14 +904,51 @@ export async function POST(req: NextRequest) {
         }
 
         if (!finalText) {
-          finalText = "Aiyo, I ran out of time processing that. Can you try again?";
+          finalText = L("timeoutFallback", language);
         }
 
-        // Stream final text word-by-word for typing effect
-        const words = finalText.match(/\S+\s*/g) ?? [];
-        for (const word of words) {
-          controller.enqueue(sse("token", word));
-          await new Promise((r) => setTimeout(r, 18));
+        // Hard intercept: 8b model has no tool access and will hallucinate product listings.
+        // If we ended on the last-resort model with no real products and the user was clearly
+        // shopping, surface a clean "can't connect" message instead of invented descriptions.
+        const SHOPPING_INTENT_RE =
+          /\b(show|search|find|book|cake|flower|gift|chocolat|fashion|toy|hamper|stationar|stationer|electronic|phone|looking for|want to (buy|get|order)|recommend)\b/i;
+        if (
+          modelIndex === MODELS.length - 1 &&
+          collectedProducts.length === 0 &&
+          checkoutInfo === undefined &&
+          SHOPPING_INTENT_RE.test(latestUserText)
+        ) {
+          finalText = L("troubleConnecting", language);
+        }
+
+        // Language enforcement guard — catches LLM ignoring the language instruction.
+        // Uses \u escapes (not literal chars) to avoid any source-file encoding issues.
+        // Runs after the hard intercept so both safety layers apply.
+        {
+          const SINHALA_RE = /[඀-෿]/;
+          const TAMIL_RE   = /[஀-௿]/;
+          const hasSinhala = SINHALA_RE.test(finalText);
+          const hasTamil   = TAMIL_RE.test(finalText);
+          if (language === "en" && (hasSinhala || hasTamil)) {
+            // Any Sinhala/Tamil in an EN-mode response means the model ignored the instruction.
+            // Full replacement is safer than stripping (stripped text can look garbled).
+            finalText = L("troubleConnecting", "en");
+          } else if (language === "si" && !hasSinhala) {
+            finalText = L("troubleConnecting", "si");
+          } else if (language === "ta" && !hasTamil) {
+            finalText = L("troubleConnecting", "ta");
+          }
+        }
+
+        // Tokens were already emitted in real-time during the streaming call above.
+        // Only fall back to bulk-emit here if streaming was bypassed (e.g. the
+        // failed_generation recovery path reconstructs fake tool calls and the
+        // subsequent round streams normally — so this only fires in edge cases).
+        if (!streamedText && finalText) {
+          const words = finalText.match(/\S+\s*/g) ?? [];
+          for (const word of words) {
+            controller.enqueue(sse("token", word));
+          }
         }
 
         // Dedup + cap carousel
@@ -678,11 +973,9 @@ export async function POST(req: NextRequest) {
         );
         controller.close();
       } finally {
-        if (mcpClient) {
-          try {
-            await mcpClient.close();
-          } catch { /* ignore */ }
-        }
+        // Shared singleton — do not close. Invalidate only on connection errors,
+        // which callMcpTool handles automatically.
+        void mcpClient;
       }
     },
   });
@@ -714,6 +1007,7 @@ async function tryHandleDeterministicPrompt({
   deliveryCity,
   deliveryDate,
   lastProducts,
+  language,
   mcpClient,
   controller,
 }: {
@@ -723,7 +1017,8 @@ async function tryHandleDeterministicPrompt({
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
-  mcpClient: Awaited<ReturnType<typeof createMcpClient>>;
+  language: string;
+  mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
   controller: ReadableStreamDefaultController<Uint8Array>;
 }): Promise<boolean> {
   const trimmed = text.trim();
@@ -731,15 +1026,39 @@ async function tryHandleDeterministicPrompt({
 
   if (!trimmed) return false;
 
+  // ── Jailbreak / persona-change intercept ─────────────────────────────────
+  // "pretend you're a different AI", "act as X", "ignore your instructions" etc.
+  // Catch before any search logic so the LLM never gets a chance to comply.
+  const JAILBREAK_RE = /\b(pretend\s+(you'?re?|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai)\b/i;
+  if (JAILBREAK_RE.test(lower)) {
+    await streamWords(controller, "Ha, I'm just Kira — one personality is plenty for me! Anything I can find for you on Kapruka? 🛍️");
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Platform trust questions intercept ───────────────────────────────────
+  // "is Kapruka legit?", "can I trust this?", "is this safe?" etc.
+  // Answer warmly without calling any tools.
+  const TRUST_RE = /\b(is\s+(kapruka|this|it)\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
+  if (TRUST_RE.test(lower)) {
+    await streamWords(controller, "Absolutely — Kapruka has been Sri Lanka's biggest online gifting platform since 2010. Totally legit, secure payments, real delivery. Want to browse what's in stock? 🎁");
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // Check if the previous assistant turn was asking for an order number — if so, treat
+  // this message as the order number reply even without "track" in it.
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+  const kiraJustAskedForOrderNumber = lastAssistantMsg.includes("order number") || lastAssistantMsg.includes("order_number") || lastAssistantMsg.includes("confirmation email");
+  const looksLikeOrderNumber = /^[A-Z0-9]{5,20}$/i.test(trimmed.replace(/\s+/g, ""));
+
   const wantsTracking =
-    lower.includes("track") && (lower.includes("order") || lower.includes("delivery"));
+    (lower.includes("track") && (lower.includes("order") || lower.includes("delivery"))) ||
+    (kiraJustAskedForOrderNumber && looksLikeOrderNumber);
   if (wantsTracking) {
     const orderNumber = extractOrderNumber(trimmed);
     if (!orderNumber) {
-      await streamWords(
-        controller,
-        "Sure — send me the Kapruka order number from the confirmation email, and I’ll check the status for you."
-      );
+      await streamWords(controller, L("trackingAskOrderNumber", language));
     } else {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_track_order));
       const trackingResult = await callMcpTool(mcpClient, "kapruka_track_order", {
@@ -752,7 +1071,10 @@ async function tryHandleDeterministicPrompt({
       if (tracking) {
         await streamWords(
           controller,
-          `I found order ${tracking.orderNumber || orderNumber}: ${tracking.statusDisplay || tracking.currentStatus}.`
+          Lf("trackingFound", language, {
+            orderNumber: tracking.orderNumber || orderNumber,
+            status: tracking.statusDisplay || tracking.currentStatus || "",
+          })
         );
         controller.enqueue(sse("tracking", tracking));
       } else {
@@ -760,7 +1082,7 @@ async function tryHandleDeterministicPrompt({
         const reason = parsed.ok ? "I couldn’t read the tracking details." : parsed.error;
         await streamWords(
           controller,
-          `I couldn’t track ${orderNumber}. ${reason}`
+          Lf("trackingNotFound", language, { orderNumber, reason })
         );
       }
     }
@@ -772,17 +1094,17 @@ async function tryHandleDeterministicPrompt({
   // re-emit the last known products without a new MCP search.
   if (RESHOW_AS_CARDS_RE.test(trimmed) || RESHOW_THOSE_RE.test(trimmed)) {
     if (lastProducts && lastProducts.length > 0) {
+      const reshowKey = lastProducts.length === 1 ? "reshowHereItemsSingle" : "reshowHereItems";
       await streamWords(
         controller,
-        `Here ${lastProducts.length === 1 ? "it is" : "they are"} — ${lastProducts.length === 1 ? "the item" : `all ${lastProducts.length} items`} with pictures.`
+        lastProducts.length === 1
+          ? L(reshowKey, language)
+          : Lf(reshowKey, language, { n: lastProducts.length })
       );
       controller.enqueue(sse("products", lastProducts));
       controller.enqueue(sse("done"));
       return true;
     }
-    // No real products cached (LLM may have described them without calling MCP).
-    // Do a real MCP search using context from conversation history so we don't
-    // fall through to the LLM and risk it hallucinating products again.
     const ctx = extractLastSearchContext(messages, trimmed);
     controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}"`));
     const reshowResult = await callMcpTool(mcpClient, "kapruka_search_products", {
@@ -798,7 +1120,7 @@ async function tryHandleDeterministicPrompt({
     if (reshowProducts.length === 0) {
       await streamWords(
         controller,
-        `I checked Kapruka live for "${ctx.query}" — nothing in stock right now. Want to try a different category?`
+        Lf("reshowNothingFoundQuery", language, { query: ctx.query })
       );
     } else {
       const budgetText = ctx.maxPrice
@@ -806,7 +1128,7 @@ async function tryHandleDeterministicPrompt({
         : "";
       await streamWords(
         controller,
-        `Here are the real listings${budgetText} from Kapruka — ${reshowProducts.length} in stock right now.`
+        Lf("reshowRealListings", language, { budget: budgetText, n: reshowProducts.length })
       );
       controller.enqueue(sse("products", reshowProducts));
     }
@@ -815,10 +1137,9 @@ async function tryHandleDeterministicPrompt({
   }
 
   if (lower.includes("ready to checkout") || lower.includes("complete the order")) {
-    const message =
-      cart.length === 0
-        ? "Add a product first and I’ll help you checkout."
-        : "Lovely. Before I create a live Kapruka checkout link, I need the recipient’s full name.";
+    const message = cart.length === 0
+      ? L("checkoutEmptyCart", language)
+      : L("checkoutNeedName", language);
     await streamWords(controller, message);
     controller.enqueue(sse("done"));
     return true;
@@ -840,17 +1161,15 @@ async function tryHandleDeterministicPrompt({
     });
     const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
     if (reshowProducts.length === 0) {
-      await streamWords(
-        controller,
-        `Checked Kapruka again — nothing in stock right now. Want to try a different category or search?`
-      );
+      await streamWords(controller, L("reshowNothingInStock", language));
     } else {
       const budgetText = ctx.maxPrice
         ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
         : "";
+      const reshowKey = reshowProducts.length === 1 ? "reshowHereYouGoOne" : "reshowHereYouGo";
       await streamWords(
         controller,
-        `Here you go${budgetText}! ${reshowProducts.length === 1 ? "One pick" : `${reshowProducts.length} picks`} from Kapruka.`
+        Lf(reshowKey, language, { budget: budgetText, n: reshowProducts.length })
       );
       controller.enqueue(sse("products", reshowProducts));
     }
@@ -885,14 +1204,11 @@ async function tryHandleDeterministicPrompt({
     const moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
 
     if (moreProducts.length === 0) {
-      await streamWords(
-        controller,
-        `Hmm, Kapruka's showing the same picks — want to try a different category or price range?`
-      );
+      await streamWords(controller, L("moreOptionsSamePicks", language));
     } else if (moreProducts.length <= 3) {
       await streamWords(
         controller,
-        `Honestly, that's about all Kapruka has for ${ctx.query} right now. Want to try a different category or drop the budget filter?`
+        Lf("moreOptionsAboutAll", language, { query: ctx.query })
       );
       controller.enqueue(sse("products", moreProducts));
     } else {
@@ -901,9 +1217,99 @@ async function tryHandleDeterministicPrompt({
         : "";
       await streamWords(
         controller,
-        `Here are some more options${budgetText} — sorted by price this time.`
+        Lf("moreOptionsHere", language, { budget: budgetText })
       );
       controller.enqueue(sse("products", moreProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // Gift intent fast-path — catches broad gift/occasion queries that stall the LLM loop.
+  // Matches: "something for Father's Day under 3000", "amma ta gift ekak ganna ona",
+  // "I need a gift for Colombo", etc.
+  const GIFT_INTENT_RE =
+    /\b(gift|present|something\s+(for|nice)|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
+  const SL_FAMILY_GIFT_RE =
+    /\b(amma|thaththa|thaththaa|acca|akka|aiya|malli|nangi|nona)\s+(ta|ge|for)\b/i;
+
+  const hasBudgetHint = /\b(?:under|below|max|maximum|budget|lkr\s*\d)\b/i.test(lower);
+  const hasOccasionHint = /\b(father'?s\s+day|mother'?s\s+day|birthday|avurudu|vesak|wedding|anniversary)\b/i.test(lower);
+  const hasCityHint = !!extractCityHint(trimmed);
+  const hasFamilyHint = SL_FAMILY_GIFT_RE.test(lower);
+  // Only fire the gift fast-path when there's at least one concrete signal beyond the word "gift".
+  // - "just a gift" / "amma ta" alone → fall through to LLM so it asks what kind of gift.
+  // - "gift for dad under 3000" / "flowers for amma to Kandy" → fast-path is useful.
+  // hasFamilyHint is intentionally NOT in the right-hand guard — a family term alone (no
+  // budget/occasion/city) doesn't give us enough to search usefully.
+  if ((GIFT_INTENT_RE.test(lower) || hasFamilyHint) && (hasBudgetHint || hasOccasionHint || hasCityHint)) {
+    const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
+    const giftMaxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+    const giftCityHint = extractCityHint(trimmed) ?? deliveryCity;
+
+    controller.enqueue(sse("step", `Searching Kapruka for "gift"`));
+    const giftResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: "gift",
+        limit: 6,
+        in_stock_only: true,
+        ...(giftMaxPrice ? { max_price: giftMaxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const giftProducts = dedupeProducts(extractProductsFromMcp(giftResult.content));
+
+    if (giftCityHint && giftProducts[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
+      const giftCityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
+        params: { query: giftCityHint, limit: 3, response_format: "json" },
+      });
+      const canonicalGiftCity = extractFirstCity(giftCityResult.content) ?? giftCityHint;
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const giftDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: canonicalGiftCity,
+          product_id: giftProducts[0].id,
+          response_format: "json",
+        },
+      });
+      const giftDelivery = extractDeliveryInfoFromMcp(giftDeliveryResult.content);
+      if (giftDelivery) controller.enqueue(sse("delivery", giftDelivery));
+    }
+
+    if (giftProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: "gift" }));
+    } else {
+      const budgetText = giftMaxPrice ? ` under LKR ${giftMaxPrice.toLocaleString("en-LK")}` : "";
+      const cityText = giftCityHint ? ` to ${giftCityHint}` : "";
+      const giftKey = giftProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+      await streamWords(
+        controller,
+        Lf(giftKey, language, { n: giftProducts.length, budget: budgetText, city: cityText, date: "" })
+      );
+      controller.enqueue(sse("products", giftProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // "What's popular?" / "what's trending?" / "what's good?" → bestseller browse, no category needed.
+  const POPULAR_RE = /\b(what'?s?\s+)?(popular|trending|bestsell|best\s+sell|what'?s?\s+good|most\s+bought|top\s+pick|top\s+gift)\b/i;
+  if (POPULAR_RE.test(lower)) {
+    controller.enqueue(sse("step", `Browsing Kapruka bestsellers`));
+    let popularProducts: KiraProduct[] = [];
+    for (const q of ["hamper", "chocolate", "flowers", "cake"]) {
+      const r = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q, limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
+      });
+      popularProducts = dedupeProducts(extractProductsFromMcp(r.content));
+      if (popularProducts.length > 0) break;
+    }
+    if (popularProducts.length === 0) {
+      await streamWords(controller, "Nothing jumping out as a bestseller right now — want me to search a specific category?");
+    } else {
+      await streamWords(controller, `Here are Kapruka's top picks right now — all in stock. 🛍️`);
+      controller.enqueue(sse("products", popularProducts));
     }
     controller.enqueue(sse("done"));
     return true;
@@ -964,7 +1370,7 @@ async function tryHandleDeterministicPrompt({
   if (products.length === 0) {
     await streamWords(
       controller,
-      `Checked Kapruka live - nothing in stock for "${searchIntent.query}" right now. Want me to try a different term or category?`
+      Lf("searchNothingFound", language, { query: searchIntent.query })
     );
   } else {
     const budgetText = searchIntent.maxPrice
@@ -972,9 +1378,13 @@ async function tryHandleDeterministicPrompt({
       : "";
     const cityText = deliveryCityForMessage ? ` to ${deliveryCityForMessage}` : "";
     const dateText = effectiveDate ? ` on ${effectiveDate}` : "";
-    const intro = products.length === 1
-      ? `Found one option${budgetText}${cityText}${dateText} — here’s what’s in stock:`
-      : `Here are ${products.length} picks${budgetText}${cityText}${dateText} — all in stock on Kapruka right now.`;
+    const introKey = products.length === 1 ? "searchFoundOne" : "searchFoundMany";
+    const intro = Lf(introKey, language, {
+      n: products.length,
+      budget: budgetText,
+      city: cityText,
+      date: dateText,
+    });
     await streamWords(controller, intro);
     controller.enqueue(sse("products", products));
   }
@@ -1124,7 +1534,12 @@ function extractFirstCity(content: unknown): string | undefined {
 }
 
 function extractOrderNumber(text: string): string | undefined {
-  return text.match(/\b[A-Z]{2,}[A-Z0-9]{5,}\b/i)?.[0]?.toUpperCase();
+  // Match Kapruka order IDs: letters-first (e.g. KAP12345) or digits-first (e.g. 102jidas).
+  // Must be at least 5 chars and contain both letters and digits (avoids matching plain words).
+  const m = text.match(/\b([A-Z0-9]{5,20})\b/gi);
+  if (!m) return undefined;
+  const candidate = m.find((s) => /[A-Z]/i.test(s) && /\d/.test(s));
+  return candidate?.toUpperCase();
 }
 
 async function streamWords(
@@ -1303,6 +1718,14 @@ function truncateForModel(toolName: string, resultText: string): string {
       const raw =
         (data.products ?? data.results ?? data.items) as unknown[] | undefined;
       if (Array.isArray(raw)) {
+        if (raw.length === 0) {
+          return JSON.stringify({
+            results: [],
+            total: 0,
+            message:
+              "No products found for this search query. Try a broader term, a corrected spelling, or a related category.",
+          });
+        }
         type P = Record<string, unknown>;
         const slim = (raw as P[]).map((p) => ({
           id: p.id,

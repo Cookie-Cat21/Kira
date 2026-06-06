@@ -9,10 +9,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev      # Start dev server on http://localhost:3000
 npm run build    # Production build (runs type-check)
-npm run lint     # ESLint (no test suite exists)
+npm run lint     # ESLint
+
+# Testing
+node scripts/run-tests.mjs                           # Core suite — 50 feature tests
+node scripts/test-personas.mjs --concurrency 1       # Persona suite — 50 real-world messages
+node scripts/test-mcp.mjs                            # MCP endpoint probe (no Groq needed)
 ```
 
-There are no automated tests. Functional testing is done by running the dev server and exercising the chat UI. A manual MCP probe script exists at `scripts/test-mcp.mjs` — run with `node scripts/test-mcp.mjs` to verify the Kapruka MCP endpoint is reachable and returning expected shapes.
+Two automated test suites exist — see `docs/TESTING.md` for the full runbook.
+
+> ⚠️ Always use `--concurrency 1` for the persona suite. Groq's free tier (~30 RPM) causes timeout failures at higher concurrency that look like bugs but aren't.
 
 ## Required environment variables
 
@@ -42,7 +49,19 @@ This is a single-page chat app. The entire UI lives in `app/page.tsx`. There is 
 2. `meta-llama/llama-4-scout-17b-16e-instruct` — first fallback on 429
 3. `llama-3.1-8b-instant` — last resort; tool schemas are **dropped** and it is told not to invent products
 
-**Deterministic fast-path** (`tryHandleDeterministicPrompt` in `route.ts`): certain message patterns (tracking requests, "ready to checkout", simple category searches like "show me cakes on Kapruka") bypass the LLM loop entirely and call MCP tools directly. This saves tokens and is more reliable for these predictable flows.
+**Deterministic fast-paths** (`tryHandleDeterministicPrompt` in `route.ts`): certain message patterns bypass the LLM loop entirely and call MCP tools (or return a hardcoded reply) directly. They run in this order:
+
+1. `JAILBREAK_RE` — "pretend you're a different AI" → in-character redirect, no tools
+2. `TRUST_RE` — "is Kapruka legit?" → brand affirmation, no tools
+3. Tracking — "track order KP12345" → `kapruka_track_order`
+4. Checkout — "ready to checkout" → collect fields, then `kapruka_create_order`
+5. Re-show — "show me those again" → re-emit cached `lastProducts`
+6. More products — "more", "other options" → re-search with rotated sort
+7. `POPULAR_RE` — "what's popular/trending?" → search `sort:"bestseller"` with fallback queries
+8. `GIFT_INTENT_RE` — gift keyword + (budget OR occasion OR city) → search `q:"gift"`
+9. `parseSearchIntent` — any other recognisable category keyword
+
+**Gift fast-path guard:** `hasFamilyHint` (SL family terms like "amma ta") is in the trigger but **not** in the guard — a bare family term with no budget/occasion/city falls through to the LLM so it can ask what to get, rather than blindly searching `q:"gift"` and returning nothing.
 
 **MCP tool handling quirks:**
 - All 7 tools have `response_format: "json"` injected before calling

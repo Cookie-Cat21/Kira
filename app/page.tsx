@@ -5,6 +5,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   type ComponentType,
 } from "react";
 import Image from "next/image";
@@ -18,6 +19,7 @@ import {
   Shirt,
   ShoppingBag,
   Smartphone,
+  SquarePen,
   Truck,
 } from "lucide-react";
 import KiraLoader from "./components/KiraLoader";
@@ -26,6 +28,8 @@ import ChatMessage from "./components/ChatMessage";
 import ProductQuickView from "./components/ProductQuickView";
 import { ThinkingLive, ThinkingDone } from "./components/ThinkingBlock";
 import KiraChatInput from "./components/ui/kira-chat-input";
+import QuickReplies from "./components/QuickReplies";
+import CityPicker from "./components/CityPicker";
 import { useCart } from "./context/CartContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
@@ -59,37 +63,37 @@ const CATEGORIES: {
   {
     icon: CakeSlice,
     label: "Cakes",
-    value: "Show me gift-ready cakes on Kapruka",
+    value: "Show me cakes on Kapruka",
     tone: "border-rose-100 bg-rose-50 text-rose-800",
   },
   {
     icon: Flower2,
     label: "Flowers",
-    value: "I want to send fresh flowers",
+    value: "Show me flowers on Kapruka",
     tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
   },
   {
     icon: Gift,
     label: "Chocolates",
-    value: "Show me chocolate gifts and sweet boxes",
+    value: "Show me chocolates on Kapruka",
     tone: "border-orange-100 bg-orange-50 text-orange-900",
   },
   {
     icon: Smartphone,
     label: "Electronics",
-    value: "Show me electronics gifts on Kapruka",
+    value: "Show me electronics on Kapruka",
     tone: "border-sky-100 bg-sky-50 text-sky-800",
   },
   {
     icon: Shirt,
     label: "Fashion",
-    value: "Show me fashion gifts on Kapruka",
+    value: "Show me fashion on Kapruka",
     tone: "border-fuchsia-100 bg-fuchsia-50 text-fuchsia-800",
   },
   {
     icon: Package,
     label: "Hampers",
-    value: "Show me gift hampers",
+    value: "Show me gift hampers on Kapruka",
     tone: "border-amber-100 bg-amber-50 text-amber-900",
   },
 ];
@@ -130,15 +134,50 @@ function KaprukaSmileMark() {
   );
 }
 
+const SESSION_KEY = "kira_session_v1";
+
+interface PersistedSession {
+  messages: KiraMessage[];
+  deliveryCity?: string;
+}
+
+function loadSession(): PersistedSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedSession;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(messages: KiraMessage[], deliveryCity: string | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    // Never persist the opening placeholder — it's re-generated fresh each load.
+    const toSave = messages.filter((m) => m.id !== "opening");
+    if (toSave.length === 0) return;
+    const payload: PersistedSession = { messages: toSave, deliveryCity };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+  } catch { /* quota exceeded or private browsing */ }
+}
+
 export default function KiraChat() {
   const [appReady, setAppReady] = useState(false);
-  const [messages, setMessages] = useState<KiraMessage[]>([
-    buildOpeningMessage(),
-  ]);
+
+  const [messages, setMessages] = useState<KiraMessage[]>(() => [buildOpeningMessage()]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
-  const [deliveryCity, setDeliveryCity] = useState<string | undefined>();
+  const [deliveryCity, setDeliveryCity] = useState<string | undefined>(undefined);
+
+  // Restore session from localStorage after hydration (client only).
+  useEffect(() => {
+    const session = loadSession();
+    if (session?.messages?.length) setMessages(session.messages);
+    if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+  }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
@@ -168,6 +207,11 @@ export default function KiraChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  // Persist session after each completed response (not while streaming).
+  useEffect(() => {
+    if (!isLoading) saveSession(messages, deliveryCity);
+  }, [messages, deliveryCity, isLoading]);
 
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
@@ -203,7 +247,22 @@ export default function KiraChat() {
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || isLoading) return;
+      if (!trimmed) return;
+
+      // If a response is already streaming, silently abort it and start fresh.
+      if (isLoading && abortControllerRef.current) {
+        cancelledRef.current = true;
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+        streamingMsgIdRef.current = null;
+        pendingDeliveryRef.current = null;
+        pendingTrackingRef.current = null;
+        pendingCheckoutRef.current = null;
+        pendingProductsRef.current = null;
+        setLiveSteps([]);
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
 
       const userMsg: KiraMessage = {
         id: `user-${Date.now()}`,
@@ -507,11 +566,22 @@ export default function KiraChat() {
       <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
       <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
 
-      <header
-        className="glass-nav relative z-10 flex h-14 lg:h-[4.5rem] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10"
-        style={{ borderBottom: "1px solid rgba(148,100,255,0.22)", background: "rgba(10,6,20,0.72)" }}
-      >
-        <div className="flex min-w-0 items-center gap-3">
+      <header className="liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
+        {/* Left cluster */}
+        <div className="flex min-w-0 items-center gap-2.5">
+          {!isOnlyOpening && (
+            <button
+              type="button"
+              aria-label="New chat"
+              onClick={() => {
+                setMessages([buildOpeningMessage()]);
+                localStorage.removeItem(SESSION_KEY);
+              }}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-white/30 transition-all duration-150 hover:bg-white/6 hover:text-white/70"
+            >
+              <SquarePen className="size-3.5" />
+            </button>
+          )}
           <Image
             src="/kira-logo.svg"
             alt="Kira"
@@ -521,49 +591,38 @@ export default function KiraChat() {
             style={{ width: "auto", height: "2.75rem" }}
             priority
           />
-          <div className="hidden h-8 items-center gap-2.5 border-l border-white/10 pl-3.5 sm:flex">
-            <span className="text-xs font-semibold tracking-wide text-white/35">
+          {/* Status strip — hidden on mobile */}
+          <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
+            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif", letterSpacing: "0.01em" }}>
               by Kapruka
             </span>
-            <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-kira-leaf" style={{ background: "rgba(74,222,128,0.09)", border: "1px solid rgba(74,222,128,0.18)" }}>
-              <BadgeCheck className="size-3" />
-              Live catalog
+            {/* Live catalog pill */}
+            <span className="ml-3 flex items-center gap-1" title="Live catalog connected">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-kira-leaf opacity-60" style={{ animationDuration: "2.4s" }} />
+                <span className="relative inline-flex size-1.5 rounded-full bg-kira-leaf" />
+              </span>
+              <span className="text-[11px] font-medium text-white/40" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+                Live
+              </span>
             </span>
-            <span aria-hidden="true" className="text-white/15">·</span>
+            <span aria-hidden="true" className="mx-2.5 text-white/12 select-none">·</span>
             <McpStatusBadge />
           </div>
         </div>
 
-        {cartCount > 0 ? (
-          <button
-            ref={cartButtonRef}
-            type="button"
-            onClick={openCart}
-            aria-label={`Open gift tray, ${cartCount} item${
-              cartCount === 1 ? "" : "s"
-            }, total ${formatLKR(cartTotal)}`}
-            className="relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white transition-colors"
-            style={{ background: "rgba(64,41,112,0.4)", border: "1px solid rgba(148,100,255,0.3)" }}
-          >
-            <motion.span animate={bagControls} className="flex items-center">
-              <ShoppingBag className="size-4" />
-            </motion.span>
-            <span>{cartCount}</span>
-            <span className="hidden sm:inline">{formatLKR(cartTotal)}</span>
-          </button>
-        ) : (
-          <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-kira-leaf" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.15)" }}>
-            <Truck className="size-3.5" />
-            Free delivery
-          </span>
-        )}
+        {/* Right — Free delivery */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/38" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+          <Truck className="size-3 text-kira-leaf/70" />
+          <span>Free delivery</span>
+        </div>
       </header>
 
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
           <div className="mb-8 text-center animate-fade-up">
             <KaprukaSmileMark />
-            <h1 className="mb-3 font-display text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
+            <h1 className="mb-3 font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
               What would you like<br className="hidden sm:block" /> to gift today?
             </h1>
             <p className="text-white/40 text-sm">
@@ -585,7 +644,7 @@ export default function KiraChat() {
           </div>
 
           <div
-            className="mt-4 flex w-full max-w-2xl flex-wrap justify-center gap-2 animate-fade-up"
+            className="mt-4 flex flex-wrap sm:flex-nowrap justify-center gap-2 px-4 animate-fade-up"
             style={{ animationDelay: "120ms" }}
           >
             {[
@@ -617,24 +676,13 @@ export default function KiraChat() {
                   type="button"
                   onClick={() => sendMessage(option.value)}
                   className={cn(
-                    "glass-chip inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold",
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap",
                     option.urgent
-                      ? "text-gray-950"
-                      : "text-white/85 hover:text-white"
+                      ? "glass-chip-urgent text-[rgba(255,210,80,0.95)]"
+                      : "glass-chip text-white/88"
                   )}
-                  style={
-                    option.urgent
-                      ? {
-                          background:
-                            "linear-gradient(180deg, rgba(255,245,116,0.94), rgba(248,218,8,0.82))",
-                          borderColor: "rgba(255,246,126,0.95)",
-                          boxShadow:
-                            "inset 0 1px 0 rgba(255,255,255,0.58), inset 0 -1px 0 rgba(94,76,0,0.18), 0 12px 28px rgba(248,218,8,0.18)",
-                        }
-                      : undefined
-                  }
                 >
-                  {Icon && <Icon className="size-3.5" />}
+                  {Icon && <Icon className="size-3 opacity-60" />}
                   {option.label}
                 </button>
               );
@@ -669,6 +717,12 @@ export default function KiraChat() {
                   />
                 </div>
               ))}
+              <QuickReplies
+                messages={messages}
+                deliveryCity={deliveryCity}
+                isLoading={isLoading}
+                onSelect={sendMessage}
+              />
               {isLoading && !isStreaming && (
                 <ThinkingLive
                   steps={liveSteps}
@@ -680,11 +734,7 @@ export default function KiraChat() {
           </main>
 
           <div
-            className="glass-nav relative z-10 shrink-0"
-            style={{
-              borderTop: "1px solid rgba(148,100,255,0.18)",
-              background: "rgba(10,6,20,0.72)",
-            }}
+            className="relative z-10 shrink-0"
           >
             <div className="mx-auto w-full max-w-3xl px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
               <KiraChatInput
@@ -694,17 +744,20 @@ export default function KiraChat() {
                 language={language}
                 onLanguageChange={setLanguage}
               />
-              <p className="mt-2 text-center text-[10px] text-white/25">
-                Powered by{" "}
-                <a
-                  href="https://www.kapruka.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-kap-yellow/50 hover:text-kap-yellow"
-                >
-                  Kapruka
-                </a>
-              </p>
+              <div className="mt-2 flex items-center justify-between px-1">
+                <CityPicker value={deliveryCity} onChange={setDeliveryCity} />
+                <p className="text-[10px] text-white/25">
+                  Powered by{" "}
+                  <a
+                    href="https://www.kapruka.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-kap-yellow/50 hover:text-kap-yellow"
+                  >
+                    Kapruka
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
         </>

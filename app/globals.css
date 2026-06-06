@@ -26,7 +26,7 @@
   --color-kira-rose: #f9a8d4;
 
   --font-display: var(--font-dm-serif);
-  --font-sans: var(--font-jakarta), var(--font-noto-sinhala), "Iskoola Pota", sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, var(--font-noto-sinhala), "Iskoola Pota", sans-serif;
 }
 
 html,
@@ -54,6 +54,21 @@ body {
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Apple Liquid Glass — iOS 26 / visionOS material */
+.liquid-glass-nav {
+  background: rgba(12, 8, 24, 0.55);
+  backdrop-filter: blur(48px) saturate(220%) brightness(1.08);
+  -webkit-backdrop-filter: blur(48px) saturate(220%) brightness(1.08);
+  /* specular highlight top edge + soft inner depth */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    inset 1px 0 0 rgba(255, 255, 255, 0.04),
+    inset -1px 0 0 rgba(255, 255, 255, 0.04),
+    0 2px 32px rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .glass-input {
@@ -86,6 +101,30 @@ body {
   -webkit-backdrop-filter: blur(32px) saturate(200%);
   border: 1px solid rgba(248, 218, 8, 0.22);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(248, 218, 8, 0.08);
+}
+
+.glass-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  transition: background 60ms ease, transform 60ms ease;
+}
+.glass-chip:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+.glass-chip:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.1);
+}
+.glass-chip-urgent {
+  background: rgba(255, 196, 40, 0.14);
+  border: 0.5px solid rgba(255, 210, 70, 0.28);
+  transition: background 60ms ease, transform 60ms ease;
+}
+.glass-chip-urgent:hover {
+  background: rgba(255, 196, 40, 0.21);
+}
+.glass-chip-urgent:active {
+  transform: scale(0.97);
 }
 
 .glass-rail {
@@ -162,6 +201,22 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(148, 100, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -118,13 +118,13 @@ export default function McpStatusBadge() {
         onClick={() => open ? setOpen(false) : openPopover()}
         aria-expanded={open}
         aria-haspopup="true"
-        className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-white/5"
-        style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+        className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all duration-150 hover:bg-white/6"
+        style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}
       >
-        <span aria-hidden="true" className={`h-2 w-2 rounded-full shrink-0 ${DOT[key]}`} />
-        <span className={TEXT[key]}>{LABEL[key]}</span>
+        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full shrink-0 ${DOT[key]}`} />
+        <span className={`text-[11px] font-medium ${TEXT[key]}`}>{LABEL[key]}</span>
         {data?.latencyMs != null && !checking && (
-          <span className="text-white/25 font-mono">{data.latencyMs}ms</span>
+          <span className="text-[11px] text-white/25 font-mono">{data.latencyMs}ms</span>
         )}
       </button>
 
