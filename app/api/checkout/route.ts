@@ -10,7 +10,7 @@ export interface CheckoutRequest {
     phone: string;
     city: string;
     address: string;
-    date?: string; // YYYY-MM-DD, defaults to tomorrow
+    date: string; // YYYY-MM-DD
   };
   giftMessage?: string;
   senderName?: string;
@@ -23,24 +23,51 @@ export async function POST(req: NextRequest) {
     const body: CheckoutRequest = await req.json();
     const { cart, delivery, giftMessage, senderName } = body;
 
-    if (!cart?.length) {
+    if (!Array.isArray(cart) || cart.length === 0) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
-    if (!delivery?.name?.trim() || !delivery?.city?.trim()) {
+    if (!delivery?.name?.trim()) {
       return NextResponse.json(
-        { error: "Recipient name and city are required" },
+        { error: "Recipient name is required" },
         { status: 400 }
       );
     }
-
-    // Default delivery date to tomorrow if not provided
-    const deliveryDate =
-      delivery.date ??
-      (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().slice(0, 10);
-      })();
+    if (!delivery.phone?.trim()) {
+      return NextResponse.json(
+        { error: "Recipient phone number is required" },
+        { status: 400 }
+      );
+    }
+    if (!delivery.city?.trim()) {
+      return NextResponse.json(
+        { error: "Delivery city is required" },
+        { status: 400 }
+      );
+    }
+    if (!delivery.address?.trim()) {
+      return NextResponse.json(
+        { error: "Street address is required" },
+        { status: 400 }
+      );
+    }
+    if (!delivery.date?.trim()) {
+      return NextResponse.json(
+        { error: "Delivery date is required" },
+        { status: 400 }
+      );
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(delivery.date)) {
+      return NextResponse.json(
+        { error: "Delivery date must use YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
+    if (delivery.date < new Date().toISOString().slice(0, 10)) {
+      return NextResponse.json(
+        { error: "Delivery date cannot be in the past" },
+        { status: 400 }
+      );
+    }
 
     mcpClient = await createMcpClient();
 
@@ -66,6 +93,13 @@ export async function POST(req: NextRequest) {
       quantity: item.quantity,
     }));
 
+    if (items.some((item) => !item.product_id || item.quantity < 1)) {
+      return NextResponse.json(
+        { error: "Cart contains an invalid item" },
+        { status: 400 }
+      );
+    }
+
     // kapruka_create_order schema (confirmed from validation errors):
     // recipient: { name, phone }
     // delivery:  { city, address, date }
@@ -74,12 +108,12 @@ export async function POST(req: NextRequest) {
     const orderArgs = {
       recipient: {
         name: delivery.name.trim(),
-        phone: delivery.phone.trim() || undefined,
+        phone: delivery.phone.trim(),
       },
       delivery: {
         city,
-        address: delivery.address.trim() || undefined,
-        date: deliveryDate,
+        address: delivery.address.trim(),
+        date: delivery.date,
       },
       cart: items,
       sender: senderName?.trim()

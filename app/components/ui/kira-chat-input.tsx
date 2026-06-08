@@ -31,6 +31,8 @@ const FilePreviewCard: React.FC<{
   return (
     <div className="relative group flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-white/10 bg-white/[0.07] transition-all hover:border-white/20 animate-pop-in">
       {isImage ? (
+        // Object URLs from user-selected files are local previews; Next/Image is not useful here.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={file.preview!}
           alt={file.file.name}

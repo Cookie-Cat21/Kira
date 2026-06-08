@@ -62,6 +62,16 @@ const CHECKS = {
     };
   },
 
+  httpStatus(events, responseText, expected, runResult) {
+    const pass = runResult.status === expected;
+    return {
+      pass,
+      reason: pass
+        ? ""
+        : `Expected HTTP ${expected}, got ${runResult.status ?? "unknown"}`,
+    };
+  },
+
   notEmpty(events, responseText) {
     const pass = responseText.trim().length > 10;
     return {
@@ -119,7 +129,7 @@ export function evaluateTest(testCase, runResult) {
   }
 
   for (const check of testCase.checks) {
-    const result = runCheck(check, runResult.events, runResult.responseText);
+    const result = runCheck(check, runResult.events, runResult.responseText, runResult);
     if (!result.pass) {
       failedChecks.push({
         check: formatCheck(check),
@@ -134,10 +144,14 @@ export function evaluateTest(testCase, runResult) {
   };
 }
 
-export function runCheck(check, events, responseText) {
+export function runCheck(check, events, responseText, runResult = {}) {
   const fn = CHECKS[check.fn];
   if (!fn) {
     return { pass: false, reason: `Unknown check function "${check.fn}"` };
+  }
+
+  if (check.fn === "httpStatus") {
+    return fn(events, responseText, ...(check.args ?? []), runResult);
   }
 
   return fn(events, responseText, ...(check.args ?? []));

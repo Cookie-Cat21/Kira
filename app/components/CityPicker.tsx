@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MapPin, ChevronDown, X } from "lucide-react";
+import { MapPin, ChevronDown, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SRI_LANKA_CITIES = [
@@ -21,14 +21,17 @@ interface CityPickerProps {
 export default function CityPicker({ value, onChange }: CityPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [remoteCities, setRemoteCities] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const filtered = query.trim()
+  const fallbackFiltered = query.trim()
     ? SRI_LANKA_CITIES.filter((c) =>
         c.toLowerCase().startsWith(query.toLowerCase())
       )
     : SRI_LANKA_CITIES;
+  const filtered = remoteCities.length > 0 ? remoteCities : fallbackFiltered;
 
   const select = useCallback(
     (city: string) => {
@@ -56,6 +59,34 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "12" });
+        if (query.trim()) params.set("query", query.trim());
+        const res = await fetch(`/api/delivery-cities?${params}`, {
+          signal: controller.signal,
+        });
+        const body = (await res.json()) as { cities?: { name?: string }[] };
+        const names = (body.cities ?? [])
+          .map((city) => city.name)
+          .filter((name): name is string => Boolean(name));
+        setRemoteCities([...new Set(names)]);
+      } catch {
+        if (!controller.signal.aborted) setRemoteCities([]);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 180);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [open, query]);
 
   return (
     <div ref={containerRef} className="relative">
@@ -108,13 +139,16 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
           >
             {/* Search */}
             <div className="border-b border-white/10 px-3 py-2">
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search city…"
-                className="w-full bg-transparent text-xs text-white/90 placeholder-white/30 outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search city…"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-white/90 placeholder-white/30 outline-none"
+                />
+                {loading && <Loader2 className="size-3 shrink-0 animate-spin text-white/35" />}
+              </div>
             </div>
 
             {/* City list */}

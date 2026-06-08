@@ -5,6 +5,7 @@ const hasSi = { fn: "hasUnicode", args: ["si"] };
 const hasTa = { fn: "hasUnicode", args: ["ta"] };
 const eventHasProducts = { fn: "eventHasProducts" };
 const noHallucinatedProducts = { fn: "noHallucinatedProducts" };
+const badRequest = { fn: "httpStatus", args: [400] };
 
 function req({ messages, language = "en", cart = [], ...rest }) {
   return { messages, cart, language, ...rest };
@@ -19,6 +20,8 @@ function test({
   language = "en",
   cart = [],
   request = {},
+  endpoint,
+  method,
   checks,
   notes = "",
   autoFixable = false,
@@ -29,6 +32,8 @@ function test({
     group,
     subgroup,
     request: req({ messages, language, cart, ...request }),
+    ...(endpoint ? { endpoint } : {}),
+    ...(method ? { method } : {}),
     checks,
     notes,
     autoFixable,
@@ -579,5 +584,54 @@ export const TESTS = [
       { fn: "textMatches", args: [/name|recipient|deliver|address/i] },
     ],
     notes: "Cart has item -> Kira should start collecting checkout fields",
+  }),
+  test({
+    id: 51,
+    name: "CHECKOUT API: rejects empty cart",
+    group: "feature",
+    subgroup: "checkout-api",
+    request: { cart: [], delivery: {} },
+    endpoint: "checkout",
+    checks: [badRequest, { fn: "textMatches", args: [/cart is empty/i] }],
+    notes: "Direct checkout API validation — no MCP call",
+  }),
+  test({
+    id: 52,
+    name: "CHECKOUT API: rejects missing phone",
+    group: "feature",
+    subgroup: "checkout-api",
+    request: {
+      cart: [{ product: { id: "test-001", name: "Test", price: 1 }, quantity: 1 }],
+      delivery: { name: "Nimal", city: "Colombo", address: "12 Main St", date: "2026-06-10" },
+    },
+    endpoint: "checkout",
+    checks: [badRequest, { fn: "textMatches", args: [/phone/i] }],
+    notes: "Direct checkout API validation — phone required",
+  }),
+  test({
+    id: 53,
+    name: "CHECKOUT API: rejects missing address",
+    group: "feature",
+    subgroup: "checkout-api",
+    request: {
+      cart: [{ product: { id: "test-001", name: "Test", price: 1 }, quantity: 1 }],
+      delivery: { name: "Nimal", phone: "0771234567", city: "Colombo", date: "2026-06-10" },
+    },
+    endpoint: "checkout",
+    checks: [badRequest, { fn: "textMatches", args: [/address/i] }],
+    notes: "Direct checkout API validation — street address required",
+  }),
+  test({
+    id: 54,
+    name: "CHECKOUT API: rejects missing date",
+    group: "feature",
+    subgroup: "checkout-api",
+    request: {
+      cart: [{ product: { id: "test-001", name: "Test", price: 1 }, quantity: 1 }],
+      delivery: { name: "Nimal", phone: "0771234567", city: "Colombo", address: "12 Main St" },
+    },
+    endpoint: "checkout",
+    checks: [badRequest, { fn: "textMatches", args: [/date/i] }],
+    notes: "Direct checkout API validation — delivery date required",
   }),
 ];
