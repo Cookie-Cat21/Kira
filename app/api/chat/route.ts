@@ -47,7 +47,8 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
   chocolates: "chocolate",
   chocolate: "chocolate",
   electronics: "electronics",
-  fashion: "fashion",
+  fashion: "clothing",
+  clothing: "clothing",
   hampers: "gift hamper",
   hamper: "gift hamper",
   grocery: "grocery",
@@ -69,8 +70,16 @@ const BAKERY_BRANDS: Record<string, string> = {
 const REORDER_SESSION_RE =
   /\b(order again|buy again|same as last|same thing|what i had|repeat order|reorder)\b/i;
 const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
-const REPAIR_GIFT_RE =
-  /\b(wife|husband|gf|girlfriend|boyfriend|partner|spouse).{0,50}(angry|mad|pissed|messed up|drunk|fight|sorry|fix|upset)\b/i;
+// Matches relationship-repair scenarios in EITHER word order — "wife is mad" and
+// "got drunk, wife is upset" both fire. "sorry"/"fix" were dropped: too broad
+// ("sorry, my wife needs chocolates" / "fix dinner for my wife" are not repairs).
+const REPAIR_RELATION = "wife|husband|gf|girlfriend|boyfriend|partner|spouse";
+const REPAIR_EMOTION = "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset";
+const REPAIR_GIFT_RE = new RegExp(
+  `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
+    `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)`,
+  "i"
+);
 const REPAIR_INSIST_RE = /\b(just send|deliver it|send it anyway|no just send)\b/i;
 const RUSH_RE = /\b(today|urgent|asap|rush|same.?day|right now|need it now)\b/i;
 const SALE_RE = /\b(on sale|discount|deal|offer|clearance|budget pick)\b/i;
@@ -315,9 +324,9 @@ const LS: Record<string, Record<string, string>> = {
     ta: "Global Shop coming soon! இப்போ imported goods search செய்யலாமா?",
   },
   postOrderSaved: {
-    en: "Saved this order — next time say 'order again' or give me {orderRef}.",
-    si: "Order save කළා — next time 'order again' කියන්න හෝ {orderRef} දෙන්න.",
-    ta: "Order save செய்தேன் — next time 'order again' சொல்லுங்கள் அல்லது {orderRef} அனுப்புங்கள்.",
+    en: "Your order ref is {orderRef} — keep it for tracking or say 'order again'.",
+    si: "ඔබේ order ref එක {orderRef} — track කරන්න තියාගන්න හෝ 'order again' කියන්න.",
+    ta: "உங்கள் order ref {orderRef} — track பண்ண வச்சுக்கோங்க அல்லது 'order again' சொல்லுங்கள்.",
   },
 };
 
@@ -596,6 +605,11 @@ export async function POST(req: NextRequest) {
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
         let checkoutInfo: CheckoutInfo | undefined;
+        // Recipient / delivery / gift-message captured from the create_order call so the
+        // lastOrder snapshot can pre-fill a reorder, not just re-show the items.
+        let lastOrderArgs:
+          | Partial<Pick<LastOrder, "recipient" | "delivery" | "giftMessage">>
+          | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
@@ -657,7 +671,23 @@ export async function POST(req: NextRequest) {
           // exclusive (sequential) paths below.
           type ParsedCall = { toolCall: Groq.Chat.Completions.ChatCompletionMessageToolCall; toolName: string; toolArgs: Record<string, unknown> };
           async function executeSingleTool({ toolCall, toolName, toolArgs: rawArgs }: ParsedCall) {
+            const asRecord = (v: unknown): Record<string, unknown> | undefined =>
+              v && typeof v === "object" && !Array.isArray(v)
+                ? (v as Record<string, unknown>)
+                : undefined;
             let toolArgs = { ...rawArgs };
+
+            // Some models still emit MCP-style `{ params: {...} }` even though we
+            // flatten the schema for Groq. Merge the inner params up so create_order
+            // never becomes params.params — merging (not replacing) preserves any
+            // sibling fields the model left at the top level in a partial wrap.
+            if (toolName === "kapruka_create_order") {
+              const wrapped = asRecord(toolArgs.params);
+              if (wrapped) {
+                toolArgs = { ...toolArgs, ...wrapped };
+                delete toolArgs.params;
+              }
+            }
 
             if (JSON_FORMAT_TOOLS.includes(toolName)) {
               toolArgs = { ...toolArgs, response_format: "json" };
@@ -724,6 +754,28 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_create_order") {
               checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
               payLink = checkoutInfo?.checkoutUrl;
+              // Snapshot the recipient/delivery/gift details the model collected so a
+              // later "order again" can pre-fill them.
+              const clean = (v: unknown): string | undefined => {
+                const s = typeof v === "string" ? v.trim() : "";
+                return s ? s : undefined;
+              };
+              const rec = asRecord(toolArgs.recipient);
+              const del = asRecord(toolArgs.delivery);
+              const recipientName = clean(rec?.name);
+              const recipientPhone = clean(rec?.phone);
+              const deliveryCityValue = clean(del?.city);
+              const deliveryAddress = clean(del?.address);
+              const giftMessage = clean(toolArgs.gift_message ?? toolArgs.giftMessage);
+              lastOrderArgs = {
+                recipient: recipientName && recipientPhone
+                  ? { name: recipientName, phone: recipientPhone }
+                  : undefined,
+                delivery: deliveryCityValue && deliveryAddress
+                  ? { city: deliveryCityValue, address: deliveryAddress }
+                  : undefined,
+                giftMessage,
+              };
             }
             if (toolName === "kapruka_track_order") {
               const tracking = extractTrackingFromMcp(resultContent);
@@ -1177,9 +1229,29 @@ export async function POST(req: NextRequest) {
             const saved: LastOrder = {
               orderRef: checkoutInfo.orderRef,
               items: cart,
+              recipient: lastOrderArgs?.recipient,
+              delivery: lastOrderArgs?.delivery,
+              giftMessage: lastOrderArgs?.giftMessage,
               placedAt: Date.now(),
             };
             controller.enqueue(sse("lastOrder", saved));
+            // Surface the concrete server-generated order ref. The prompt already
+            // tells the model to give the "order again" nudge, but it can't reliably
+            // emit the real ref (esp. if create_order lands on the final tool round),
+            // so this token adds that one genuinely-new fact without restating the
+            // nudge. Appended as tokens so it lands in the same assistant bubble
+            // (streamingMsgIdRef still set).
+            if (checkoutInfo.orderRef) {
+              controller.enqueue(
+                sse(
+                  "token",
+                  "\n\n" +
+                    Lf("postOrderSaved", language, {
+                      orderRef: checkoutInfo.orderRef,
+                    })
+                )
+              );
+            }
           }
         }
         if (payLink) controller.enqueue(sse("payLink", payLink));
@@ -1994,7 +2066,7 @@ function extractLastSearchContext(
     if (/\bsari|saree|sarree|sare\b/.test(msgLow)) { query = "saree"; break; }
     if (/\bjewel|necklace|bracelet|ring\b/.test(msgLow)) { query = "jewellery"; break; }
     if (/\bperfume|fragrance\b/.test(msgLow)) { query = "perfume"; break; }
-    if (/\bfashion|clothing|wear|dress|shirt\b/.test(msgLow)) { query = "fashion"; break; }
+    if (/\bfashion|clothing|wear|dress|shirt\b/.test(msgLow)) { query = "clothing"; break; }
     if (/\belectronic|phone|gadget\b/.test(msgLow)) { query = "electronics"; break; }
 
     // Stop if we at least found a price
@@ -2024,7 +2096,7 @@ function extractProductKeyword(lower: string): string | null {
   if (/\bchocolat/.test(lower)) return "chocolate";
   if (/\bhamper\b/.test(lower)) return "gift hamper";
   if (/\belectronic|\bphone|\bgadget\b/.test(lower)) return "electronics";
-  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "fashion";
+  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
   if (/\bgrocery\b/.test(lower)) return "grocery";
   if (/\btoy\b/.test(lower)) return "soft toy";
   return null;
@@ -2136,7 +2208,8 @@ function normalizeProductQuery(raw: string): string {
 function fallbackQuery(query: string): string | undefined {
   if (query === "flowers") return "roses";
   if (query === "cake") return "cakes";
-  if (query === "fashion") return "shirt";
+  if (query === "clothing") return "dress";
+  if (query === "dress") return "saree";
   if (query === "electronics") return "phone";
   return undefined;
 }
