@@ -191,6 +191,10 @@ function normalizeRequest(request = {}) {
     ...(request.deliveryCity ? { deliveryCity: request.deliveryCity } : {}),
     ...(request.deliveryDate ? { deliveryDate: request.deliveryDate } : {}),
     ...(request.lastProducts ? { lastProducts: request.lastProducts } : {}),
+    ...(request.lastOrderCart ? { lastOrderCart: request.lastOrderCart } : {}),
+    ...(request.internationalSender
+      ? { internationalSender: request.internationalSender }
+      : {}),
   };
 }
 

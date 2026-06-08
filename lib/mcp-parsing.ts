@@ -110,6 +110,26 @@ export function extractProductDetailsFromMcp(
     .map(toProductVariant)
     .filter((variant): variant is KiraProductVariant => Boolean(variant));
 
+  const addonsRaw = (obj as Record<string, unknown>).addons ??
+    (obj as Record<string, unknown>).add_ons ??
+    (obj as Record<string, unknown>).extras ??
+    [];
+  const addons = Array.isArray(addonsRaw)
+    ? addonsRaw
+        .map((a: unknown) => {
+          if (!isRecord(a)) return null;
+          const name = firstString(a.name, a.title);
+          if (!name) return null;
+          return {
+            id: String(a.id ?? a.addon_id ?? ""),
+            name,
+            price: Number(a.price ?? a.amount ?? 0),
+            currency: String(a.currency ?? "LKR"),
+          };
+        })
+        .filter((a): a is NonNullable<typeof a> => Boolean(a))
+    : [];
+
   return {
     id: firstString(obj.id, fallback?.id) ?? "",
     name: firstString(obj.name, fallback?.name) ?? "Product",
@@ -125,6 +145,7 @@ export function extractProductDetailsFromMcp(
     inStock: readBoolean(obj.in_stock, fallback?.inStock),
     stockLevel: firstString(obj.stock_level, fallback?.stockLevel),
     variants,
+    ...(addons.length > 0 ? { addons } : {}),
     attributes: stringifyRecord(asRecord(obj.attributes)),
     shipping: toShipping(obj.shipping),
     isCategoryStub: Boolean(obj.is_category_stub ?? obj.category_stub),

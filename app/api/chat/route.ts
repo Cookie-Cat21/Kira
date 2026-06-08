@@ -57,6 +57,64 @@ const SEARCH_SPELLING_MAP: Record<string, string> = {
   teddybear: "teddy bear",
 };
 
+const BAKERY_BRAND_MAP: Record<string, string> = {
+  hilton: "hilton",
+  "colombo hilton": "hilton",
+  "shangri-la": "shangri-la",
+  shangrila: "shangri-la",
+  "shangri la": "shangri-la",
+  breadtalk: "breadtalk",
+  "bread talk": "breadtalk",
+  galadari: "galadari",
+  "java lounge": "java",
+  javalounge: "java",
+  java: "java",
+  kingsbury: "kingsbury",
+  cinnamon: "cinnamon",
+  "cinnamon lakeside": "cinnamon",
+  "nh collection": "nh_collection",
+  nh: "nh_collection",
+  "waters edge": "waters_edge",
+  "green cabin": "green_cabin",
+  mahaweli: "mahaweli_reach_kandy",
+  marriott: "courtyard_by_marriott",
+  courtyard: "courtyard_by_marriott",
+  "t lounge": "t-lounge_by_dilmah",
+  dilmah: "t-lounge_by_dilmah",
+  divine: "divine",
+  "kandy myst": "kandy_myst_by_cinnamon",
+};
+
+const PRODUCT_KEYWORD_RE =
+  /\b(birthday\s+cake|cake|cakes|flower|flowers|chocolate|chocolates|hamper|gift|toy|toys|fashion|electronics|phone|roses?|bouquet|dress|shirt|gadget|perfume|saree|teddy|candles?|cookie|biscuit)\b/i;
+
+const INTERNATIONAL_RE =
+  /\b(australia|new\s+zealand|uk|united\s+kingdom|england|britain|usa|united\s+states|america|canada|dubai|uae|germany|france|italy|singapore|malaysia|japan|abroad|overseas|sydney|melbourne|london|toronto|new\s+york|los\s+angeles|i'?m\s+in)\b/i;
+
+const RUSH_PRODUCT_RE =
+  /\b(today|urgent|asap|rush|same.?day|right now|immediately|need it\s+(today|now|fast))\b/i;
+
+const CUSTOM_CAKE_RE =
+  /\b(custom\s+(cake|printed\s+cake|photo\s+cake)|photo\s+cake|personalis\w+\s+cake|print\s+on\s+cake|write\s+(on|on\s+the)\s+cake|with\s+my\s+photo|my\s+photo\s+on|photo\s+on\s+(it|the))\b/i;
+
+const REMINDER_RE =
+  /\b(remind\s+me|set\s+a?\s+reminder|don'?t\s+let\s+me\s+forget|alert\s+me|remember.*\b(birthday|anniversary|occasion))\b/i;
+
+const SUPPORT_RE =
+  /\b(contact\s+kapruka|customer\s+(service|support|care)|how\s+to\s+(reach|contact)|problem\s+with\s+(my\s+)?order|complaint)\b/i;
+
+const REORDER_RE =
+  /\b(order\s+again|same\s+as\s+last(\s+time)?|reorder|what\s+i\s+had(\s+last\s+time)?|buy\s+(the\s+)?same(\s+thing)?|same\s+order)\b/i;
+
+const REORDER_REF_RE =
+  /\b(?:reorder|order\s+again).{0,40}([A-Z]{2,4}\d{4,12})\b|\b([A-Z]{2,4}\d{4,12}).{0,40}\b(?:reorder|again|same)\b/i;
+
+const HAMPER_RE =
+  /\b(hamper|gift\s*set|combo\s*(gift|pack)?|gift\s*box|gift\s*basket|treat\s*box)\b/i;
+
+const SALE_RE =
+  /\b(on\s+sale|discount(ed)?|special\s+offer|best\s+deal|cheapest|most\s+affordable|budget\s+(pick|option|friendly))\b/i;
+
 // ─── Localized UI strings ────────────────────────────────────────────────────
 // All fixed-text messages surfaced to users, in en / si / ta.
 // Use L(key, lang) for static strings, Lf(key, lang, vars) for templated ones.
@@ -286,10 +344,17 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts } = body;
+        const { messages, cart, deliveryCity, deliveryDate, lastProducts, lastOrderCart } =
+          body;
+        let internationalSender = body.internationalSender ?? false;
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+
+        if (INTERNATIONAL_RE.test(latestUserText)) {
+          internationalSender = true;
+          controller.enqueue(sse("context", { internationalSender: true }));
+        }
 
         const cartContext =
           cart.length > 0
@@ -301,6 +366,9 @@ export async function POST(req: NextRequest) {
         const deliveryDateContext = deliveryDate
           ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
           : "";
+        const internationalContext = internationalSender
+          ? '\nThe sender is overseas — quote prices in LKR and approximate USD (LKR 320 = USD 1). Reassure: "Payment is in LKR at checkout — your bank handles the conversion."'
+          : "";
 
         mcpClient = await getMcpClient();
         if (
@@ -311,6 +379,7 @@ export async function POST(req: NextRequest) {
             deliveryCity,
             deliveryDate,
             lastProducts,
+            lastOrderCart,
             language,
             mcpClient,
             controller,
@@ -475,6 +544,7 @@ export async function POST(req: NextRequest) {
           cartContext +
           deliveryContext +
           deliveryDateContext +
+          internationalContext +
           dateContext +
           langInstruction +
           (compactSummary ? `\n\n${compactSummary}` : "");
@@ -1120,6 +1190,44 @@ const RESHOW_AS_CARDS_RE =
 const RESHOW_THOSE_RE =
   /\b(show\s+me|show\s+us|can\s+(?:you|u)\s+show(?:\s+(?:me|them|those|it))?\b|let\s+me\s+see)\b.{0,30}\b(those|them|the[ms]e|the\s+(?:two|three|four|\d))\b/i;
 
+function extractBakeryBrand(text: string): string | null {
+  const lower = text.toLowerCase();
+  const entries = Object.entries(BAKERY_BRAND_MAP).sort(
+    (a, b) => b[0].length - a[0].length
+  );
+  for (const [keyword, brand] of entries) {
+    if (lower.includes(keyword)) return brand;
+  }
+  return null;
+}
+
+function hasProductKeyword(text: string): boolean {
+  return PRODUCT_KEYWORD_RE.test(text.toLowerCase());
+}
+
+function appendBakeryBrand(query: string, text: string): string {
+  const brand = extractBakeryBrand(text);
+  if (!brand || !/\bcake/i.test(query)) return query;
+  const q = query.toLowerCase();
+  if (q.includes(brand) || q.includes(brand.replace(/_/g, " "))) return query;
+  return `${query} ${brand}`;
+}
+
+function extractProductQueryFromText(text: string): string | null {
+  const intent = parseSearchIntent(text);
+  if (intent?.query) return appendBakeryBrand(intent.query, text);
+
+  const bareMatch =
+    /\b(cake|birthday\s+cake|chocolates?|flowers?|bouquet|roses?|hamper|gift\s+hamper|perfume|saree|toys?|electronics?|teddy|candles?|cookie|biscuit)\b/i.exec(
+      text.toLowerCase()
+    );
+  if (bareMatch) {
+    const raw = bareMatch[1].trim().toLowerCase().replace(/\s+/g, " ");
+    return appendBakeryBrand(normalizeProductQuery(raw), text);
+  }
+  return null;
+}
+
 async function tryHandleDeterministicPrompt({
   text,
   messages,
@@ -1127,6 +1235,7 @@ async function tryHandleDeterministicPrompt({
   deliveryCity,
   deliveryDate,
   lastProducts,
+  lastOrderCart,
   language,
   mcpClient,
   controller,
@@ -1137,6 +1246,7 @@ async function tryHandleDeterministicPrompt({
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  lastOrderCart?: CartItem[];
   language: string;
   mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
   controller: ReadableStreamDefaultController<Uint8Array>;
@@ -1188,8 +1298,147 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  if (CUSTOM_CAKE_RE.test(lower)) {
+    await streamWords(
+      controller,
+      "For a custom printed cake with your photo or text, Kapruka has a personalisation wizard — here's the link: kapruka.com/shops/cakes/customCakes/personalise_cakes.jsp 🎂"
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (REMINDER_RE.test(lower)) {
+    await streamWords(
+      controller,
+      "I can't set reminders directly yet, but Kapruka's Gift Reminder service does exactly that — it emails you before key dates: kapruka.com/giftreminder 🔔"
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (SUPPORT_RE.test(lower)) {
+    await streamWords(
+      controller,
+      "You can reach Kapruka support on WhatsApp at 1297 (Sri Lanka) or via kapruka.com 💬"
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (INTERNATIONAL_RE.test(lower) && hasProductKeyword(lower)) {
+    const query = extractProductQueryFromText(trimmed);
+    if (query) {
+      const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+      controller.enqueue(sse("step", `Searching Kapruka for "${query}"`));
+      let intlProducts: KiraProduct[] = [];
+      for (const q of [query, fallbackQuery(query)]) {
+        if (!q) continue;
+        const r = await callMcpTool(mcpClient, "kapruka_search_products", {
+          params: { q, limit: 6, in_stock_only: true, response_format: "json" },
+        });
+        intlProducts = dedupeProducts(extractProductsFromMcp(r.content));
+        if (intlProducts.length > 0) break;
+      }
+      const cityText = cityHint ? ` to ${cityHint}` : "";
+      if (intlProducts.length === 0) {
+        await streamWords(
+          controller,
+          `Got it — I'll handle the Sri Lanka delivery${cityText}. I checked Kapruka but couldn't find "${query}" in stock right now.`
+        );
+      } else {
+        await streamWords(
+          controller,
+          `Got it — I'll handle the Sri Lanka delivery${cityText}. Prices are in LKR (≈ USD at checkout). Here are options:`
+        );
+        controller.enqueue(sse("products", intlProducts));
+        if (cityHint && intlProducts[0]) {
+          controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+          const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+            params: {
+              city: cityHint,
+              product_id: intlProducts[0].id,
+              ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
+              response_format: "json",
+            },
+          });
+          const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+          if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+        }
+      }
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
+  if (RUSH_PRODUCT_RE.test(lower) && hasProductKeyword(lower)) {
+    const query = extractProductQueryFromText(trimmed);
+    if (query) {
+      const today = new Date().toISOString().slice(0, 10);
+      const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+      controller.enqueue(sse("step", `Searching Kapruka for "${query}"`));
+      const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q: query, in_stock_only: true, limit: 6, response_format: "json" },
+      });
+      const products = dedupeProducts(extractProductsFromMcp(searchResult.content));
+      const sameDayNames: string[] = [];
+      let firstDelivery: ReturnType<typeof extractDeliveryInfoFromMcp>;
+
+      if (cityHint && products.length > 0) {
+        controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
+        const cityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
+          params: { query: cityHint, limit: 3, response_format: "json" },
+        });
+        const canonicalCity = extractFirstCity(cityResult.content) ?? cityHint;
+
+        for (const product of products) {
+          controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+          const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+            params: {
+              city: canonicalCity,
+              product_id: product.id,
+              delivery_date: today,
+              response_format: "json",
+            },
+          });
+          const info = extractDeliveryInfoFromMcp(deliveryResult.content);
+          if (info?.available) sameDayNames.push(product.name);
+          if (!firstDelivery && info) firstDelivery = info;
+        }
+        if (firstDelivery) controller.enqueue(sse("delivery", firstDelivery));
+      }
+
+      if (products.length === 0) {
+        await streamWords(controller, Lf("searchNothingFound", language, { query }));
+      } else {
+        const cityText = cityHint ?? "your area";
+        if (sameDayNames.length > 0) {
+          await streamWords(
+            controller,
+            `Here's what can reach ${cityText} today 🚀: ${sameDayNames.slice(0, 3).join(", ")} ✓ Today`
+          );
+        } else if (firstDelivery?.nextAvailableDate) {
+          await streamWords(
+            controller,
+            `Nothing ships same-day to ${cityText} for this — earliest is ${firstDelivery.nextAvailableDate}. Still want it?`
+          );
+        } else {
+          await streamWords(
+            controller,
+            `Here are in-stock options for "${query}" — let me know your delivery city to check same-day availability.`
+          );
+        }
+        controller.enqueue(sse("products", products));
+      }
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
   const DELIVERY_POLICY_RE = /\b(cut-?off|same-?day|delivery\s+time|deliver\s+today|today\s+delivery|how\s+late)\b/i;
-  if (DELIVERY_POLICY_RE.test(lower) && !/\b(cake|flower|chocolate|hamper|gift|toy|fashion|electronics|phone|roses)\b/i.test(lower)) {
+  if (
+    DELIVERY_POLICY_RE.test(lower) &&
+    !PRODUCT_KEYWORD_RE.test(lower)
+  ) {
     await streamWords(controller, L("deliveryPolicy", language));
     controller.enqueue(sse("done"));
     return true;
@@ -1229,8 +1478,61 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  if (REORDER_RE.test(lower)) {
+    const refMatch = REORDER_REF_RE.exec(trimmed);
+    const orderRef = refMatch?.[1] ?? refMatch?.[2];
+
+    if (orderRef) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_track_order));
+      const trackingResult = await callMcpTool(mcpClient, "kapruka_track_order", {
+        params: {
+          order_number: orderRef.toUpperCase(),
+          response_format: "json",
+        },
+      });
+      const tracking = extractTrackingFromMcp(trackingResult.content);
+      if (tracking?.items && tracking.items.length > 0) {
+        const products: KiraProduct[] = tracking.items.map((item) => ({
+          id: item.productId,
+          name: item.name,
+          price: item.sellingPrice ?? 0,
+        }));
+        await streamWords(
+          controller,
+          `Found order ${orderRef.toUpperCase()} — here's what you ordered last time. Add them back to cart and I'll walk you through checkout.`
+        );
+        controller.enqueue(sse("products", products));
+      } else {
+        await streamWords(
+          controller,
+          `I couldn't find items for order ${orderRef.toUpperCase()} — double-check the number from your confirmation email.`
+        );
+      }
+      controller.enqueue(sse("done"));
+      return true;
+    }
+
+    if (lastOrderCart && lastOrderCart.length > 0) {
+      const products = lastOrderCart.map((item) => item.product);
+      await streamWords(
+        controller,
+        "Here's your last order — add them back to cart and I'll walk you through checkout."
+      );
+      controller.enqueue(sse("products", products));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+
+    await streamWords(
+      controller,
+      "What was your Kapruka order number? I'll look it up for you (it's in your confirmation email)."
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   const VAGUE_RE =
-    /^(i\s+need\s+something|just\s+a\s+gift|something\s+(nice|for\s+(my\s+)?(friend|wife|husband|mum|mom|dad|kid|girl|boy|someone)|sweet)|can\s+you\s+help\s+me\s+pick\s+something|i\s+don'?t\s+know\s+what\s+to\s+get|rs\s*[\d,]+\s+budget,?\s*go|under\s+[\d,]+|same\s+as\s+last\s+time|i\s+saw\s+something\s+here\s+before|amma\s+ta)$/i;
+    /^(i\s+need\s+something|just\s+a\s+gift|something\s+(nice|for\s+(my\s+)?(friend|wife|husband|mum|mom|dad|kid|girl|boy|someone)|sweet)|can\s+you\s+help\s+me\s+pick\s+something|i\s+don'?t\s+know\s+what\s+to\s+get|rs\s*[\d,]+\s+budget,?\s*go|under\s+[\d,]+|i\s+saw\s+something\s+here\s+before|amma\s+ta)$/i;
   if (VAGUE_RE.test(lower)) {
     await streamWords(controller, L("vagueAsk", language));
     controller.enqueue(sse("done"));
@@ -1545,6 +1847,76 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  if (HAMPER_RE.test(lower)) {
+    const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
+    const hamperMaxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+    controller.enqueue(sse("step", `Searching Kapruka for "gift hamper"`));
+    let hamperProducts: KiraProduct[] = [];
+    for (const q of ["gift hamper", "combo", "gift pack"]) {
+      const r = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: 6,
+          in_stock_only: true,
+          sort: "bestseller",
+          ...(hamperMaxPrice ? { max_price: hamperMaxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      hamperProducts = dedupeProducts(extractProductsFromMcp(r.content));
+      if (hamperProducts.length > 0) break;
+    }
+    if (hamperProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: "gift hamper" }));
+    } else {
+      const budgetText = hamperMaxPrice
+        ? ` under LKR ${hamperMaxPrice.toLocaleString("en-LK")}`
+        : "";
+      await streamWords(
+        controller,
+        Lf("searchFoundMany", language, {
+          n: hamperProducts.length,
+          budget: budgetText,
+          city: "",
+          date: "",
+        })
+      );
+      controller.enqueue(sse("products", hamperProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (SALE_RE.test(lower) && hasProductKeyword(lower)) {
+    const query = extractProductQueryFromText(trimmed);
+    if (query) {
+      controller.enqueue(sse("step", `Searching Kapruka for "${query}" (price ↑)`));
+      let saleProducts: KiraProduct[] = [];
+      for (const q of [query, fallbackQuery(query)]) {
+        if (!q) continue;
+        const r = await callMcpTool(mcpClient, "kapruka_search_products", {
+          params: {
+            q,
+            limit: 6,
+            in_stock_only: true,
+            sort: "price_asc",
+            response_format: "json",
+          },
+        });
+        saleProducts = dedupeProducts(extractProductsFromMcp(r.content));
+        if (saleProducts.length > 0) break;
+      }
+      if (saleProducts.length === 0) {
+        await streamWords(controller, Lf("searchNothingFound", language, { query }));
+      } else {
+        await streamWords(controller, "Here are the most budget-friendly picks right now:");
+        controller.enqueue(sse("products", saleProducts));
+      }
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
   // "What's popular?" / "what's trending?" / "what's good?" → bestseller browse, no category needed.
   const POPULAR_RE = /\b(what'?s?\s+)?(popular|trending|bestsell|best\s+sell|what'?s?\s+good|most\s+bought|top\s+pick|top\s+gift)\b/i;
   if (POPULAR_RE.test(lower)) {
@@ -1574,7 +1946,10 @@ async function tryHandleDeterministicPrompt({
     /\b(cake|birthday\s+cake|chocolates?|flowers?|bouquet|roses?|hamper|gift\s+hamper|perfume|saree|toys?|electronics?|teddy|candles?|cookie|biscuit)\b.{0,40}\b(under|below|max|budget)\s*(?:lkr\s*)?([\d,]+)/i;
   const bareMatch = BARE_PRODUCT_BUDGET_RE.exec(lower);
   if (bareMatch) {
-    const bareQuery = bareMatch[1].trim().toLowerCase().replace(/\s+/g, " ");
+    const bareQuery = appendBakeryBrand(
+      bareMatch[1].trim().toLowerCase().replace(/\s+/g, " "),
+      trimmed
+    );
     const bareMaxPrice = Number(bareMatch[3].replace(/,/g, ""));
     if (bareMaxPrice >= 100 && bareMaxPrice <= 500_000) {
       controller.enqueue(sse("step", `Searching Kapruka for "${bareQuery}"`));
@@ -1617,10 +1992,11 @@ async function tryHandleDeterministicPrompt({
   const searchIntent = parseSearchIntent(trimmed);
   if (!searchIntent) return false;
 
-  controller.enqueue(sse("step", `Searching Kapruka for "${searchIntent.query}"`));
+  const searchQuery = appendBakeryBrand(searchIntent.query, trimmed);
+  controller.enqueue(sse("step", `Searching Kapruka for "${searchQuery}"`));
   let products: KiraProduct[] = [];
 
-  for (const query of [searchIntent.query, fallbackQuery(searchIntent.query)]) {
+  for (const query of [searchQuery, fallbackQuery(searchQuery)]) {
     if (!query) continue;
     const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: {

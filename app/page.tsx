@@ -30,6 +30,7 @@ import CityPicker from "./components/CityPicker";
 import { useCart } from "./context/CartContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
+  CartItem,
   CheckoutInfo,
   DeliveryQuote,
   KiraMessage,
@@ -134,6 +135,8 @@ const SESSION_KEY = "kira_session_v1";
 interface PersistedSession {
   messages: KiraMessage[];
   deliveryCity?: string;
+  lastOrderCart?: CartItem[];
+  internationalSender?: boolean;
 }
 
 function loadSession(): PersistedSession | null {
@@ -147,13 +150,23 @@ function loadSession(): PersistedSession | null {
   }
 }
 
-function saveSession(messages: KiraMessage[], deliveryCity: string | undefined) {
+function saveSession(
+  messages: KiraMessage[],
+  deliveryCity: string | undefined,
+  lastOrderCart: CartItem[],
+  internationalSender: boolean
+) {
   if (typeof window === "undefined") return;
   try {
     // Never persist the opening placeholder — it's re-generated fresh each load.
     const toSave = messages.filter((m) => m.id !== "opening");
     if (toSave.length === 0) return;
-    const payload: PersistedSession = { messages: toSave, deliveryCity };
+    const payload: PersistedSession = {
+      messages: toSave,
+      deliveryCity,
+      ...(lastOrderCart.length > 0 ? { lastOrderCart } : {}),
+      ...(internationalSender ? { internationalSender } : {}),
+    };
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
   } catch { /* quota exceeded or private browsing */ }
 }
@@ -166,6 +179,8 @@ export default function KiraChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>(undefined);
+  const [lastOrderCart, setLastOrderCart] = useState<CartItem[]>([]);
+  const [internationalSender, setInternationalSender] = useState(false);
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
   const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
@@ -176,6 +191,8 @@ export default function KiraChat() {
       const session = loadSession();
       if (session?.messages?.length) setMessages(session.messages);
       if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+      if (session?.lastOrderCart?.length) setLastOrderCart(session.lastOrderCart);
+      if (session?.internationalSender) setInternationalSender(session.internationalSender);
       setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
     }, 0);
     return () => window.clearTimeout(timer);
@@ -213,8 +230,8 @@ export default function KiraChat() {
 
   // Persist session after each completed response (not while streaming).
   useEffect(() => {
-    if (!isLoading) saveSession(messages, deliveryCity);
-  }, [messages, deliveryCity, isLoading]);
+    if (!isLoading) saveSession(messages, deliveryCity, lastOrderCart, internationalSender);
+  }, [messages, deliveryCity, lastOrderCart, internationalSender, isLoading]);
 
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
@@ -316,6 +333,8 @@ export default function KiraChat() {
             deliveryCity,
             deliveryDate,
             lastProducts: lastWithProducts?.products,
+            lastOrderCart: lastOrderCart.length > 0 ? lastOrderCart : undefined,
+            internationalSender: internationalSender || undefined,
             language,
           }),
         });
@@ -394,8 +413,9 @@ export default function KiraChat() {
                   pendingProductsRef.current = payload.v as KiraProduct[];
                 }
               } else if (payload.t === "context") {
-                const ctx = payload.v as { city?: string };
+                const ctx = payload.v as { city?: string; internationalSender?: boolean };
                 if (ctx?.city) setDeliveryCity(ctx.city);
+                if (ctx?.internationalSender) setInternationalSender(true);
               } else if (payload.t === "delivery") {
                 const info = payload.v as DeliveryQuote;
                 if (info?.city) setDeliveryCity(info.city);
@@ -424,6 +444,7 @@ export default function KiraChat() {
               } else if (payload.t === "checkout") {
                 const checkout = payload.v as CheckoutInfo;
                 setPayLink(checkout.checkoutUrl);
+                setLastOrderCart([...cart]);
                 const id = streamingMsgIdRef.current;
                 if (id) {
                   setMessages((prev) =>
@@ -554,7 +575,7 @@ export default function KiraChat() {
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language]
+    [messages, cart, deliveryCity, deliveryDate, lastOrderCart, internationalSender, isLoading, setPayLink, language]
   );
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";

@@ -33,6 +33,7 @@ export interface KiraProductDetails extends KiraProduct {
   images: string[];
   compareAtPrice?: number;
   variants: KiraProductVariant[];
+  addons?: { id: string; name: string; price: number; currency?: string }[];
   attributes?: Record<string, string>;
   shipping?: ProductShipping;
   isCategoryStub?: boolean;
@@ -117,6 +118,8 @@ export interface ChatRequest {
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  lastOrderCart?: CartItem[];
+  internationalSender?: boolean;
   language?: "en" | "si" | "ta";
 }
 

@@ -252,6 +252,28 @@ export default function ProductQuickView({
                     </div>
                   )}
 
+                  {(details?.addons?.length ?? 0) > 0 && (
+                    <div className="mt-3 space-y-1">
+                      <p className="text-xs font-semibold text-kira-text/60 uppercase tracking-wide">
+                        Add-ons
+                      </p>
+                      {details!.addons!.map((addon) => (
+                        <div
+                          key={addon.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span>{addon.name}</span>
+                          <span className="text-kap-purple font-medium">
+                            + LKR {addon.price.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-xs text-kira-text/50">
+                        Add-ons applied at checkout
+                      </p>
+                    </div>
+                  )}
+
                   {details.shipping && (
                     <div className="grid grid-cols-2 gap-2">
                       {details.shipping.shipsFrom && (
