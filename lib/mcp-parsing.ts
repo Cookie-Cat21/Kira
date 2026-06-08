@@ -5,6 +5,7 @@ import type {
   KiraProductDetails,
   KiraProductVariant,
   OrderTracking,
+  ProductAddon,
   ProductShipping,
   TrackingEvent,
   TrackingItem,
@@ -110,6 +111,10 @@ export function extractProductDetailsFromMcp(
     .map(toProductVariant)
     .filter((variant): variant is KiraProductVariant => Boolean(variant));
 
+  const addons = asArray(obj.addons ?? obj.add_ons ?? obj.addOns)
+    .map(toProductAddon)
+    .filter((addon): addon is ProductAddon => Boolean(addon));
+
   return {
     id: firstString(obj.id, fallback?.id) ?? "",
     name: firstString(obj.name, fallback?.name) ?? "Product",
@@ -125,6 +130,7 @@ export function extractProductDetailsFromMcp(
     inStock: readBoolean(obj.in_stock, fallback?.inStock),
     stockLevel: firstString(obj.stock_level, fallback?.stockLevel),
     variants,
+    addons: addons.length > 0 ? addons : undefined,
     attributes: stringifyRecord(asRecord(obj.attributes)),
     shipping: toShipping(obj.shipping),
     isCategoryStub: Boolean(obj.is_category_stub ?? obj.category_stub),
@@ -302,6 +308,19 @@ function toProductVariant(item: unknown): KiraProductVariant | null {
     inStock: readBoolean(variant.in_stock),
     stockLevel: firstString(variant.stock_level),
     attributes: stringifyRecord(asRecord(variant.attributes)),
+  };
+}
+
+function toProductAddon(item: unknown): ProductAddon | null {
+  const addon = asRecord(item);
+  if (!addon) return null;
+  const price = readPrice(addon.price);
+  if (price.amount === undefined || price.amount <= 0) return null;
+  return {
+    id: firstString(addon.id, addon.sku, addon.name) ?? cryptoSafeId(),
+    name: firstString(addon.name, addon.label) ?? "Add-on",
+    price: price.amount,
+    currency: price.currency ?? "LKR",
   };
 }
 

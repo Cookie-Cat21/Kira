@@ -30,8 +30,9 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
   if (hasTracking) return [];
 
   if (hasCheckout) return [
-    { label: "Continue browsing", value: "Show me more gift options" },
-    { label: "Change item", value: "I want to change the product" },
+    { label: "Order again", value: "order again" },
+    { label: "Track this order", value: "I want to track my order" },
+    { label: "Browse more", value: "Show me more gift options" },
   ];
 
   if (hasProducts) {

@@ -35,6 +35,7 @@ export default function ProductQuickView({
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState("");
   const [activeImage, setActiveImage] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,8 +89,25 @@ export default function ProductQuickView({
     [display.images, product.image]
   );
   const selectedImage = images[Math.min(activeImage, Math.max(images.length - 1, 0))];
-  const inCart = cart.some((item) => item.product.id === product.id);
-  const qty = cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
+  const selectedVariant = details?.variants.find((v) => v.id === selectedVariantId);
+  const activeProduct: KiraProduct = selectedVariant
+    ? {
+        id: selectedVariant.id,
+        name: `${display.name} (${selectedVariant.name})`,
+        price: selectedVariant.price,
+        currency: selectedVariant.currency ?? display.currency,
+        image: display.image,
+        category: display.category,
+        url: display.url,
+        inStock: selectedVariant.inStock ?? display.inStock,
+      }
+    : product;
+  const inCart = cart.some((item) => item.product.id === activeProduct.id);
+  const qty = cart.find((item) => item.product.id === activeProduct.id)?.quantity ?? 0;
+
+  function handleAddToCart() {
+    onAddToCart(activeProduct);
+  }
 
   return (
     <div
@@ -232,13 +250,20 @@ export default function ProductQuickView({
                   {details.variants.length > 0 && (
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase text-kira-muted">
-                        Variants
+                        Choose size
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {details.variants.slice(0, 5).map((variant) => (
-                          <span
+                          <button
+                            type="button"
                             key={variant.id}
-                            className="rounded-lg border border-kira-line bg-kira-bg px-2.5 py-1 text-xs text-kira-text"
+                            onClick={() => setSelectedVariantId(variant.id)}
+                            className={cn(
+                              "rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                              selectedVariantId === variant.id
+                                ? "border-kap-purple bg-kap-purple/10 text-kap-purple font-semibold"
+                                : "border-kira-line bg-kira-bg text-kira-text"
+                            )}
                           >
                             {variant.name}
                             {variant.price > 0 &&
@@ -246,9 +271,30 @@ export default function ProductQuickView({
                                 variant.price,
                                 variant.currency ?? display.currency
                               )}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {details.addons && details.addons.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase text-kira-muted">
+                        Add-ons
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {details.addons.slice(0, 4).map((addon) => (
+                          <span
+                            key={addon.id}
+                            className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-900"
+                          >
+                            {addon.name} · {formatCurrency(addon.price, addon.currency)}
                           </span>
                         ))}
                       </div>
+                      <p className="mt-1 text-[10px] text-kira-muted">
+                        Mention add-ons at checkout — Kira can include them in your order note.
+                      </p>
                     </div>
                   )}
 
@@ -297,7 +343,7 @@ export default function ProductQuickView({
               <div className="mt-auto flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => onAddToCart(product)}
+                  onClick={handleAddToCart}
                   className={cn(
                     "flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-bold transition-all active:scale-95",
                     inCart

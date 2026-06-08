@@ -32,9 +32,10 @@ function getIcon(status: string) {
 
 interface Props {
   tracking: OrderTracking;
+  onReorder?: () => void;
 }
 
-export default function OrderTracker({ tracking }: Props) {
+export default function OrderTracker({ tracking, onReorder }: Props) {
   return (
     <div className="max-w-xs rounded-lg border border-kira-line bg-white px-4 py-3 animate-fade-up">
       <div className="mb-3 flex items-center justify-between">
@@ -146,6 +147,16 @@ export default function OrderTracker({ tracking }: Props) {
           <Share2 className="size-3 text-green-500" />
           Share tracking on WhatsApp
         </a>
+      )}
+
+      {onReorder && tracking.items && tracking.items.length > 0 && (
+        <button
+          type="button"
+          onClick={onReorder}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-kap-purple px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:brightness-110"
+        >
+          Reorder these items
+        </button>
       )}
     </div>
   );
