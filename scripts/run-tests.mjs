@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { evaluateTest } from "./evaluate.mjs";
@@ -6,7 +6,7 @@ import { assertDevServerAvailable, sendTestCase } from "./test-runner.mjs";
 import { TESTS } from "./test-suite.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const RESULTS_PATH = join(__dirname, "results.json");
+const RESULTS_PATH = join(__dirname, "..", "test-results", "results.json");
 
 try {
   await assertDevServerAvailable();
@@ -16,9 +16,19 @@ try {
 }
 
 const results = [];
+const selectedIds = parseListArg("--id");
+const selectedTests =
+  selectedIds.length > 0
+    ? TESTS.filter((test) => selectedIds.includes(String(test.id)))
+    : TESTS;
 
-for (let i = 0; i < TESTS.length; i++) {
-  const test = TESTS[i];
+if (selectedIds.length > 0 && selectedTests.length === 0) {
+  console.error(`No tests matched --id ${selectedIds.join(",")}`);
+  process.exit(1);
+}
+
+for (let i = 0; i < selectedTests.length; i++) {
+  const test = selectedTests[i];
   const runResult = await sendTestCase(test);
   const evaluation = evaluateTest(test, runResult);
   const result = toResult(test, runResult, evaluation);
@@ -26,14 +36,14 @@ for (let i = 0; i < TESTS.length; i++) {
 
   const icon = result.passed ? "✓" : result.isErr ? "~" : "✗";
   console.log(
-    `${icon} [${i + 1}/${TESTS.length}] ${test.name} (${result.durationMs}ms)`
+    `${icon} [${i + 1}/${selectedTests.length}] ${test.name} (${result.durationMs}ms)`
   );
 
   for (const failedCheck of result.failedChecks) {
     console.log(`  - ${failedCheck.check}: ${failedCheck.reason}`);
   }
 
-  if (i < TESTS.length - 1 && test.subgroup !== "deterministic") {
+  if (i < selectedTests.length - 1 && test.subgroup !== "deterministic") {
     await delay(2_000);
   }
 }
@@ -49,6 +59,7 @@ const payload = {
   results,
 };
 
+await mkdir(dirname(RESULTS_PATH), { recursive: true });
 await writeFile(RESULTS_PATH, `${JSON.stringify(payload, null, 2)}\n`);
 
 console.log("");
@@ -72,10 +83,21 @@ function toResult(test, runResult, evaluation) {
     failedChecks: evaluation.failedChecks,
     responseText: runResult.responseText,
     eventsReceived: runResult.events.map((event) => event.t),
+    ...(runResult.status ? { status: runResult.status } : {}),
     ...(runResult.error ? { error: runResult.error } : {}),
   };
 }
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseListArg(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1) return [];
+  const raw = process.argv[index + 1] ?? "";
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

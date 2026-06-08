@@ -176,6 +176,74 @@ test.describe("Product search", () => {
     ).toBeVisible();
   });
 
+  test("quick-view, tray quantity, and Kapruka checkout handoff", async ({ page }) => {
+    const reply = await chat(page, "Show me gift hampers");
+    if (skipIfQuotaExhausted(reply)) return;
+
+    await expect(page.locator('[aria-label*="product suggestion"]').first()).toBeVisible({ timeout: 15_000 });
+    await page.locator('[aria-label^="View details for"]').first().click();
+    const quickView = page.getByRole("dialog", { name: /details/i });
+    await expect(quickView).toBeVisible({ timeout: 10_000 });
+    await expect(quickView.getByText("Product details")).toBeVisible();
+
+    const addButton = quickView.getByRole("button", { name: /Add to tray|In cart/i });
+    await addButton.click();
+    await expect(addButton).toContainText(/In cart \(1\)/);
+    await addButton.click();
+    await expect(addButton).toContainText(/In cart \(2\)/);
+
+    await page.getByRole("button", { name: "Close product details" }).click();
+    await expect(page.locator('[aria-label="Open gift tray with 2 items"]')).toBeVisible({ timeout: 10_000 });
+    await page.locator('[aria-label="Open gift tray with 2 items"]').click();
+    await expect(page.getByRole("dialog", { name: "Gift tray" })).toBeVisible();
+    await page.getByRole("button", { name: "Proceed to checkout" }).click();
+
+    const checkout = page.getByRole("dialog", { name: "Checkout" });
+    await expect(checkout).toBeVisible();
+    await expect(checkout.getByText("Review your tray")).toBeVisible();
+    await expect(page.getByText("Card number")).toHaveCount(0);
+    await checkout.getByRole("button", { name: /Continue/ }).click();
+
+    await expect(checkout.getByLabel(/Recipient name/i)).toBeVisible();
+    await expect(checkout.getByLabel(/Phone number/i)).toBeVisible();
+    await expect(checkout.getByLabel(/City/i)).toBeVisible();
+    await expect(checkout.getByLabel(/Street address/i)).toBeVisible();
+    await expect(checkout.getByLabel(/Delivery date/i)).toBeVisible();
+    await expect(page.getByText("Card number")).toHaveCount(0);
+
+    await page.route("**/api/checkout", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          checkoutInfo: {
+            checkoutUrl: "https://www.kapruka.com/checkout/kira-e2e-test",
+            orderRef: "KIRA-E2E",
+            expiresAt: new Date(Date.now() + 900_000).toISOString(),
+            summary: {
+              itemsTotal: 3000,
+              deliveryFee: 450,
+              addonsTotal: 0,
+              grandTotal: 3450,
+            },
+          },
+        }),
+      });
+    });
+
+    await checkout.getByLabel(/Recipient name/i).fill("Nimal Perera");
+    await checkout.getByLabel(/Phone number/i).fill("0771234567");
+    await checkout.getByLabel(/City/i).fill("Colombo");
+    await checkout.getByLabel(/Street address/i).fill("12 Main St");
+    await checkout.getByLabel(/Delivery date/i).fill("2026-06-10");
+    await checkout.getByRole("button", { name: /Create Kapruka link/i }).click();
+
+    const payLink = checkout.getByRole("link", { name: /Complete payment on Kapruka/i });
+    await expect(payLink).toBeVisible({ timeout: 10_000 });
+    await expect(payLink).toHaveAttribute("href", /kapruka\.com\/checkout\/kira-e2e-test/);
+    await expect(page.getByText("Card number")).toHaveCount(0);
+  });
+
   test("product cards show LKR price", async ({ page }) => {
     await chat(page, "Show me flower bouquets");
     await expect(page.locator('[aria-label*="product suggestion"]').first()).toBeVisible({ timeout: 15_000 });

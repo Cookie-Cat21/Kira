@@ -9,7 +9,7 @@ import { TESTS } from "./test-suite.mjs";
 const execFileAsync = promisify(execFile);
 const REPO = "Cookie-Cat21/Kira";
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const RESULTS_PATH = join(__dirname, "results.json");
+const RESULTS_PATH = join(__dirname, "..", "test-results", "results.json");
 const LABELS = {
   bug: "d73a4a",
   language: "5319e7",

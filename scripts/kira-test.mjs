@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
 /**
  * Kira E2E test suite — runs against http://localhost:3000
  * Usage: node scripts/kira-test.mjs

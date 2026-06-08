@@ -61,7 +61,10 @@ export default function McpStatusBadge() {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function check() {
     setChecking(true);
@@ -76,7 +79,12 @@ export default function McpStatusBadge() {
     }
   }
 
-  useEffect(() => { check(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void check();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function openPopover() {
     if (btnRef.current) {

@@ -10,7 +10,7 @@ import { TESTS } from "./test-suite.mjs";
 const execFileAsync = promisify(execFile);
 const REPO = "Cookie-Cat21/Kira";
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const RESULTS_PATH = join(__dirname, "results.json");
+const RESULTS_PATH = join(__dirname, "..", "test-results", "results.json");
 
 const payload = JSON.parse(await readFile(RESULTS_PATH, "utf8"));
 const testsById = new Map(TESTS.map((test) => [test.id, test]));

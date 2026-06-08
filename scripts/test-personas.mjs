@@ -1,6 +1,6 @@
 /**
  * test-personas.mjs
- * Runs 100 persona test cases against POST /api/chat and prints a pass/fail table.
+ * Runs 120 persona test cases against POST /api/chat and prints a pass/fail table.
  *
  * Groups:
  *   A (25) — vague / indirect gift messages        → must ask, never "nothing found"
@@ -8,10 +8,10 @@
  *   C (25) — feature / transactional flows          → search, delivery, checkout, tracking, browse
  *   D (12) — multilingual (si / ta / romanized)     → output-language gating
  *   E (13) — adversarial / robustness / edge        → injection, gibberish, long input, mixed scripts
- *   F (15) — regression: fast-path i18n, checkout address, cart edge-cases, new adversarial
+ *   F (20) — regression / judge paths: checkout handoff, delivery date, city aliases, Sinhala demos
  *
  * Usage:
- *   node scripts/test-personas.mjs                       # all 100
+ *   node scripts/test-personas.mjs                       # all 120
  *   node scripts/test-personas.mjs --group a             # a single group (a|b|c|d|e|f)
  *   node scripts/test-personas.mjs --id A03,C12,E07      # specific IDs
  *   node scripts/test-personas.mjs --concurrency 1       # default is already 1
@@ -21,6 +21,9 @@
  * scored as errors (not passes) — see SENTINEL_RE below.
  */
 
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { runCheck } from "./evaluate.mjs";
 
@@ -39,6 +42,8 @@ const DEFAULT_CONCURRENCY = 1;        // safe for Groq free tier
 const INTER_REQUEST_DELAY_MS = 1_200; // gap between sequential requests
 const RETRY_ON_FALLBACK = true;       // retry once when a rate-limit fallback is seen
 const RETRY_DELAY_MS = 4_000;
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const RESULTS_PATH = join(__dirname, "..", "test-results", "persona-results.json");
 
 const SCRIPT_RANGES = { si: /[඀-෿]/, ta: /[஀-௿]/ };
 
@@ -51,7 +56,7 @@ const SENTINEL_RE =
 const NOTHING_FOUND_RE =
   /nothing in stock|couldn'?t find|no results|not in stock|out of stock|stock නෑ|stock இல்லை/i;
 const HONEST_EMPTY_RE =
-  /couldn'?t find|nothing in stock|not in stock|try a different|different category|different term|stock නෑ|stock இல்லை|வேறு category|category try/i;
+  /couldn'?t find|nothing in stock|no products in stock|not in stock|try a different|different category|different term|stock නෑ|stock இல்லை|வேறு category|category try/i;
 const REDIRECT_KW_RE = /kapruka|shopping|gift|browse|find.*for you|help.*find|shop|catalog/i;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -191,7 +196,7 @@ const GROUP_E = [
   { id: "E13", msg: "हिंदी cake එකක් 蛋糕", checks: [["noLang", "si"], ["noLang", "ta"]], note: "Mixed-script spam, EN mode" },
 ];
 
-// Group F — regression tests for bugs fixed in this session (15 cases).
+// Group F — regression and judge-path coverage (20 cases).
 // Covers: fast-path language localisation, checkout address, delivery date,
 // cart edge-cases, and new adversarial phrases not covered by E-group.
 const GROUP_F = [
@@ -221,6 +226,13 @@ const GROUP_F = [
   { id: "F14", msg: "it's Vesak, any gift ideas?", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Occasion-aware search — Vesak" },
   // Same-day delivery cut-off question
   { id: "F15", msg: "what's the cut-off time for same-day delivery to Colombo?", checks: ["noHallucination", "notEmpty"], note: "Same-day delivery operational question" },
+  { id: "F16", msg: "show me roses to galagedara", checks: ["noHallucination", "productsOrHonestEmpty"], note: "MCP city alias resolution" },
+  { id: "F17", msg: "I need flowers delivered today", checks: ["noHallucination", "notEmpty"], note: "Delivery date/time question needs product/city follow-up" },
+  { id: "F18", request: { messages: [{ role: "user", content: "ready to checkout" }], cart: [
+    { product: { id: "p1", name: "Chocolate Box", price: 1500, currency: "LKR", image: null, url: "https://kapruka.com" }, quantity: 1 },
+  ] }, checks: [["text", /name|recipient|deliver|address/i]], note: "Checkout handoff starts without card collection language" },
+  { id: "F19", msg: "add this gift note: Happy birthday Amma, love you lots", checks: ["notEmpty"], note: "Gift-message readback path" },
+  { id: "F20", request: { messages: [{ role: "user", content: "show me gift hampers" }], language: "si" }, checks: [["lang", "si"], "productsOrHonestEmpty"], note: "Sinhala judge demo — gift search" },
 ];
 
 const GROUPS = { A: GROUP_A, B: GROUP_B, C: GROUP_C, D: GROUP_D, E: GROUP_E, F: GROUP_F };
@@ -367,9 +379,9 @@ function truncate(str, n) {
 
 const GROUP_LABELS = {
   A: "Vague / Indirect", B: "Out-of-Scope", C: "Feature / Transactional",
-  D: "Multilingual", E: "Adversarial / Edge",
+  D: "Multilingual", E: "Adversarial / Edge", F: "Regression / Judge Path",
 };
-const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue };
+const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white };
 
 function printGroupResults(groupChar, runs) {
   const passed = runs.filter((r) => r.evaluation.passed).length;
@@ -412,7 +424,7 @@ async function main() {
   const groupFilter = args.includes("--group") ? args[args.indexOf("--group") + 1]?.toUpperCase() : null;
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
-  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 100 personas${c.reset}`);
+  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 120 personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
   if (concurrency > 1) console.log(`${c.yellow}! concurrency > 1 on Groq free tier causes rate-limit fallbacks (scored as ERR).${c.reset}`);
   await assertDevServerAvailable();
@@ -442,7 +454,7 @@ async function main() {
   printProgress();
   const runs = await runWithConcurrency(tasks, concurrency);
   process.stdout.write("\n");
-  for (const g of ["A", "B", "C", "D", "E"]) {
+  for (const g of ["A", "B", "C", "D", "E", "F"]) {
     const groupRuns = runs.filter((r) => r._group === g);
     if (groupRuns.length) printGroupResults(g, groupRuns);
   }
@@ -464,10 +476,9 @@ async function main() {
     toolCalls: r.evaluation.toolCalls ?? 0,
     response: r.result?.responseText?.slice(0, 300) ?? "",
   }));
-  await import("fs").then((fs) =>
-    fs.writeFileSync("scripts/persona-results.json", JSON.stringify(jsonOut, null, 2))
-  );
-  console.log(`${c.dim}\nFull results written to scripts/persona-results.json${c.reset}\n`);
+  await mkdir(dirname(RESULTS_PATH), { recursive: true });
+  await writeFile(RESULTS_PATH, `${JSON.stringify(jsonOut, null, 2)}\n`);
+  console.log(`${c.dim}\nFull results written to ${RESULTS_PATH}${c.reset}\n`);
   const genuineFailures = runs.filter((r) => !r.evaluation.passed && !r.evaluation.isError).length;
   process.exit(genuineFailures === 0 ? 0 : 1);
 }

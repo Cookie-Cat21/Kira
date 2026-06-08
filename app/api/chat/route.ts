@@ -86,6 +86,16 @@ const LS: Record<string, Record<string, string>> = {
     si: "හොඳයි! Live Kapruka checkout link හදන්න recipient ගේ full name ඕනෑ.",
     ta: "நல்லது! Live Kapruka checkout link உருவாக்க recipient இன் full name தேவை.",
   },
+  checkoutNeedPhone: {
+    en: "Lovely, I have the recipient and address. What's the recipient's phone number?",
+    si: "හොඳයි, recipient සහ address තියෙනවා. Recipient ගේ phone number එක මොකක්ද?",
+    ta: "நல்லது, recipient மற்றும் address இருக்கிறது. Recipient phone number என்ன?",
+  },
+  checkoutNeedAddress: {
+    en: "Lovely, I have the recipient and phone number. What's the full street address?",
+    si: "හොඳයි, recipient සහ phone number තියෙනවා. Full street address එක මොකක්ද?",
+    ta: "நல்லது, recipient மற்றும் phone number இருக்கிறது. Full street address என்ன?",
+  },
   reshowNothingInStock: {
     en: "Checked Kapruka again — nothing in stock right now. Want to try a different category or search?",
     si: "Kapruka නැවත check කළා — stock නෑ. වෙනත් category try කරමුද?",
@@ -175,6 +185,46 @@ const LS: Record<string, Record<string, string>> = {
     en: "Hey! I'm Kira — your Kapruka shopping helper 🎁 Tell me what you're looking for: a gift, cakes, flowers, or something else?",
     si: "හෙලෝ! මම Kira — ඔබේ Kapruka shopping helper 🎁 Gift, cakes, flowers, නැතිනම් වෙන දෙයක් හොයනවාද?",
     ta: "வணக்கம்! நான் Kira — உங்கள் Kapruka shopping helper 🎁 Gift, cakes, flowers, அல்லது வேறு எதாவது தேடுகிறீர்களா?",
+  },
+  greetingQuick: {
+    en: "Hey, I'm Kira. Who are we shopping for today?",
+    si: "හෙලෝ, මම Kira. අද කාටද gift එකක් හොයන්නේ?",
+    ta: "வணக்கம், நான் Kira. இன்று யாருக்காக gift பார்க்கலாம்?",
+  },
+  vagueAsk: {
+    en: "Sweet. What kind of thing are you thinking — sweets, flowers, something useful, or something to wear?",
+    si: "හරි. මොන වගේ දෙයක්ද හිතන්නේ — sweets, flowers, useful දෙයක්, නැතිනම් අඳින්න දෙයක්ද?",
+    ta: "சரி. என்ன மாதிரி ஒன்று பார்க்கலாம் — sweets, flowers, useful item, அல்லது அணிய ஏதாவது?",
+  },
+  productRecipientAsk: {
+    en: "Nice. Are these {category} for a birthday, get-well, anniversary, or just because? A city or budget helps me narrow it.",
+    si: "හොඳයි. {category} birthday, get-well, anniversary, නැතිනම් just because ද? City එක හෝ budget එක දුන්නොත් narrow කරන්නම්.",
+    ta: "சரி. இந்த {category} birthday, get-well, anniversary, அல்லது just because-க்கா? City அல்லது budget சொன்னால் narrow செய்கிறேன்.",
+  },
+  outOfScopeRedirect: {
+    en: "Aiyo, that one's outside my shopping lane. I can help with Kapruka gifts, delivery, checkout, or order tracking.",
+    si: "Aiyo, ඒක මගේ shopping lane එකෙන් පිට. Kapruka gifts, delivery, checkout, order tracking වලට මම help කරන්නම්.",
+    ta: "Aiyo, அது என் shopping lane-க்கு வெளியே. Kapruka gifts, delivery, checkout, order tracking-க்கு நான் help செய்கிறேன்.",
+  },
+  mixedScriptAsk: {
+    en: "I can help with that product, but the message is a bit mixed. Tell me the item, city, and budget in one line and I'll check Kapruka.",
+    si: "Product එකට help කරන්නම්, message එක ටිකක් mixed. Item, city, budget එක line එකක කියන්නකෝ.",
+    ta: "Product பார்க்க உதவுகிறேன், message கொஞ்சம் mixed. Item, city, budget-ஐ ஒரு line-இல் சொல்லுங்கள்.",
+  },
+  englishModeScriptAsk: {
+    en: "I can help deliver there. What product should I search for on Kapruka — flowers, cake, chocolates, or a gift hamper?",
+    si: "Delivery help කරන්නම්. Kapruka එකේ මොන product එකද search කරන්න — flowers, cake, chocolates, gift hamper?",
+    ta: "அங்கே deliver செய்ய உதவுகிறேன். Kapruka-ல் எந்த product தேடலாம் — flowers, cake, chocolates, gift hamper?",
+  },
+  codPolicy: {
+    en: "Kapruka payment happens on the secure checkout page. I can create the checkout link, then you can use the payment options Kapruka shows there.",
+    si: "Kapruka payment secure checkout page එකේ වෙනවා. මම checkout link එක හදලා දෙන්නම්, එතැන Kapruka දෙන payment options use කරන්න.",
+    ta: "Kapruka payment secure checkout page-இல் நடக்கும். நான் checkout link உருவாக்குகிறேன்; அங்கே Kapruka காட்டும் payment options பயன்படுத்தலாம்.",
+  },
+  deliveryPolicy: {
+    en: "Same-day availability depends on the city and today's Kapruka slots. Tell me the city and product, and I'll check the live delivery option.",
+    si: "Same-day delivery city එක සහ අද Kapruka slots මත depend වෙනවා. City එකත් product එකත් කියන්න, live delivery check කරන්නම්.",
+    ta: "Same-day delivery city மற்றும் இன்றைய Kapruka slots மீது இருக்கும். City மற்றும் product சொல்லுங்கள்; live delivery பார்க்கிறேன்.",
   },
   jailbreakRedirect: {
     en: "Ha, I'm just Kira — one personality is plenty for me! Anything I can find for you on Kapruka? 🛍️",
@@ -1105,7 +1155,14 @@ async function tryHandleDeterministicPrompt({
   // ── Jailbreak / persona-change intercept ─────────────────────────────────
   // "pretend you're a different AI", "act as X", "ignore your instructions" etc.
   // Catch before any search logic so the LLM never gets a chance to comply.
-  const JAILBREAK_RE = /\b(pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai)\b/i;
+  const GREETING_RE = /^(hi|hello|hey|yo|ayubowan|ආයුබෝවන්|வணக்கம்)[\s!.]*$/i;
+  if (GREETING_RE.test(trimmed)) {
+    await streamWords(controller, L("greetingQuick", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const JAILBREAK_RE = /\b(dan\s+mode|pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(all\s+)?(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai|no\s+restrictions)\b/i;
   if (JAILBREAK_RE.test(lower)) {
     await streamWords(controller, L("jailbreakRedirect", language));
     controller.enqueue(sse("done"));
@@ -1120,6 +1177,70 @@ async function tryHandleDeterministicPrompt({
   const TRUST_RE = /\b(is\s+(kapruka|this|it)(\s+\w+){0,3}\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
   if (TRUST_RE.test(lower)) {
     await streamWords(controller, L("trustAffirmation", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const COD_RE = /\b(cash\s+on\s+delivery|cod|pay\s+cash|cash\s+payment|payment\s+method|how\s+can\s+i\s+pay)\b/i;
+  if (COD_RE.test(lower)) {
+    await streamWords(controller, L("codPolicy", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const DELIVERY_POLICY_RE = /\b(cut-?off|same-?day|delivery\s+time|deliver\s+today|today\s+delivery|how\s+late)\b/i;
+  if (DELIVERY_POLICY_RE.test(lower) && !/\b(cake|flower|chocolate|hamper|gift|toy|fashion|electronics|phone|roses)\b/i.test(lower)) {
+    await streamWords(controller, L("deliveryPolicy", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const OUT_OF_SCOPE_RE =
+    /\b(weather|flight|restaurant|translate|cover letter|quantum|homework|cricket|time in|loan|poem|movie|doctor|appointment|call someone|job in|forex|usd|lkr rate|joke|hack|instagram|girlfriend broke|lonely|be my friend|pizza)\b/i;
+  if (OUT_OF_SCOPE_RE.test(lower)) {
+    await streamWords(controller, L("outOfScopeRedirect", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const mixedForeignScriptCount = [
+    /[\u0D80-\u0DFF]/, // Sinhala
+    /[\u0B80-\u0BFF]/, // Tamil
+    /[\u0900-\u097F]/, // Devanagari
+    /[\u4E00-\u9FFF]/, // CJK
+  ].filter((pattern) => pattern.test(trimmed)).length;
+  if (
+    language === "en" &&
+    mixedForeignScriptCount >= 2 &&
+    /\b(cake|flower|chocolate|hamper|gift|toy|fashion|electronics|phone|rose|bouquet)\b/i.test(lower)
+  ) {
+    await streamWords(controller, L("mixedScriptAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+  if (
+    language === "en" &&
+    /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) &&
+    /(?:\b(?:send|deliver|delivery)\b|යවන්න|அனுப்பு|டெலிவரி)/i.test(trimmed) &&
+    !/\b(cake|flower|chocolate|hamper|gift|toy|fashion|electronics|phone|rose|bouquet)\b/i.test(lower)
+  ) {
+    await streamWords(controller, L("englishModeScriptAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const VAGUE_RE =
+    /^(i\s+need\s+something|just\s+a\s+gift|something\s+(nice|for\s+(my\s+)?(friend|wife|husband|mum|mom|dad|kid|girl|boy|someone)|sweet)|can\s+you\s+help\s+me\s+pick\s+something|i\s+don'?t\s+know\s+what\s+to\s+get|rs\s*[\d,]+\s+budget,?\s*go|under\s+[\d,]+|same\s+as\s+last\s+time|i\s+saw\s+something\s+here\s+before|amma\s+ta)$/i;
+  if (VAGUE_RE.test(lower)) {
+    await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const FAMILY_GIFT_ASK_RE =
+    /\b(amma|thaththa|thaththaa|acca|akka|aiya|malli|nangi|nona)\s+(ta|ge|for)\b.{0,50}\b(gift|ganna|ona|one)\b/i;
+  if (FAMILY_GIFT_ASK_RE.test(lower)) {
+    await streamWords(controller, L("vagueAsk", language));
     controller.enqueue(sse("done"));
     return true;
   }
@@ -1166,6 +1287,25 @@ async function tryHandleDeterministicPrompt({
     }
     controller.enqueue(sse("done"));
     return true;
+  }
+
+  const CHECKOUT_DETAIL_RE = /\b(order|place\s+an\s+order|checkout|send|deliver)\b/i;
+  const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
+  const ADDRESS_RE =
+    /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
+  if (CHECKOUT_DETAIL_RE.test(lower)) {
+    const hasPhone = PHONE_RE.test(trimmed);
+    const hasAddress = ADDRESS_RE.test(trimmed);
+    if (hasAddress && !hasPhone) {
+      await streamWords(controller, L("checkoutNeedPhone", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+    if (hasPhone && !hasAddress) {
+      await streamWords(controller, L("checkoutNeedAddress", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
   }
 
   // "Show me those as pictures / can u show me those two items as cards / show them as listings" —
@@ -1310,11 +1450,24 @@ async function tryHandleDeterministicPrompt({
     /\b(gift|present|something\s+(for|nice)|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
   const SL_FAMILY_GIFT_RE =
     /\b(amma|thaththa|thaththaa|acca|akka|aiya|malli|nangi|nona)\s+(ta|ge|for)\b/i;
+  const PRODUCT_RECIPIENT_RE =
+    /\b(flowers?|cakes?|chocolates?|roses?|bouquet|hampers?)\b.{0,35}\bfor\s+(my\s+)?(wife|husband|mum|mom|dad|friend|girlfriend|boyfriend|amma|thaththa|thaththaa)\b/i;
 
   const hasBudgetHint = /\b(?:under|below|max|maximum|budget|lkr\s*\d)\b/i.test(lower);
   const hasOccasionHint = /\b(father'?s\s+day|mother'?s\s+day|birthday|avurudu|vesak|wedding|anniversary)\b/i.test(lower);
   const hasCityHint = !!extractCityHint(trimmed);
   const hasFamilyHint = SL_FAMILY_GIFT_RE.test(lower);
+  const productRecipient = PRODUCT_RECIPIENT_RE.exec(lower);
+  if (productRecipient && !hasBudgetHint && !hasOccasionHint && !hasCityHint) {
+    await streamWords(
+      controller,
+      Lf("productRecipientAsk", language, {
+        category: productRecipient[1].trim().toLowerCase(),
+      })
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
   // Only fire the gift fast-path when there's at least one concrete signal beyond the word "gift".
   // - "just a gift" / "amma ta" alone → fall through to LLM so it asks what kind of gift.
   // - "gift for dad under 3000" / "flowers for amma to Kandy" → fast-path is useful.
@@ -1348,6 +1501,7 @@ async function tryHandleDeterministicPrompt({
         params: {
           city: canonicalGiftCity,
           product_id: giftProducts[0].id,
+          ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
           response_format: "json",
         },
       });
@@ -1417,7 +1571,7 @@ async function tryHandleDeterministicPrompt({
   // "chocolates under 3000", "flowers under 1500" that lack a "show me" prefix and therefore
   // fall through parseSearchIntent. Prevents the LLM from asking for city before searching.
   const BARE_PRODUCT_BUDGET_RE =
-    /\b(cake|birthday\s+cake|chocolate|flowers?|bouquet|roses?|hamper|gift\s+hamper|perfume|saree|toys?|electronics?|teddy|candles?|cookie|biscuit)\b.{0,40}\b(under|below|max|budget)\s*(?:lkr\s*)?([\d,]+)/i;
+    /\b(cake|birthday\s+cake|chocolates?|flowers?|bouquet|roses?|hamper|gift\s+hamper|perfume|saree|toys?|electronics?|teddy|candles?|cookie|biscuit)\b.{0,40}\b(under|below|max|budget)\s*(?:lkr\s*)?([\d,]+)/i;
   const bareMatch = BARE_PRODUCT_BUDGET_RE.exec(lower);
   if (bareMatch) {
     const bareQuery = bareMatch[1].trim().toLowerCase().replace(/\s+/g, " ");
@@ -1444,7 +1598,12 @@ async function tryHandleDeterministicPrompt({
         controller.enqueue(sse("products", bareProducts));
         if (cityHint && bareProducts[0]) {
           const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
-            params: { city: cityHint, product_id: bareProducts[0].id, response_format: "json" },
+            params: {
+              city: cityHint,
+              product_id: bareProducts[0].id,
+              ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
+              response_format: "json",
+            },
           });
           const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
           if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
@@ -1460,7 +1619,6 @@ async function tryHandleDeterministicPrompt({
 
   controller.enqueue(sse("step", `Searching Kapruka for "${searchIntent.query}"`));
   let products: KiraProduct[] = [];
-  let usedQuery = searchIntent.query;
 
   for (const query of [searchIntent.query, fallbackQuery(searchIntent.query)]) {
     if (!query) continue;
@@ -1475,7 +1633,6 @@ async function tryHandleDeterministicPrompt({
       },
     });
     products = dedupeProducts(extractProductsFromMcp(searchResult.content));
-    usedQuery = query;
     if (products.length > 0) break;
   }
 

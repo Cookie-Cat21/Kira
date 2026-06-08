@@ -9,10 +9,33 @@ export async function assertDevServerAvailable(apiUrl = API_URL) {
   const timeout = setTimeout(() => controller.abort(), 5_000);
 
   try {
-    await fetch(url.origin, { signal: controller.signal });
+    const health = await fetch(new URL("/api/health", url.origin), {
+      signal: controller.signal,
+    });
+    if (!health.ok) {
+      throw new Error(`health returned HTTP ${health.status}`);
+    }
+    const body = await health.json();
+    if (body?.app !== "kira") {
+      throw new Error(
+        `expected Kira health app marker, got ${JSON.stringify(body)}`
+      );
+    }
+
+    const probe = await sendTestCase({
+      request: { messages: [{ role: "user", content: "" }], cart: [], language: "en" },
+      checks: [],
+    });
+    const hasSseDone = probe.events.some((event) => event.t === "done");
+    if (probe.error || !hasSseDone) {
+      throw new Error(
+        `chat SSE probe failed${probe.error ? `: ${probe.error}` : ""}`
+      );
+    }
   } catch {
     throw new Error(
-      `Connection refused — is the dev server running at ${url.origin}?`
+      `Kira dev server is not available at ${url.origin}. ` +
+        `Start this repo or set KIRA_API_URL to the correct /api/chat endpoint.`
     );
   } finally {
     clearTimeout(timeout);
@@ -20,6 +43,10 @@ export async function assertDevServerAvailable(apiUrl = API_URL) {
 }
 
 export async function sendTestCase(testCase) {
+  if (testCase.endpoint === "checkout") {
+    return sendJsonEndpoint(testCase);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const startedAt = Date.now();
@@ -123,6 +150,39 @@ export async function sendTestCase(testCase) {
   }
 }
 
+async function sendJsonEndpoint(testCase) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const startedAt = Date.now();
+  const url = new URL(API_URL);
+  url.pathname = `/api/${testCase.endpoint}`;
+  url.search = "";
+
+  try {
+    const res = await fetch(url, {
+      method: testCase.method ?? "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(testCase.request ?? {}),
+      signal: controller.signal,
+    });
+    const responseText = await safeReadText(res);
+    return finish({
+      events: [],
+      responseText,
+      startedAt,
+      status: res.status,
+    });
+  } catch (err) {
+    const message =
+      err?.name === "AbortError"
+        ? "Timeout"
+        : `Connection refused — is ${url.pathname} available?`;
+    return finish({ events: [], responseText: "", startedAt, error: message });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function normalizeRequest(request = {}) {
   return {
     messages: request.messages ?? [],
@@ -134,11 +194,12 @@ function normalizeRequest(request = {}) {
   };
 }
 
-function finish({ events, responseText, startedAt, error }) {
+function finish({ events, responseText, startedAt, error, status }) {
   return {
     events,
     responseText,
     durationMs: Date.now() - startedAt,
+    ...(status ? { status } : {}),
     ...(error ? { error } : {}),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Check,
@@ -16,11 +16,6 @@ import {
   X,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
-import {
-  CreditCardForm,
-  type CardState,
-  type CardValidity,
-} from "./ui/credit-card-form";
 import { cn } from "@/lib/utils";
 import type { CheckoutInfo } from "@/types";
 
@@ -30,13 +25,12 @@ const lkrFormatter = new Intl.NumberFormat("en-LK", {
   maximumFractionDigits: 0,
 });
 
-type Step = "review" | "delivery" | "payment" | "confirm";
+type Step = "review" | "delivery" | "confirm";
 
-const STEPS: Step[] = ["review", "delivery", "payment", "confirm"];
+const STEPS: Step[] = ["review", "delivery", "confirm"];
 const STEP_LABELS: Record<Step, string> = {
   review: "Review",
   delivery: "Delivery",
-  payment: "Payment",
   confirm: "Confirm",
 };
 
@@ -70,10 +64,10 @@ export default function CheckoutModal({
     phone: "",
     city: "",
     address: "",
+    date: getTomorrowIsoDate(),
   });
   const [giftMessage, setGiftMessage] = useState("");
   const [senderName, setSenderName] = useState("");
-  const [cardValid, setCardValid] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState("");
   const [modalCheckoutInfo, setModalCheckoutInfo] = useState<CheckoutInfo | undefined>();
@@ -113,16 +107,8 @@ export default function CheckoutModal({
     };
   }, [open]);
 
-  const handleCardChange = useCallback(
-    (_state: CardState, validity: CardValidity) => {
-      setCardValid(validity.allValid);
-    },
-    []
-  );
-
   function handleClose() {
     setStep("review");
-    setCardValid(false);
     setPlaceError("");
     setModalCheckoutInfo(undefined);
     setGiftMessage("");
@@ -138,11 +124,14 @@ export default function CheckoutModal({
 
   async function goNext() {
     if (step === "review" && cart.length > 0) setStep("delivery");
-    if (step === "delivery" && delivery.name.trim() && delivery.city.trim() && delivery.address.trim()) {
-      setStep("payment");
-    }
-    if (step === "payment" && cardValid) {
-      // Call the checkout API directly — no LLM round-trip needed.
+    if (
+      step === "delivery" &&
+      delivery.name.trim() &&
+      delivery.phone.trim() &&
+      delivery.city.trim() &&
+      delivery.address.trim() &&
+      delivery.date
+    ) {
       setPlacing(true);
       setPlaceError("");
       try {
@@ -318,6 +307,7 @@ export default function CheckoutModal({
                       />
                       <DeliveryField
                         label="Phone number"
+                        required
                         value={delivery.phone}
                         placeholder="077 123 4567"
                         onChange={(phone) =>
@@ -335,12 +325,29 @@ export default function CheckoutModal({
                       />
                       <DeliveryField
                         label="Street address"
+                        required
                         value={delivery.address}
                         placeholder="No. 12, Flower Road"
                         onChange={(address) =>
                           setDelivery((current) => ({ ...current, address }))
                         }
                       />
+                      <DeliveryField
+                        label="Delivery date"
+                        required
+                        type="date"
+                        min={getTodayIsoDate()}
+                        value={delivery.date}
+                        placeholder=""
+                        onChange={(date) =>
+                          setDelivery((current) => ({ ...current, date }))
+                        }
+                      />
+                      {placeError && (
+                        <p className="rounded-lg border border-red-500/30 bg-red-50 px-3 py-2 text-xs text-red-700">
+                          {placeError}
+                        </p>
+                      )}
                       <div>
                         <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-kira-muted">
                           <MessageSquare className="size-3" />
@@ -376,31 +383,6 @@ export default function CheckoutModal({
                   </motion.div>
                 )}
 
-                {step === "payment" && (
-                  <motion.div key="payment" {...slideProps} className="p-5">
-                    <h2 className="font-sans text-2xl text-kira-text">
-                      Payment
-                    </h2>
-                    <p className="mb-4 mt-2 rounded-lg border border-amber-500/30 bg-amber-900/30 px-3 py-2 text-xs leading-5 text-amber-300">
-                      Kira will place the order through Kapruka&apos;s secure
-                      checkout. Card details are validated in the browser only —
-                      payment is completed on Kapruka&apos;s site.
-                    </p>
-                    {placeError && (
-                      <p className="mb-3 rounded-lg border border-red-500/30 bg-red-900/30 px-3 py-2 text-xs text-red-300">
-                        {placeError}
-                      </p>
-                    )}
-                    <CreditCardForm
-                      ring1="#402970"
-                      ring2="#f8da08"
-                      showSubmit={false}
-                      onChange={handleCardChange}
-                      className="bg-transparent p-0"
-                    />
-                  </motion.div>
-                )}
-
                 {step === "confirm" && (
                   <motion.div
                     key="confirm"
@@ -428,6 +410,21 @@ export default function CheckoutModal({
                           : "Complete your payment securely on Kapruka."}
                       </p>
                     </div>
+                    {modalCheckoutInfo?.summary && (
+                      <div className="w-full max-w-sm rounded-xl border border-kira-line bg-kira-surface p-4 text-left text-sm">
+                        <SummaryLine label="Items" value={modalCheckoutInfo.summary.itemsTotal} />
+                        <SummaryLine label="Delivery" value={modalCheckoutInfo.summary.deliveryFee} />
+                        <SummaryLine label="Add-ons" value={modalCheckoutInfo.summary.addonsTotal} />
+                        <div className="mt-2 border-t border-kira-line pt-2">
+                          <SummaryLine label="Total" value={modalCheckoutInfo.summary.grandTotal} strong />
+                        </div>
+                      </div>
+                    )}
+                    {modalCheckoutInfo?.expiresAt && (
+                      <p className="text-xs text-kira-muted">
+                        Secure Kapruka checkout link expires at {formatExpiry(modalCheckoutInfo.expiresAt)}.
+                      </p>
+                    )}
                     {checkoutUrl ? (
                       <a
                         href={checkoutUrl}
@@ -484,8 +481,11 @@ export default function CheckoutModal({
                     placing ||
                     (step === "review" && cart.length === 0) ||
                     (step === "delivery" &&
-                      (!delivery.name.trim() || !delivery.city.trim() || !delivery.address.trim())) ||
-                    (step === "payment" && !cardValid)
+                      (!delivery.name.trim() ||
+                        !delivery.phone.trim() ||
+                        !delivery.city.trim() ||
+                        !delivery.address.trim() ||
+                        !delivery.date))
                   }
                   className="flex items-center gap-1.5 rounded-xl bg-kap-purple px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-kap-purple/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -494,9 +494,9 @@ export default function CheckoutModal({
                       <Loader2 className="size-4 animate-spin" />
                       Placing order…
                     </>
-                  ) : step === "payment" ? (
+                  ) : step === "delivery" ? (
                     <>
-                      Place order
+                      Create Kapruka link
                       <ChevronRight className="size-4" />
                     </>
                   ) : (
@@ -520,15 +520,17 @@ const CONFETTI_COUNT = 28;
 
 function ConfettiBlast() {
   const particles = Array.from({ length: CONFETTI_COUNT }, (_, i) => {
-    const angle = (i / CONFETTI_COUNT) * 360 + (Math.random() * 30 - 15);
+    const jitter = seededUnit(i, 1) * 30 - 15;
+    const angle = (i / CONFETTI_COUNT) * 360 + jitter;
     const rad = (angle * Math.PI) / 180;
-    const dist = 110 + Math.random() * 80;
+    const dist = 110 + seededUnit(i, 2) * 80;
     return {
       color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
       x: Math.cos(rad) * dist,
       y: Math.sin(rad) * dist,
-      rotate: Math.random() * 720 - 360,
-      scale: 0.4 + Math.random() * 0.6,
+      rotate: seededUnit(i, 3) * 720 - 360,
+      scale: 0.4 + seededUnit(i, 4) * 0.6,
+      duration: 0.8 + seededUnit(i, 5) * 0.4,
     };
   });
 
@@ -541,7 +543,7 @@ function ConfettiBlast() {
           style={{ background: p.color }}
           initial={{ x: 0, y: 0, scale: 0, rotate: 0, opacity: 1 }}
           animate={{ x: p.x, y: p.y, scale: p.scale, rotate: p.rotate, opacity: 0 }}
-          transition={{ duration: 0.8 + Math.random() * 0.4, ease: "easeOut", delay: i * 0.012 }}
+          transition={{ duration: p.duration, ease: "easeOut", delay: i * 0.012 }}
         />
       ))}
     </div>
@@ -553,12 +555,16 @@ function DeliveryField({
   value,
   placeholder,
   required = false,
+  type = "text",
+  min,
   onChange,
 }: {
   label: string;
   value: string;
   placeholder: string;
   required?: boolean;
+  type?: string;
+  min?: string;
   onChange: (value: string) => void;
 }) {
   return (
@@ -568,6 +574,8 @@ function DeliveryField({
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </span>
       <input
+        type={type}
+        min={min}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
@@ -575,4 +583,46 @@ function DeliveryField({
       />
     </label>
   );
+}
+
+function SummaryLine({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value?: number;
+  strong?: boolean;
+}) {
+  if (value === undefined) return null;
+  return (
+    <div className={cn("flex items-center justify-between", strong && "font-bold")}>
+      <span className="text-kira-muted">{label}</span>
+      <span className="text-kira-text">{lkrFormatter.format(value)}</span>
+    </div>
+  );
+}
+
+function seededUnit(index: number, salt: number) {
+  const x = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function getTodayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getTomorrowIsoDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatExpiry(raw: string) {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleTimeString("en-LK", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

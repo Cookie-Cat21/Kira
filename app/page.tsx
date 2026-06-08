@@ -5,22 +5,19 @@ import {
   useRef,
   useEffect,
   useCallback,
-  useMemo,
   type ComponentType,
 } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import {
-  BadgeCheck,
   CakeSlice,
   Flower2,
   Gift,
   Package,
   Shirt,
-  ShoppingBag,
   Smartphone,
   SquarePen,
   Truck,
+  CalendarDays,
 } from "lucide-react";
 import KiraLoader from "./components/KiraLoader";
 import McpStatusBadge from "./components/McpStatusBadge";
@@ -45,12 +42,6 @@ const OCCASION_CHIPS = getOccasionChips();
 // An occasion is active iff getOccasionChips surfaced an urgent chip. When it
 // is, the hero headline already announces it — so we drop the duplicate chip.
 const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
-const currencyFormatter = new Intl.NumberFormat("en-LK", {
-  style: "currency",
-  currency: "LKR",
-  maximumFractionDigits: 0,
-});
-
 type KiraIcon = ComponentType<{ className?: string }>;
 
 // Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
@@ -103,10 +94,6 @@ const CATEGORIES: {
 
 function stripDecorativeGlyphs(text: string) {
   return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function formatLKR(amount: number) {
-  return currencyFormatter.format(amount);
 }
 
 function buildOpeningMessage(): KiraMessage {
@@ -185,10 +172,13 @@ export default function KiraChat() {
 
   // Restore session from localStorage after hydration (client only).
   useEffect(() => {
-    const session = loadSession();
-    if (session?.messages?.length) setMessages(session.messages);
-    if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
-    setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
+    const timer = window.setTimeout(() => {
+      const session = loadSession();
+      if (session?.messages?.length) setMessages(session.messages);
+      if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+      setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate, setDeliveryDate] = useState<string>(() => {
@@ -201,12 +191,7 @@ export default function KiraChat() {
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const {
     cart,
-    cartCount,
-    cartTotal,
     addToCart,
-    openCart,
-    cartButtonRef,
-    bagControls,
     setPayLink,
   } = useCart();
   const thinkingStartRef = useRef<number>(0);
@@ -773,7 +758,13 @@ export default function KiraChat() {
                 onLanguageChange={setLanguage}
               />
               <div className="mt-2 flex items-center justify-between px-1">
-                <CityPicker value={deliveryCity} onChange={setDeliveryCity} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <CityPicker value={deliveryCity} onChange={setDeliveryCity} />
+                  <DeliveryDatePicker
+                    value={deliveryDate}
+                    onChange={setDeliveryDate}
+                  />
+                </div>
                 <p className="text-[10px] text-white/25">
                   Powered by{" "}
                   <a
@@ -801,5 +792,34 @@ export default function KiraChat() {
         />
       )}
     </div>
+  );
+}
+
+function DeliveryDatePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (date: string) => void;
+}) {
+  return (
+    <label
+      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white/70"
+      style={{
+        background: "rgba(255,255,255,0.07)",
+        border: "1px solid rgba(255,255,255,0.12)",
+      }}
+    >
+      <CalendarDays className="size-3 shrink-0" />
+      <span className="sr-only">Delivery date</span>
+      <input
+        type="date"
+        min={new Date().toISOString().slice(0, 10)}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-[7.6rem] bg-transparent text-xs font-semibold text-white/80 outline-none [color-scheme:dark]"
+        aria-label="Delivery date"
+      />
+    </label>
   );
 }
