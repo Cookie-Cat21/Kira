@@ -191,6 +191,8 @@ function normalizeRequest(request = {}) {
     ...(request.deliveryCity ? { deliveryCity: request.deliveryCity } : {}),
     ...(request.deliveryDate ? { deliveryDate: request.deliveryDate } : {}),
     ...(request.lastProducts ? { lastProducts: request.lastProducts } : {}),
+    ...(request.lastOrder ? { lastOrder: request.lastOrder } : {}),
+    ...(request.internationalMode ? { internationalMode: request.internationalMode } : {}),
   };
 }
 

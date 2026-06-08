@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import ProductCard from "./ProductCard";
 import OrderTracker from "./OrderTracker";
 import { useCart } from "@/app/context/CartContext";
-import type { KiraMessage, KiraProduct, CartItem, DeliveryQuote } from "@/types";
+import type { KiraMessage, KiraProduct, CartItem, DeliveryQuote, OrderTracking } from "@/types";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Clock, CreditCard, Check, AlertCircle, Eye, ShoppingCart, Minus, Plus, Gift } from "lucide-react";
 
@@ -15,6 +15,7 @@ interface ChatMessageProps {
   cart: CartItem[];
   onAddToCart: (product: KiraProduct) => void;
   onOpenProduct?: (product: KiraProduct) => void;
+  onReorderFromTracking?: (tracking: OrderTracking) => void;
   deliveryCity?: string;
 }
 
@@ -63,7 +64,7 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
         type="button"
         onClick={() => onOpenProduct?.(product)}
         aria-label={`View details for ${product.name}`}
-        className="group relative size-36 shrink-0 overflow-hidden sm:size-44"
+        className="group relative size-36 shrink-0 overflow-hidden sm:size-48 min-h-36 sm:min-h-48"
         style={{ background: "rgba(255,255,255,0.05)" }}
       >
         {product.image && !imgError ? (
@@ -264,6 +265,7 @@ export default function ChatMessage({
   cart,
   onAddToCart,
   onOpenProduct,
+  onReorderFromTracking,
   deliveryCity,
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
@@ -341,7 +343,16 @@ export default function ChatMessage({
         )}
 
         {/* Order tracking timeline */}
-        {message.tracking && <OrderTracker tracking={message.tracking} />}
+        {message.tracking && (
+          <OrderTracker
+            tracking={message.tracking}
+            onReorder={
+              onReorderFromTracking
+                ? () => onReorderFromTracking(message.tracking!)
+                : undefined
+            }
+          />
+        )}
 
         {/* Pay link CTA */}
         {(message.checkout || message.payLink) && (
@@ -354,9 +365,23 @@ export default function ChatMessage({
 
 function CheckoutCard({ message }: { message: KiraMessage }) {
   const checkoutUrl = message.checkout?.checkoutUrl ?? message.payLink;
+  const [copied, setCopied] = useState(false);
   if (!checkoutUrl) return null;
 
   const summary = message.checkout?.summary;
+  const orderRef = message.checkout?.orderRef;
+
+  async function copyOrderRef() {
+    if (!orderRef) return;
+    try {
+      await navigator.clipboard.writeText(orderRef);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
   return (
     <div
       className="max-w-xs rounded-2xl px-4 py-3"
@@ -368,10 +393,22 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
         </span>
         <div className="min-w-0">
           <p className="text-xs font-bold text-white/90">Checkout ready</p>
-          {message.checkout?.orderRef && (
-            <p className="text-[10px] font-mono text-white/40 truncate">
-              {message.checkout.orderRef}
-            </p>
+          {orderRef && (
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-mono text-white/40 truncate">
+                Ref: {orderRef}
+              </p>
+              <button
+                type="button"
+                onClick={copyOrderRef}
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-kap-yellow/80 hover:text-kap-yellow"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          )}
+          {!orderRef && (
+            <p className="text-[10px] text-white/40">Save your ref to reorder anytime</p>
           )}
         </div>
       </div>

@@ -18,6 +18,9 @@ import {
   SquarePen,
   Truck,
   CalendarDays,
+  ShoppingBasket,
+  Baby,
+  Home,
 } from "lucide-react";
 import KiraLoader from "./components/KiraLoader";
 import McpStatusBadge from "./components/McpStatusBadge";
@@ -34,6 +37,7 @@ import type {
   DeliveryQuote,
   KiraMessage,
   KiraProduct,
+  LastOrder,
   OrderTracking,
 } from "@/types";
 import { cn } from "@/lib/utils";
@@ -90,6 +94,24 @@ const CATEGORIES: {
     value: "Show me gift hampers on Kapruka",
     tone: "border-amber-100 bg-amber-50 text-amber-900",
   },
+  {
+    icon: ShoppingBasket,
+    label: "Grocery",
+    value: "Show me grocery items on Kapruka",
+    tone: "border-lime-100 bg-lime-50 text-lime-900",
+  },
+  {
+    icon: Baby,
+    label: "Kids & Toys",
+    value: "Show me soft toys and kids gifts on Kapruka",
+    tone: "border-violet-100 bg-violet-50 text-violet-900",
+  },
+  {
+    icon: Home,
+    label: "Home",
+    value: "Show me home and lifestyle products on Kapruka",
+    tone: "border-stone-100 bg-stone-50 text-stone-900",
+  },
 ];
 
 function stripDecorativeGlyphs(text: string) {
@@ -129,17 +151,18 @@ function KaprukaSmileMark() {
   );
 }
 
-const SESSION_KEY = "kira_session_v1";
+const SESSION_KEY = "kira_session_v2";
 
 interface PersistedSession {
   messages: KiraMessage[];
   deliveryCity?: string;
+  lastOrder?: LastOrder;
 }
 
 function loadSession(): PersistedSession | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    const raw = localStorage.getItem(SESSION_KEY) ?? localStorage.getItem("kira_session_v1");
     if (!raw) return null;
     return JSON.parse(raw) as PersistedSession;
   } catch {
@@ -147,13 +170,16 @@ function loadSession(): PersistedSession | null {
   }
 }
 
-function saveSession(messages: KiraMessage[], deliveryCity: string | undefined) {
+function saveSession(
+  messages: KiraMessage[],
+  deliveryCity: string | undefined,
+  lastOrder: LastOrder | undefined
+) {
   if (typeof window === "undefined") return;
   try {
-    // Never persist the opening placeholder — it's re-generated fresh each load.
     const toSave = messages.filter((m) => m.id !== "opening");
-    if (toSave.length === 0) return;
-    const payload: PersistedSession = { messages: toSave, deliveryCity };
+    if (toSave.length === 0 && !lastOrder) return;
+    const payload: PersistedSession = { messages: toSave, deliveryCity, lastOrder };
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
   } catch { /* quota exceeded or private browsing */ }
 }
@@ -166,6 +192,7 @@ export default function KiraChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>(undefined);
+  const [lastOrder, setLastOrder] = useState<LastOrder | undefined>(undefined);
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
   const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
@@ -176,6 +203,7 @@ export default function KiraChat() {
       const session = loadSession();
       if (session?.messages?.length) setMessages(session.messages);
       if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+      if (session?.lastOrder) setLastOrder(session.lastOrder);
       setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
     }, 0);
     return () => window.clearTimeout(timer);
@@ -213,13 +241,38 @@ export default function KiraChat() {
 
   // Persist session after each completed response (not while streaming).
   useEffect(() => {
-    if (!isLoading) saveSession(messages, deliveryCity);
-  }, [messages, deliveryCity, isLoading]);
+    if (!isLoading) saveSession(messages, deliveryCity, lastOrder);
+  }, [messages, deliveryCity, lastOrder, isLoading]);
 
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
       addToCart(product);
       setA11yAnnounce(`${product.name} added to cart`);
+    },
+    [addToCart]
+  );
+
+  const handleReorderFromTracking = useCallback(
+    (tracking: OrderTracking) => {
+      if (!tracking.items?.length) return;
+      const items = tracking.items.map((item) => ({
+        product: {
+          id: item.productId || `tracking-${item.name.replace(/\s+/g, "-").toLowerCase()}`,
+          name: item.name,
+          price: item.sellingPrice ?? 0,
+          currency: "LKR" as const,
+        },
+        quantity: item.quantity,
+      }));
+      for (const { product, quantity } of items) {
+        for (let q = 0; q < quantity; q++) addToCart(product);
+      }
+      setLastOrder({
+        orderRef: tracking.orderNumber,
+        items,
+        placedAt: Date.now(),
+      });
+      setA11yAnnounce("Previous order items added to cart");
     },
     [addToCart]
   );
@@ -316,7 +369,9 @@ export default function KiraChat() {
             deliveryCity,
             deliveryDate,
             lastProducts: lastWithProducts?.products,
+            lastOrder,
             language,
+            internationalMode: /\b(overseas|from (uk|us|australia|dubai|uae)|dollars|pounds|aud)\b/i.test(trimmed),
           }),
         });
         if (!res.ok || !res.body) throw new Error("API error");
@@ -424,6 +479,13 @@ export default function KiraChat() {
               } else if (payload.t === "checkout") {
                 const checkout = payload.v as CheckoutInfo;
                 setPayLink(checkout.checkoutUrl);
+                if (cart.length > 0) {
+                  setLastOrder({
+                    orderRef: checkout.orderRef,
+                    items: cart,
+                    placedAt: Date.now(),
+                  });
+                }
                 const id = streamingMsgIdRef.current;
                 if (id) {
                   setMessages((prev) =>
@@ -440,6 +502,8 @@ export default function KiraChat() {
                 } else {
                   pendingCheckoutRef.current = checkout;
                 }
+              } else if (payload.t === "lastOrder") {
+                setLastOrder(payload.v as LastOrder);
               } else if (payload.t === "payLink") {
                 setPayLink(payload.v as string);
                 const id = streamingMsgIdRef.current;
@@ -554,7 +618,7 @@ export default function KiraChat() {
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language]
+    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder]
   );
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
@@ -585,8 +649,13 @@ export default function KiraChat() {
               type="button"
               aria-label="New chat"
               onClick={() => {
+                const preservedOrder = lastOrder;
                 setMessages([buildOpeningMessage()]);
-                localStorage.removeItem(SESSION_KEY);
+                if (preservedOrder) {
+                  saveSession([], deliveryCity, preservedOrder);
+                } else {
+                  localStorage.removeItem(SESSION_KEY);
+                }
               }}
               className="flex size-7 shrink-0 items-center justify-center rounded-md text-white/30 transition-all duration-150 hover:bg-white/6 hover:text-white/70"
             >
@@ -726,6 +795,7 @@ export default function KiraChat() {
                     cart={cart}
                     onAddToCart={handleAddToCart}
                     onOpenProduct={setSelectedProduct}
+                    onReorderFromTracking={handleReorderFromTracking}
                     deliveryCity={deliveryCity}
                   />
                 </div>

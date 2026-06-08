@@ -110,6 +110,14 @@ const CHECKS = {
         : "Expected a products event containing at least one product",
     };
   },
+
+  noProductsEvent(events) {
+    const pass = !events.some((event) => event.t === "products");
+    return {
+      pass,
+      reason: pass ? "" : "Expected no products event (advice-only reply)",
+    };
+  },
 };
 
 export function evaluateTest(testCase, runResult) {

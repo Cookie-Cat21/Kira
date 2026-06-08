@@ -13,10 +13,11 @@ The preflight in `scripts/test-runner.mjs` calls `/api/health` and requires `{ a
 
 ## Core Feature Suite
 
-`scripts/test-suite.mjs` currently contains 54 automated checks covering language modes, deterministic search, delivery, checkout, tracking, edge cases, and direct `/api/checkout` validation.
+`scripts/test-suite.mjs` currently contains **62** automated checks covering language modes, deterministic search, delivery, checkout, tracking, reorder, personality, breadth fast-paths, edge cases, and direct `/api/checkout` validation.
 
 ```bash
-node scripts/run-tests.mjs          # all 54
+node scripts/run-tests.mjs          # all 62
+node scripts/judge-dry-run.mjs      # 10-step judge path
 node scripts/run-tests.mjs --id 52  # single test
 ```
 

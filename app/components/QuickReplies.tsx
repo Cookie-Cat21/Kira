@@ -29,10 +29,20 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
 
   if (hasTracking) return [];
 
-  if (hasCheckout) return [
-    { label: "Continue browsing", value: "Show me more gift options" },
-    { label: "Change item", value: "I want to change the product" },
-  ];
+  if (hasCheckout) {
+    // Use the order ref from THIS checkout so "Track this order" resolves without
+    // re-asking. Falls back to the generic ask when this turn has no ref, rather
+    // than risk a stale ref from a previous/persisted order.
+    const orderRef = last.checkout?.orderRef;
+    return [
+      { label: "Order again", value: "order again" },
+      {
+        label: "Track this order",
+        value: orderRef ? `Track order ${orderRef}` : "I want to track my order",
+      },
+      { label: "Browse more", value: "Show me more gift options" },
+    ];
+  }
 
   if (hasProducts) {
     const chips: Chip[] = [];

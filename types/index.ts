@@ -28,11 +28,19 @@ export interface ProductShipping {
   restrictedCountries?: string[];
 }
 
+export interface ProductAddon {
+  id: string;
+  name: string;
+  price: number;
+  currency?: string;
+}
+
 export interface KiraProductDetails extends KiraProduct {
   description?: string;
   images: string[];
   compareAtPrice?: number;
   variants: KiraProductVariant[];
+  addons?: ProductAddon[];
   attributes?: Record<string, string>;
   shipping?: ProductShipping;
   isCategoryStub?: boolean;
@@ -111,13 +119,24 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface LastOrder {
+  orderRef?: string;
+  items: CartItem[];
+  recipient?: { name: string; phone: string };
+  delivery?: { city: string; address: string };
+  giftMessage?: string;
+  placedAt: number;
+}
+
 export interface ChatRequest {
   messages: { role: "user" | "assistant"; content: string }[];
   cart: CartItem[];
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  lastOrder?: LastOrder;
   language?: "en" | "si" | "ta";
+  internationalMode?: boolean;
 }
 
 export interface ChatResponse {

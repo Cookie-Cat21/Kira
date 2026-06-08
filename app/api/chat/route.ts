@@ -5,12 +5,20 @@ import { getMcpClient, invalidateMcpClient, listMcpTools, callMcpTool } from "@/
 import {
   extractCheckoutInfoFromMcp,
   extractDeliveryInfoFromMcp,
+  extractProductDetailsFromMcp,
   extractProductsFromMcp,
   extractTrackingFromMcp,
   formatMcpContentForModel,
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
-import type { CartItem, ChatRequest, CheckoutInfo, KiraProduct } from "@/types";
+import type {
+  CartItem,
+  ChatRequest,
+  CheckoutInfo,
+  KiraProduct,
+  LastOrder,
+  TrackingItem,
+} from "@/types";
 
 let _groq: Groq | undefined;
 function getGroq(): Groq {
@@ -39,10 +47,44 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
   chocolates: "chocolate",
   chocolate: "chocolate",
   electronics: "electronics",
-  fashion: "fashion",
+  fashion: "clothing",
+  clothing: "clothing",
   hampers: "gift hamper",
   hamper: "gift hamper",
+  grocery: "grocery",
+  toys: "soft toy",
+  home: "home lifestyle",
 };
+
+const BAKERY_BRANDS: Record<string, string> = {
+  hilton: "hilton",
+  breadtalk: "breadtalk",
+  galadari: "galadari",
+  "java lounge": "java",
+  "shangri-la": "shangri-la",
+  shangrila: "shangri-la",
+  kingsbury: "kingsbury",
+  cinnamon: "cinnamon",
+};
+
+const REORDER_SESSION_RE =
+  /\b(order again|buy again|same as last|same thing|what i had|repeat order|reorder)\b/i;
+const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
+// Matches relationship-repair scenarios in EITHER word order — "wife is mad" and
+// "got drunk, wife is upset" both fire. "sorry"/"fix" were dropped: too broad
+// ("sorry, my wife needs chocolates" / "fix dinner for my wife" are not repairs).
+const REPAIR_RELATION = "wife|husband|gf|girlfriend|boyfriend|partner|spouse";
+const REPAIR_EMOTION = "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset";
+const REPAIR_GIFT_RE = new RegExp(
+  `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
+    `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)`,
+  "i"
+);
+const REPAIR_INSIST_RE = /\b(just send|deliver it|send it anyway|no just send)\b/i;
+const RUSH_RE = /\b(today|urgent|asap|rush|same.?day|right now|need it now)\b/i;
+const SALE_RE = /\b(on sale|discount|deal|offer|clearance|budget pick)\b/i;
+const HAMPER_RE = /\b(hamper|gift set|combo pack|gift box|gift basket)\b/i;
+const GLOBAL_SHOP_RE = /\b(amazon|ebay|global shop|imported from)\b/i;
 
 // Common misspellings corrected before hitting MCP search.
 const SEARCH_SPELLING_MAP: Record<string, string> = {
@@ -236,6 +278,56 @@ const LS: Record<string, Record<string, string>> = {
     si: "Bilkul — Kapruka 2010 ඉඳන් Sri Lanka's biggest online gifting platform. Totally legit, secure payments, real delivery. Stock check කරමුද? 🎁",
     ta: "நிச்சயமாக — Kapruka 2010 முதல் Sri Lanka-ன் மிகப்பெரிய online gifting platform. Totally legit, secure payments, real delivery. Stock பார்க்கலாமா? 🎁",
   },
+  reorderSessionFound: {
+    en: "Got it — same as last time! I'll use tomorrow's date unless you tell me otherwise. Here are your items again:",
+    si: "හරි — පරණ order එකම! Date එක හෙට unless you say otherwise. Items ටික:",
+    ta: "சரி — முந்தைய order மாதிரியே! Date நாளை unless you say otherwise. Items:",
+  },
+  reorderNoHistory: {
+    en: "I don't have a previous order saved yet — place one first, or give me your Kapruka order number (e.g. KP-12345) and I'll pull it up.",
+    si: "Previous order save නෑ — පළමු order එක place කරන්න, නැත්නම් order number (KP-12345) දෙන්න.",
+    ta: "Previous order save இல்லை — முதலில் order place செய்யுங்கள், அல்லது order number (KP-12345) அனுப்புங்கள்.",
+  },
+  reorderFromRef: {
+    en: "Pulled up order {orderNumber} — here's what was in it. Want the same delivery date or a new one?",
+    si: "Order {orderNumber} pull කළා — items ටික මෙන්න. Same date ද new date ද?",
+    ta: "Order {orderNumber} pull செய்தேன் — items இதோ. Same date-ஆ new date-ஆ?",
+  },
+  reorderRefNotFound: {
+    en: "Couldn't rebuild that order from {orderNumber}. Double-check the number from your confirmation email.",
+    si: "Order {orderNumber} rebuild කරන්න බෑ. Confirmation email number double-check කරන්න.",
+    ta: "Order {orderNumber} rebuild செய்ய முடியவில்லை. Confirmation email number double-check செய்யுங்கள்.",
+  },
+  repairGiftAdvice: {
+    en: "Machang, honestly? Flowers arriving at the door can feel like you're dodging the conversation. Pick them up yourself — hand-deliver with an apology. That's the real fix. Want me to find flowers you can collect, or something else entirely?",
+    si: "Machang, honestly? Flowers door-to-door එන්නේ conversation avoid කරනවා වගේ. Pick up කරලා hand-deliver — apology එක්ක. ඒක real fix. Collect කරන්න flowers හොයමුද?",
+    ta: "Machang, honestly? Flowers door-to-door வந்தால் conversation avoid பண்ணுற மாதிரி. Pick up பண்ணி hand-deliver — apology-ஓட. அதுதான் real fix. Collect flowers தேடலாமா?",
+  },
+  repairGiftAsk: {
+    en: "Oof, sounds rough. What happened — and are you trying to fix it with a gift, or do you just need to talk it through first?",
+    si: "Oof, rough වගේ. What happened — gift fix කරන්නද, නැත්නම් talk it through first?",
+    ta: "Oof, rough மாதிரி. What happened — gift fix-க்கா, அல்லது talk it through first?",
+  },
+  rushSearchIntro: {
+    en: "These can reach {city} on {date} — rush slots fill fast:",
+    si: "These {city} {date} — rush slots fill fast:",
+    ta: "These {city} {date} — rush slots fill fast:",
+  },
+  saleSearchIntro: {
+    en: "Here are the most budget-friendly picks on Kapruka right now:",
+    si: "Kapruka budget-friendly picks:",
+    ta: "Kapruka budget-friendly picks:",
+  },
+  globalShopSoon: {
+    en: "Global Shop (Amazon/eBay through Kapruka) is coming soon! For now I can search Kapruka's imported goods — want me to look?",
+    si: "Global Shop coming soon! දැන් imported goods search කරන්නම්?",
+    ta: "Global Shop coming soon! இப்போ imported goods search செய்யலாமா?",
+  },
+  postOrderSaved: {
+    en: "Your order ref is {orderRef} — keep it for tracking or say 'order again'.",
+    si: "ඔබේ order ref එක {orderRef} — track කරන්න තියාගන්න හෝ 'order again' කියන්න.",
+    ta: "உங்கள் order ref {orderRef} — track பண்ண வச்சுக்கோங்க அல்லது 'order again' சொல்லுங்கள்.",
+  },
 };
 
 function L(key: string, lang: string): string {
@@ -286,7 +378,7 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts } = body;
+        const { messages, cart, deliveryCity, deliveryDate, lastProducts, lastOrder } = body;
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -302,6 +394,10 @@ export async function POST(req: NextRequest) {
           ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
           : "";
 
+        const internationalContext = body.internationalMode
+          ? "\n\nSender is overseas — quote LKR prices and approximate USD (LKR 300 ≈ USD 1). Reassure: Kapruka delivers islandwide; need recipient's Sri Lanka address."
+          : "";
+
         mcpClient = await getMcpClient();
         if (
           await tryHandleDeterministicPrompt({
@@ -311,6 +407,7 @@ export async function POST(req: NextRequest) {
             deliveryCity,
             deliveryDate,
             lastProducts,
+            lastOrder,
             language,
             mcpClient,
             controller,
@@ -476,6 +573,7 @@ export async function POST(req: NextRequest) {
           deliveryContext +
           deliveryDateContext +
           dateContext +
+          internationalContext +
           langInstruction +
           (compactSummary ? `\n\n${compactSummary}` : "");
 
@@ -507,6 +605,11 @@ export async function POST(req: NextRequest) {
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
         let checkoutInfo: CheckoutInfo | undefined;
+        // Recipient / delivery / gift-message captured from the create_order call so the
+        // lastOrder snapshot can pre-fill a reorder, not just re-show the items.
+        let lastOrderArgs:
+          | Partial<Pick<LastOrder, "recipient" | "delivery" | "giftMessage">>
+          | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
@@ -568,7 +671,23 @@ export async function POST(req: NextRequest) {
           // exclusive (sequential) paths below.
           type ParsedCall = { toolCall: Groq.Chat.Completions.ChatCompletionMessageToolCall; toolName: string; toolArgs: Record<string, unknown> };
           async function executeSingleTool({ toolCall, toolName, toolArgs: rawArgs }: ParsedCall) {
+            const asRecord = (v: unknown): Record<string, unknown> | undefined =>
+              v && typeof v === "object" && !Array.isArray(v)
+                ? (v as Record<string, unknown>)
+                : undefined;
             let toolArgs = { ...rawArgs };
+
+            // Some models still emit MCP-style `{ params: {...} }` even though we
+            // flatten the schema for Groq. Merge the inner params up so create_order
+            // never becomes params.params — merging (not replacing) preserves any
+            // sibling fields the model left at the top level in a partial wrap.
+            if (toolName === "kapruka_create_order") {
+              const wrapped = asRecord(toolArgs.params);
+              if (wrapped) {
+                toolArgs = { ...toolArgs, ...wrapped };
+                delete toolArgs.params;
+              }
+            }
 
             if (JSON_FORMAT_TOOLS.includes(toolName)) {
               toolArgs = { ...toolArgs, response_format: "json" };
@@ -635,6 +754,28 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_create_order") {
               checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
               payLink = checkoutInfo?.checkoutUrl;
+              // Snapshot the recipient/delivery/gift details the model collected so a
+              // later "order again" can pre-fill them.
+              const clean = (v: unknown): string | undefined => {
+                const s = typeof v === "string" ? v.trim() : "";
+                return s ? s : undefined;
+              };
+              const rec = asRecord(toolArgs.recipient);
+              const del = asRecord(toolArgs.delivery);
+              const recipientName = clean(rec?.name);
+              const recipientPhone = clean(rec?.phone);
+              const deliveryCityValue = clean(del?.city);
+              const deliveryAddress = clean(del?.address);
+              const giftMessage = clean(toolArgs.gift_message ?? toolArgs.giftMessage);
+              lastOrderArgs = {
+                recipient: recipientName && recipientPhone
+                  ? { name: recipientName, phone: recipientPhone }
+                  : undefined,
+                delivery: deliveryCityValue && deliveryAddress
+                  ? { city: deliveryCityValue, address: deliveryAddress }
+                  : undefined,
+                giftMessage,
+              };
             }
             if (toolName === "kapruka_track_order") {
               const tracking = extractTrackingFromMcp(resultContent);
@@ -1082,7 +1223,37 @@ export async function POST(req: NextRequest) {
           .slice(0, 8);
         if (dedupedProducts.length > 0)
           controller.enqueue(sse("products", dedupedProducts));
-        if (checkoutInfo) controller.enqueue(sse("checkout", checkoutInfo));
+        if (checkoutInfo) {
+          controller.enqueue(sse("checkout", checkoutInfo));
+          if (cart.length > 0) {
+            const saved: LastOrder = {
+              orderRef: checkoutInfo.orderRef,
+              items: cart,
+              recipient: lastOrderArgs?.recipient,
+              delivery: lastOrderArgs?.delivery,
+              giftMessage: lastOrderArgs?.giftMessage,
+              placedAt: Date.now(),
+            };
+            controller.enqueue(sse("lastOrder", saved));
+            // Surface the concrete server-generated order ref. The prompt already
+            // tells the model to give the "order again" nudge, but it can't reliably
+            // emit the real ref (esp. if create_order lands on the final tool round),
+            // so this token adds that one genuinely-new fact without restating the
+            // nudge. Appended as tokens so it lands in the same assistant bubble
+            // (streamingMsgIdRef still set).
+            if (checkoutInfo.orderRef) {
+              controller.enqueue(
+                sse(
+                  "token",
+                  "\n\n" +
+                    Lf("postOrderSaved", language, {
+                      orderRef: checkoutInfo.orderRef,
+                    })
+                )
+              );
+            }
+          }
+        }
         if (payLink) controller.enqueue(sse("payLink", payLink));
         controller.enqueue(sse("done"));
         controller.close();
@@ -1127,6 +1298,7 @@ async function tryHandleDeterministicPrompt({
   deliveryCity,
   deliveryDate,
   lastProducts,
+  lastOrder,
   language,
   mcpClient,
   controller,
@@ -1137,6 +1309,7 @@ async function tryHandleDeterministicPrompt({
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  lastOrder?: LastOrder;
   language: string;
   mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
   controller: ReadableStreamDefaultController<Uint8Array>;
@@ -1230,7 +1403,7 @@ async function tryHandleDeterministicPrompt({
   }
 
   const VAGUE_RE =
-    /^(i\s+need\s+something|just\s+a\s+gift|something\s+(nice|for\s+(my\s+)?(friend|wife|husband|mum|mom|dad|kid|girl|boy|someone)|sweet)|can\s+you\s+help\s+me\s+pick\s+something|i\s+don'?t\s+know\s+what\s+to\s+get|rs\s*[\d,]+\s+budget,?\s*go|under\s+[\d,]+|same\s+as\s+last\s+time|i\s+saw\s+something\s+here\s+before|amma\s+ta)$/i;
+    /^(i\s+need\s+something|just\s+a\s+gift|something\s+(nice|for\s+(my\s+)?(friend|wife|husband|mum|mom|dad|kid|girl|boy|someone)|sweet)|can\s+you\s+help\s+me\s+pick\s+something|i\s+don'?t\s+know\s+what\s+to\s+get|rs\s*[\d,]+\s+budget,?\s*go|under\s+[\d,]+|i\s+saw\s+something\s+here\s+before|amma\s+ta)$/i;
   if (VAGUE_RE.test(lower)) {
     await streamWords(controller, L("vagueAsk", language));
     controller.enqueue(sse("done"));
@@ -1285,6 +1458,79 @@ async function tryHandleDeterministicPrompt({
         );
       }
     }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Reorder by order reference (KP-xxxxx) ───────────────────────────────
+  const reorderRefMatch = trimmed.match(REORDER_REF_RE);
+  if (reorderRefMatch) {
+    const orderNumber = reorderRefMatch[1].replace(/\s+/g, "").toUpperCase();
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_track_order));
+    const trackingResult = await callMcpTool(mcpClient, "kapruka_track_order", {
+      params: { order_number: orderNumber, response_format: "json" },
+    });
+    const tracking = extractTrackingFromMcp(trackingResult.content);
+    if (tracking?.items?.length) {
+      const products = await productsFromTrackingItems(mcpClient, tracking.items);
+      if (products.length > 0) {
+        await streamWords(
+          controller,
+          Lf("reorderFromRef", language, { orderNumber: tracking.orderNumber || orderNumber })
+        );
+        controller.enqueue(sse("products", products));
+        controller.enqueue(sse("tracking", tracking));
+      } else {
+        await streamWords(
+          controller,
+          Lf("reorderRefNotFound", language, { orderNumber })
+        );
+      }
+    } else {
+      await streamWords(
+        controller,
+        Lf("reorderRefNotFound", language, { orderNumber })
+      );
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Within-session reorder ─────────────────────────────────────────────
+  if (REORDER_SESSION_RE.test(lower)) {
+    const source = lastOrder?.items?.length ? lastOrder : cart.length > 0 ? { items: cart, placedAt: Date.now() } : null;
+    if (source?.items?.length) {
+      const products = cartItemsToProducts(source.items);
+      await streamWords(controller, L("reorderSessionFound", language));
+      controller.enqueue(sse("products", products));
+    } else {
+      await streamWords(controller, L("reorderNoHistory", language));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Global Shop (coming soon) ────────────────────────────────────────────
+  if (GLOBAL_SHOP_RE.test(lower)) {
+    await streamWords(controller, L("globalShopSoon", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Emotional repair scenario — friend advice before search ──────────────
+  const wantsProductSearch =
+    /\b(flowers?|roses?|cakes?|chocolates?|gift|hamper|bouquet)\b/i.test(lower);
+  if (
+    REPAIR_GIFT_RE.test(lower) &&
+    !REPAIR_INSIST_RE.test(lower) &&
+    wantsProductSearch
+  ) {
+    await streamWords(controller, L("repairGiftAdvice", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+  if (REPAIR_GIFT_RE.test(lower) && !wantsProductSearch) {
+    await streamWords(controller, L("repairGiftAsk", language));
     controller.enqueue(sse("done"));
     return true;
   }
@@ -1545,6 +1791,102 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // ── Hamper / combo explicit ──────────────────────────────────────────────
+  if (HAMPER_RE.test(lower) && !parseSearchIntent(trimmed)) {
+    controller.enqueue(sse("step", `Searching Kapruka for gift sets`));
+    const hamperResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: "gift set", limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
+    });
+    const hamperProducts = dedupeProducts(extractProductsFromMcp(hamperResult.content));
+    if (hamperProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: "gift set" }));
+    } else {
+      await streamWords(controller, Lf("searchFoundMany", language, { n: hamperProducts.length, budget: "", city: "", date: "" }));
+      controller.enqueue(sse("products", hamperProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Sale / deals ─────────────────────────────────────────────────────────
+  if (SALE_RE.test(lower) && !parseSearchIntent(trimmed)) {
+    const saleQuery = extractProductKeyword(lower) ?? "gift";
+    controller.enqueue(sse("step", `Searching Kapruka for budget picks`));
+    const saleResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: saleQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
+    });
+    const saleProducts = dedupeProducts(extractProductsFromMcp(saleResult.content));
+    if (saleProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: saleQuery }));
+    } else {
+      await streamWords(controller, L("saleSearchIntro", language));
+      controller.enqueue(sse("products", saleProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Rush / same-day ──────────────────────────────────────────────────────
+  if (RUSH_RE.test(lower)) {
+    const rushQuery = extractProductKeyword(lower) ?? "flowers";
+    const rushCity = extractCityHint(trimmed) ?? deliveryCity ?? "Colombo";
+    const todayIso = new Date().toISOString().slice(0, 10);
+    controller.enqueue(sse("step", `Searching Kapruka for same-day ${rushQuery}`));
+    const rushResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: rushQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
+    });
+    let rushProducts = dedupeProducts(extractProductsFromMcp(rushResult.content));
+    if (rushProducts[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const rushDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: rushCity,
+          product_id: rushProducts[0].id,
+          delivery_date: todayIso,
+          response_format: "json",
+        },
+      });
+      const rushDelivery = extractDeliveryInfoFromMcp(rushDeliveryResult.content);
+      if (rushDelivery?.available === false) {
+        rushProducts = rushProducts.slice(0, 3);
+      }
+      if (rushDelivery) controller.enqueue(sse("delivery", rushDelivery));
+    }
+    if (rushProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: rushQuery }));
+    } else {
+      await streamWords(
+        controller,
+        Lf("rushSearchIntro", language, { city: rushCity, date: "today" })
+      );
+      controller.enqueue(sse("products", rushProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Bakery / brand filter ────────────────────────────────────────────────
+  const brandMatch = Object.entries(BAKERY_BRANDS).find(([brand]) => lower.includes(brand));
+  if (brandMatch && /\bcake\b/i.test(lower)) {
+    const [, brandQuery] = brandMatch;
+    controller.enqueue(sse("step", `Searching Kapruka for ${brandQuery} cakes`));
+    const brandResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: `${brandQuery} cake`, limit: 6, in_stock_only: true, response_format: "json" },
+    });
+    const brandProducts = dedupeProducts(extractProductsFromMcp(brandResult.content));
+    if (brandProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: `${brandQuery} cake` }));
+    } else {
+      await streamWords(
+        controller,
+        Lf("searchFoundMany", language, { n: brandProducts.length, budget: "", city: "", date: "" })
+      );
+      controller.enqueue(sse("products", brandProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // "What's popular?" / "what's trending?" / "what's good?" → bestseller browse, no category needed.
   const POPULAR_RE = /\b(what'?s?\s+)?(popular|trending|bestsell|best\s+sell|what'?s?\s+good|most\s+bought|top\s+pick|top\s+gift)\b/i;
   if (POPULAR_RE.test(lower)) {
@@ -1724,7 +2066,7 @@ function extractLastSearchContext(
     if (/\bsari|saree|sarree|sare\b/.test(msgLow)) { query = "saree"; break; }
     if (/\bjewel|necklace|bracelet|ring\b/.test(msgLow)) { query = "jewellery"; break; }
     if (/\bperfume|fragrance\b/.test(msgLow)) { query = "perfume"; break; }
-    if (/\bfashion|clothing|wear|dress|shirt\b/.test(msgLow)) { query = "fashion"; break; }
+    if (/\bfashion|clothing|wear|dress|shirt\b/.test(msgLow)) { query = "clothing"; break; }
     if (/\belectronic|phone|gadget\b/.test(msgLow)) { query = "electronics"; break; }
 
     // Stop if we at least found a price
@@ -1742,6 +2084,62 @@ function dedupeProducts(products: KiraProduct[]): KiraProduct[] {
     seen.add(key);
     return true;
   });
+}
+
+function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
+  return items.map((item) => item.product);
+}
+
+function extractProductKeyword(lower: string): string | null {
+  if (/\bcake\b/.test(lower)) return "cake";
+  if (/\bflower|\brose|\bbouquet\b/.test(lower)) return "roses";
+  if (/\bchocolat/.test(lower)) return "chocolate";
+  if (/\bhamper\b/.test(lower)) return "gift hamper";
+  if (/\belectronic|\bphone|\bgadget\b/.test(lower)) return "electronics";
+  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
+  if (/\bgrocery\b/.test(lower)) return "grocery";
+  if (/\btoy\b/.test(lower)) return "soft toy";
+  return null;
+}
+
+async function productsFromTrackingItems(
+  mcpClient: Awaited<ReturnType<typeof getMcpClient>>,
+  items: TrackingItem[]
+): Promise<KiraProduct[]> {
+  const products: KiraProduct[] = [];
+  for (const item of items) {
+    if (item.productId) {
+      try {
+        const result = await callMcpTool(mcpClient, "kapruka_get_product", {
+          params: { product_id: item.productId, response_format: "json" },
+        });
+        const details = extractProductDetailsFromMcp(result.content);
+        if (details?.id) {
+          products.push({
+            id: details.id,
+            name: details.name,
+            price: details.price,
+            currency: details.currency,
+            image: details.image,
+            summary: details.summary,
+            category: details.category,
+            url: details.url,
+            inStock: details.inStock,
+          });
+          continue;
+        }
+      } catch {
+        /* fall through to tracking item stub */
+      }
+    }
+    products.push({
+      id: item.productId || `tracking-${item.name.replace(/\s+/g, "-").toLowerCase()}`,
+      name: item.name,
+      price: item.sellingPrice ?? 0,
+      currency: "LKR",
+    });
+  }
+  return dedupeProducts(products);
 }
 
 function parseSearchIntent(text: string):
@@ -1810,7 +2208,8 @@ function normalizeProductQuery(raw: string): string {
 function fallbackQuery(query: string): string | undefined {
   if (query === "flowers") return "roses";
   if (query === "cake") return "cakes";
-  if (query === "fashion") return "shirt";
+  if (query === "clothing") return "dress";
+  if (query === "dress") return "saree";
   if (query === "electronics") return "phone";
   return undefined;
 }
