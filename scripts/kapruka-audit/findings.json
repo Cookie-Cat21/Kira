@@ -1,0 +1,463 @@
+{
+  "pages": {
+    "homepage": {
+      "topNavItems": [],
+      "heroText": [
+        "Item Added.  0 items in cart.",
+        "Featured Products",
+        "New Additions",
+        "Best Sellers",
+        "Sri Lanka's Widest Range of Online Delivery, From Everyday Essentials to Special Gifts",
+        "Popular Categories",
+        "Your Suggestions",
+        "Also At Kapruka",
+        "SELL WITH KAPRUKA AND GROW YOUR BUSINESS"
+      ],
+      "promoBanners": [
+        "Say it with Flowers !\n                Flower Shop\n            \n            \n        \n\n        \n            \n                Pure Bliss in Every Bite !\n                Chocolates\n            \n            \n        \n\n        \n            \n                Beauty Begins Here !\n                Cosmetics\n            \n            \n        \n\n        \n            \n                Good Food, Great Mood !\n                Food / Restaurant\n            \n            \n        \n\n        \n            \n                Sparkle with Every Step !\n                Jewellery\n            \n            \n        \n\n        \n            \n                For the Love of Cake !\n                Cakes",
+        "Say it with Flowers !\n                Flower Shop\n            \n            \n        \n\n        \n            \n                Pure Bliss in Every Bite !\n                Chocolates\n            \n            \n        \n\n        \n            \n                Beauty Begins Here !\n                Cosmetics\n            \n            \n        \n\n        \n            \n                Good Food, Great Mood !\n                Food / Restaurant\n            \n            \n        \n\n        \n            \n                Sparkle with Every Step !\n                Jewellery\n            \n            \n        \n\n        \n            \n                For the Love of Cake !\n                Cakes",
+        "Say it with Flowers !\n                Flower Shop",
+        "Say it with Flowers !\n                Flower Shop",
+        "Say it with Flowers !",
+        "Flower Shop",
+        "Pure Bliss in Every Bite !\n                Chocolates",
+        "Pure Bliss in Every Bite !\n                Chocolates",
+        "Pure Bliss in Every Bite !",
+        "Chocolates"
+      ]
+    },
+    "categories": {
+      "categoryItems": [
+        {
+          "text": "Top Sellers",
+          "href": "https://www.kapruka.com/online/cakes"
+        },
+        {
+          "text": "Kapruka Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/kapruka_cakes"
+        },
+        {
+          "text": "Javalounge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/java"
+        },
+        {
+          "text": "Galadari Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/galadari"
+        },
+        {
+          "text": "NH Collection Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/nh_collection"
+        },
+        {
+          "text": "Breadtalk Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/breadtalk"
+        },
+        {
+          "text": "Hilton Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/colombo_hilton"
+        },
+        {
+          "text": "Kingsbury Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/kingsbury"
+        },
+        {
+          "text": "Cinnamon Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/cinnamon_lakeside"
+        },
+        {
+          "text": "Gerard Mendis Chocolatier Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/gerard_mendis_chocolatier"
+        },
+        {
+          "text": "Waters Edge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/waters_edge"
+        },
+        {
+          "text": "Divine Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/divine"
+        },
+        {
+          "text": "Shangrila Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/shangri-la"
+        },
+        {
+          "text": "Mahaweli Reach - Kandy",
+          "href": "https://www.kapruka.com/online/cakes/price/mahaweli_reach_kandy"
+        },
+        {
+          "text": "McLarens Topaz - Kandy",
+          "href": "https://www.kapruka.com/online/cakes/price/topaz_kandy"
+        },
+        {
+          "text": "Sponge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/sponge"
+        },
+        {
+          "text": "Green Cabin Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/green_cabin"
+        },
+        {
+          "text": "Courtyard By Marriott Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/courtyard_by_marriott"
+        },
+        {
+          "text": "Caravan Fresh Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/caravan_fresh"
+        },
+        {
+          "text": "T Lounge By Dilmah Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/t-lounge_by_dilmah"
+        },
+        {
+          "text": "Kandy Myst By Cinnamon",
+          "href": "https://www.kapruka.com/online/cakes/price/kandy_myst_by_cinnamon"
+        },
+        {
+          "text": "Custom Printed Cakes",
+          "href": "https://www.kapruka.com/shops/cakes/customCakes/customCakesStep1.jsp"
+        },
+        {
+          "text": "Customized Cakes",
+          "href": "https://www.kapruka.com/shops/cakes/customCakes/personalise_cakes.jsp"
+        },
+        {
+          "text": "Combo Gift Packs",
+          "href": "https://www.kapruka.com/online/combogifts"
+        },
+        {
+          "text": "Top Sellers",
+          "href": "https://www.kapruka.com/online/chocolates"
+        },
+        {
+          "text": "Kapruka Chocolates",
+          "href": "https://www.kapruka.com/online/chocolates/price/kapruka_chocolates"
+        },
+        {
+          "text": "Java Lounge",
+          "href": "https://www.kapruka.com/online/chocolates/price/Java"
+        },
+        {
+          "text": "Ferrero Rocher",
+          "href": "https://www.kapruka.com/online/chocolates/price/Ferrero_Rocher"
+        },
+        {
+          "text": "Lindt",
+          "href": "https://www.kapruka.com/online/chocolates/price/Lindt"
+        },
+        {
+          "text": "Sweetbuds",
+          "href": "https://www.kapruka.com/online/chocolates/price/Sweet_Buds"
+        },
+        {
+          "text": "Gerard Mendis Chocolatier",
+          "href": "https://www.kapruka.com/online/chocolates/price/gerard_mendis_chocolatier"
+        },
+        {
+          "text": "5 Star Hotels",
+          "href": "https://www.kapruka.com/online/chocolates/price/5_Star_Hotels"
+        },
+        {
+          "text": "Cadbury",
+          "href": "https://www.kapruka.com/online/chocolates/price/Cadbury"
+        },
+        {
+          "text": "Lindt",
+          "href": "https://www.kapruka.com/online/chocolates/price/lindt"
+        },
+        {
+          "text": "Hersheys",
+          "href": "https://www.kapruka.com/online/chocolates/price/hersheys"
+        },
+        {
+          "text": "Kit Kat",
+          "href": "https://www.kapruka.com/online/chocolates/price/kitkat"
+        },
+        {
+          "text": "Mars",
+          "href": "https://www.kapruka.com/online/chocolates/price/mars"
+        },
+        {
+          "text": "Ritzbury",
+          "href": "https://www.kapruka.com/online/chocolates/price/ritzbury"
+        },
+        {
+          "text": "Revello",
+          "href": "https://www.kapruka.com/online/chocolates/price/revello"
+        },
+        {
+          "text": "Kandos",
+          "href": "https://www.kapruka.com/online/chocolates/price/kandos"
+        },
+        {
+          "text": "toblerone",
+          "href": "https://www.kapruka.com/online/chocolates/price/toblerone"
+        },
+        {
+          "text": "Other",
+          "href": "https://www.kapruka.com/online/chocolates/price/Other"
+        },
+        {
+          "text": "Clothing Items",
+          "href": "https://www.kapruka.com/online/clothing"
+        },
+        {
+          "text": "Sarees",
+          "href": "https://www.kapruka.com/online/clothing/price/saree"
+        },
+        {
+          "text": "Dresses",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/dresses"
+        },
+        {
+          "text": "Ladies Tops",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/ladies_tops"
+        },
+        {
+          "text": "T-shirts",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/tshirts"
+        },
+        {
+          "text": "Lingeries",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/lingerie"
+        },
+        {
+          "text": "Lungies / Sarongs",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/lungies"
+        },
+        {
+          "text": "Jeans",
+          "href": "https://www.kapruka.com/online/clothing/price/womens_clothing/lanka/denim"
+        },
+        {
+          "text": "Gents Wear",
+          "href": "https://www.kapruka.com/online/clothing/price/mens_clothing"
+        },
+        {
+          "text": "Kids Wear",
+          "href": "https://www.kapruka.com/online/clothing/price/kids_clothing"
+        },
+        {
+          "text": "Electronic Items",
+          "href": "https://www.kapruka.com/online/electronics"
+        },
+        {
+          "text": "Home Appliances",
+          "href": "https://www.kapruka.com/online/electronics/price/home_appliances"
+        },
+        {
+          "text": "Computers",
+          "href": "https://www.kapruka.com/online/electronics/price/computers_and_accessories"
+        },
+        {
+          "text": "Personal Care",
+          "href": "https://www.kapruka.com/online/electronics/price/personal_care"
+        },
+        {
+          "text": "Headphones",
+          "href": "https://www.kapruka.com/online/electronics/price/wearable_technology/lanka/bluetooth_headsets"
+        },
+        {
+          "text": "Tools/Machinery",
+          "href": "https://www.kapruka.com/online/electronics/price/tools_and_machinery"
+        },
+        {
+          "text": "TV/Audio",
+          "href": "https://www.kapruka.com/online/electronics/price/audio_and_home_entertainment"
+        },
+        {
+          "text": "Laptops",
+          "href": "https://www.kapruka.com/online/electronics/price/computers_and_accessories/lanka/laptops_and_notebooks"
+        }
+      ],
+      "allCatLinks": [
+        {
+          "text": "Top Sellers",
+          "href": "https://www.kapruka.com/online/cakes"
+        },
+        {
+          "text": "Kapruka Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/kapruka_cakes"
+        },
+        {
+          "text": "Javalounge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/java"
+        },
+        {
+          "text": "Galadari Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/galadari"
+        },
+        {
+          "text": "NH Collection Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/nh_collection"
+        },
+        {
+          "text": "Breadtalk Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/breadtalk"
+        },
+        {
+          "text": "Hilton Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/colombo_hilton"
+        },
+        {
+          "text": "Kingsbury Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/kingsbury"
+        },
+        {
+          "text": "Cinnamon Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/cinnamon_lakeside"
+        },
+        {
+          "text": "Gerard Mendis Chocolatier Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/gerard_mendis_chocolatier"
+        },
+        {
+          "text": "Waters Edge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/waters_edge"
+        },
+        {
+          "text": "Divine Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/divine"
+        },
+        {
+          "text": "Shangrila Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/shangri-la"
+        },
+        {
+          "text": "Mahaweli Reach - Kandy",
+          "href": "https://www.kapruka.com/online/cakes/price/mahaweli_reach_kandy"
+        },
+        {
+          "text": "McLarens Topaz - Kandy",
+          "href": "https://www.kapruka.com/online/cakes/price/topaz_kandy"
+        },
+        {
+          "text": "Sponge Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/sponge"
+        },
+        {
+          "text": "Green Cabin Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/green_cabin"
+        },
+        {
+          "text": "Courtyard By Marriott Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/courtyard_by_marriott"
+        },
+        {
+          "text": "Caravan Fresh Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/caravan_fresh"
+        },
+        {
+          "text": "T Lounge By Dilmah Cakes",
+          "href": "https://www.kapruka.com/online/cakes/price/t-lounge_by_dilmah"
+        },
+        {
+          "text": "Kandy Myst By Cinnamon",
+          "href": "https://www.kapruka.com/online/cakes/price/kandy_myst_by_cinnamon"
+        },
+        {
+          "text": "Custom Printed Cakes",
+          "href": "https://www.kapruka.com/shops/cakes/customCakes/customCakesStep1.jsp"
+        },
+        {
+          "text": "Customized Cakes",
+          "href": "https://www.kapruka.com/shops/cakes/customCakes/personalise_cakes.jsp"
+        },
+        {
+          "text": "Electronic Items",
+          "href": "https://www.kapruka.com/online/electronics"
+        },
+        {
+          "text": "Home Appliances",
+          "href": "https://www.kapruka.com/online/electronics/price/home_appliances"
+        },
+        {
+          "text": "Computers",
+          "href": "https://www.kapruka.com/online/electronics/price/computers_and_accessories"
+        },
+        {
+          "text": "Personal Care",
+          "href": "https://www.kapruka.com/online/electronics/price/personal_care"
+        },
+        {
+          "text": "Headphones",
+          "href": "https://www.kapruka.com/online/electronics/price/wearable_technology/lanka/bluetooth_headsets"
+        },
+        {
+          "text": "Tools/Machinery",
+          "href": "https://www.kapruka.com/online/electronics/price/tools_and_machinery"
+        },
+        {
+          "text": "TV/Audio",
+          "href": "https://www.kapruka.com/online/electronics/price/audio_and_home_entertainment"
+        }
+      ]
+    },
+    "search": {
+      "error": "Search box not found on homepage"
+    },
+    "productPage": {
+      "productName": "\n\t\t\t\tBreadtalk Chocolate Lush - 2LB\n\t\t\t\t\n\t\t\t\t\n\t\t\t\t\n\t\t\t\t\n\t\t\t",
+      "productPrice": "\n\t\t\t\t\t\n\t\t\t\t\tRS.4,160\n\t\t\t\t\t\n\n\t\t\t\t\t\n\n\t\t\t\t\t\t\n\t\t\t\t",
+      "deliveryCities": [
+        "Lang",
+        "සිං",
+        "Eng"
+      ],
+      "deliveryDatesAvailable": false,
+      "addOns": [],
+      "hasGiftMessageField": false,
+      "addToCartButtonText": "  Add to Cart",
+      "productImages": 5,
+      "productDescription": "\n\t\t\t\t\n\t\t\t\t\tKapruka is Sri Lanka’s go-to cake shop for fresh cakes with same-day and next-day islandwide delivery.\nIndulge in the Chocolate Lush cake from BreadTalk, available at Kapruka. This 2LB chocolate cake is perfect for any celebration or a special treat. With layers of rich chocolate and smoo",
+      "relatedProducts": [],
+      "hasReviews": true
+    },
+    "cart": {
+      "cartItems": [],
+      "cartTotal": null,
+      "deliveryFeeInCart": null,
+      "hasCouponField": false,
+      "hasGuestCheckout": false
+    },
+    "checkout": {
+      "fields": [],
+      "paymentMethods": [],
+      "checkoutSteps": []
+    },
+    "auth": {
+      "loginUrl": "https://www.kapruka.com/login",
+      "loginFields": [],
+      "socialLogins": [],
+      "registerFields": []
+    },
+    "account": {
+      "accountRedirectsToLogin": false,
+      "orderHistoryUrl": "https://www.kapruka.com/myorders",
+      "orderHistoryRedirects": false,
+      "accountNavItems": []
+    },
+    "tracking": {
+      "url": "https://www.kapruka.com/trackOrder",
+      "fields": []
+    },
+    "gifts": {
+      "giftReminderUrl": "https://www.kapruka.com/giftreminder",
+      "hasGiftReminderService": true,
+      "internationalContent": "\n\n\nWe are sorry. The page you have requested does not exist \nTo visit the Kapruka home page, go to: http://www.kapruka.com\nThank You.\nKapruka Development Team.\n\n\n\nvar page = window.location.href;\nvar newPage = \"\";\npage = page.toLowerCase();\n\nif (page.indexOf(\"electronicsselectpage.jsp\")!=-1) newPage = \"https://www.kapruka.com/online/electronics\";\nif (page.indexOf(\"groceryselectpage.jsp\")!=-1) newPage = \"https://www.kapruka.com/online/grocery\";\nif (page.indexOf(\"officelocations.jsp\")!=-1) newPage"
+    },
+    "footer": {
+      "links": [
+        {
+          "text": "Cloudflare",
+          "href": "https://www.cloudflare.com/?utm_source=challenge&utm_campaign=j"
+        },
+        {
+          "text": "Privacy",
+          "href": "https://www.cloudflare.com/privacypolicy/"
+        }
+      ]
+    }
+  },
+  "gaps": [],
+  "features": []
+}
