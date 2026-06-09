@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { DM_Serif_Display, Noto_Sans_Sinhala } from "next/font/google";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
+import KiraDock from "./components/store/KiraDock";
 import { CartProvider } from "./context/CartContext";
+import { KiraDockProvider } from "./context/KiraDockContext";
 import "./globals.css";
 
 const dmSerif = DM_Serif_Display({
@@ -18,12 +20,12 @@ const notoSinhala = Noto_Sans_Sinhala({
 });
 
 export const metadata: Metadata = {
-  title: "Kira — Shop Sri Lanka",
+  title: "Kapruka — Gifting, reimagined with Kira",
   description:
-    "Kira is Sri Lanka's first AI shopping companion. Find the perfect gift, check delivery, and checkout — all in one conversation.",
+    "Sri Lanka's gifting destination. Cakes, flowers, hampers and more — delivered islandwide, with Kira, your AI shopping companion, built in.",
   openGraph: {
-    title: "Kira — Shop Sri Lanka",
-    description: "Sri Lanka's first AI shopping companion, powered by Kapruka.",
+    title: "Kapruka — Gifting, reimagined with Kira",
+    description: "Shop Sri Lanka's favourites, or just ask Kira. Delivered islandwide.",
     type: "website",
   },
 };
@@ -46,9 +48,12 @@ export default function RootLayout({
     >
       <body className="h-full font-sans">
         <CartProvider>
-          <CartDrawer />
-          <FloatingCartButton />
-          {children}
+          <KiraDockProvider>
+            <CartDrawer />
+            <FloatingCartButton />
+            {children}
+            <KiraDock />
+          </KiraDockProvider>
         </CartProvider>
       </body>
     </html>

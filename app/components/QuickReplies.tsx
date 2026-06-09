@@ -8,11 +8,13 @@ interface QuickRepliesProps {
   deliveryCity?: string;
   isLoading: boolean;
   onSelect: (text: string) => void;
+  onCheckout?: () => void;
 }
 
 interface Chip {
   label: string;
   value: string;
+  checkout?: boolean;
 }
 
 function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
@@ -47,7 +49,7 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
   if (hasProducts) {
     const chips: Chip[] = [];
     if (hasDelivery || deliveryCity) {
-      chips.push({ label: "Ready to checkout", value: "I am ready to checkout" });
+      chips.push({ label: "Ready to checkout", value: "I am ready to checkout", checkout: true });
     } else {
       chips.push({ label: "Check delivery", value: "Check delivery to Colombo" });
     }
@@ -166,6 +168,7 @@ export default function QuickReplies({
   deliveryCity,
   isLoading,
   onSelect,
+  onCheckout,
 }: QuickRepliesProps) {
   const chips = deriveChips(messages, deliveryCity);
   if (isLoading || chips.length === 0) return null;
@@ -184,7 +187,9 @@ export default function QuickReplies({
           <button
             key={chip.label}
             type="button"
-            onClick={() => onSelect(chip.value)}
+            onClick={() =>
+              chip.checkout && onCheckout ? onCheckout() : onSelect(chip.value)
+            }
             className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/75 transition-colors hover:text-white"
           >
             {chip.label}

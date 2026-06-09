@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createMcpClient, callMcpTool } from "@/lib/mcp-client";
+import { getMcpClient, callMcpTool } from "@/lib/mcp-client";
 import { extractCheckoutInfoFromMcp } from "@/lib/mcp-parsing";
 import type { CartItem } from "@/types";
 
@@ -17,8 +17,6 @@ export interface CheckoutRequest {
 }
 
 export async function POST(req: NextRequest) {
-  let mcpClient: Awaited<ReturnType<typeof createMcpClient>> | undefined;
-
   try {
     const body: CheckoutRequest = await req.json();
     const { cart, delivery, giftMessage, senderName } = body;
@@ -69,7 +67,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    mcpClient = await createMcpClient();
+    const mcpClient = await getMcpClient();
 
     // Resolve canonical city name via MCP (e.g. "Colombo" → "Colombo 01")
     // Strip suburb numbers first so "Colombo 6" → "Colombo" before lookup
@@ -143,9 +141,5 @@ export async function POST(req: NextRequest) {
       { error: "Something went wrong placing the order" },
       { status: 500 }
     );
-  } finally {
-    if (mcpClient) {
-      try { await mcpClient.close(); } catch { /* ignore */ }
-    }
   }
 }

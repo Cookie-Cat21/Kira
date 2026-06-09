@@ -42,13 +42,5 @@ export async function GET(
     const message =
       error instanceof Error ? error.message : "Unable to fetch product details";
     return Response.json({ error: message }, { status: 502 });
-  } finally {
-    if (client) {
-      try {
-        await client.close();
-      } catch {
-        /* ignore */
-      }
-    }
   }
 }

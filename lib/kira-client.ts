@@ -168,7 +168,7 @@ function getUpcomingOccasionText(month: number, day: number): string | null {
   if (month === 5 && day >= 10 && day <= 18) {
     return "Wishing you a blessed Vesak 🌸 Looking for something special?";
   }
-  if (month === 6 && day >= 7 && day <= 14) {
+  if (month === 6 && day >= 10 && day <= 14) {
     return "Happy Poson! 🕯️ Shopping for family?";
   }
   if (month === 5 && day >= 1 && day <= 14) {

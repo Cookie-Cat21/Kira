@@ -39,11 +39,27 @@ const MAX_TOOL_ROUNDS = 4;
 const SERVER_CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
+// When a query maps to a specific category, keep only products whose name OR
+// category contains at least one of these terms. Blocks off-category noise like
+// kids bags whose names happen to include the search keyword (e.g. "Sofia Flowers").
+const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
+  flowers: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
+  roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
+};
+
+// Products that pass RELEVANCE but are clearly not in the category — reject them.
+// "3D Kids Preschool Bag Double Pocket Sofia Flower" passes the flowers filter
+// because "Flower" appears in the name, but it's a bag, not a flower.
+const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
+  flowers: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
+  roses: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
+};
+
 const CATEGORY_QUERY_MAP: Record<string, string> = {
   cakes: "cake",
   cake: "cake",
-  flowers: "roses",
-  flower: "roses",
+  flowers: "flowers",
+  flower: "flowers",
   chocolates: "chocolate",
   chocolate: "chocolate",
   electronics: "electronics",
@@ -735,7 +751,7 @@ export async function POST(req: NextRequest) {
             } catch (mcpErr) {
               const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
               // Connection errors invalidate the singleton so the next request reconnects.
-              if (/connection|transport|closed|econnreset|socket/i.test(msg)) {
+              if (/connection|not connected|transport|closed|econnreset|socket/i.test(msg)) {
                 invalidateMcpClient();
               }
               resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
@@ -749,7 +765,17 @@ export async function POST(req: NextRequest) {
               if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
             }
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
-              collectedProducts.push(...extractProductsFromMcp(resultContent));
+              const rawForLlm = extractProductsFromMcp(resultContent);
+              const queryKey = String(toolArgs.q ?? "").toLowerCase().trim();
+              const relFilter = CATEGORY_RELEVANCE_TERMS[queryKey];
+              const irrelFilter = CATEGORY_IRRELEVANCE_TERMS[queryKey];
+              const filteredForLlm = relFilter
+                ? rawForLlm.filter((p) => {
+                    const txt = `${p.name} ${p.category ?? ""}`;
+                    return relFilter.test(txt) && !(irrelFilter?.test(txt));
+                  })
+                : rawForLlm;
+              collectedProducts.push(...(filteredForLlm.length > 0 ? filteredForLlm : rawForLlm));
             }
             if (toolName === "kapruka_create_order") {
               checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
@@ -830,6 +856,12 @@ export async function POST(req: NextRequest) {
         // context trim, etc.) works unchanged.
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
+
+          // Emit "Thinking…" on the first call so the user sees immediate feedback.
+          // Subsequent rounds are already explained by the tool-step labels above.
+          if (round === 0) {
+            controller.enqueue(sse("step", "Thinking…"));
+          }
 
           // ── Model call with clean fallback ──────────────────────────────────
           // Inner loop retries with the next model on 429/413 WITHOUT consuming
@@ -1283,6 +1315,15 @@ export async function POST(req: NextRequest) {
 // Matches short "show me" / "can i see them" re-show requests with no product query.
 const RESHOW_RE = /^(show\s*(me|them|these)?|can\s+i\s+see(\s+them)?|let\s+me\s+see(\s+them)?)[\.\?\!]?$/i;
 
+// Matches "add it/that/this/the first one to cart/tray/basket"
+const ADD_TO_CART_RE =
+  /\b(add|put|toss|throw)\b.{0,30}\b(it|that|this|the\s+(?:first|second|third|1st|2nd|3rd|\d+(?:st|nd|rd|th)?)\s+one|them|all)\b.{0,30}\b(cart|tray|basket|bag)\b|\b(add\s+(?:it|that|this)\s+to\s+(?:my\s+)?(?:cart|tray|basket))\b/i;
+
+// Matches "list them as text", "can u list those", "enumerate the items" etc.
+// Fires ONLY when lastProducts exists so "them" unambiguously refers to shown products.
+const LIST_AS_TEXT_RE =
+  /\b(list|enumerate)\b.{0,25}\b(them|those|these|the\s+(?:items?|products?|options?|picks?))\b/i;
+
 // Matches "show me those/them as pictures/cards/photos/images/listings" and similar referential re-show requests.
 // These refer to previously mentioned specific products, not a new search.
 const RESHOW_AS_CARDS_RE =
@@ -1554,6 +1595,45 @@ async function tryHandleDeterministicPrompt({
     }
   }
 
+  // "Add it/that/the first one to cart" — emit addToCart event so the client
+  // can update the cart without a page interaction.
+  if (ADD_TO_CART_RE.test(trimmed) && lastProducts && lastProducts.length > 0) {
+    const lower = trimmed.toLowerCase();
+    const addAll = /\b(all|them)\b/.test(lower);
+    const idxMatch = lower.match(/\b(first|1st|second|2nd|third|3rd|(\d+)(?:st|nd|rd|th)?)\s+one\b/);
+    const idx = idxMatch
+      ? idxMatch[2]
+        ? parseInt(idxMatch[2], 10) - 1
+        : ["first","1st"].includes(idxMatch[1]) ? 0 : ["second","2nd"].includes(idxMatch[1]) ? 1 : 2
+      : 0;
+    const toAdd = addAll ? lastProducts : [lastProducts[Math.min(idx, lastProducts.length - 1)]];
+    for (const p of toAdd) controller.enqueue(sse("addToCart", p));
+    const names = toAdd.map((p) => p.name).join(", ");
+    await streamWords(controller, `Done! Added **${names}** to your tray. Ready to checkout when you are.`);
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // "list them as text" / "can u list those" — user wants a numbered text list of the
+  // products Kira just showed, NOT a description of the cart. Only fires when lastProducts
+  // is populated so "them" unambiguously refers to the shown results.
+  if (LIST_AS_TEXT_RE.test(lower) && lastProducts && lastProducts.length > 0 && !lower.includes("cart")) {
+    const lines = lastProducts
+      .map(
+        (p, i) =>
+          `${i + 1}. **${p.name}** — LKR ${p.price.toLocaleString("en-LK")}${
+            p.inStock === false ? " *(out of stock)*" : ""
+          }`
+      )
+      .join("\n");
+    await streamWords(
+      controller,
+      `Here are the ${lastProducts.length} items I just showed you:\n\n${lines}`
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // "Show me those as pictures / can u show me those two items as cards / show them as listings" —
   // re-emit the last known products without a new MCP search.
   if (RESHOW_AS_CARDS_RE.test(trimmed) || RESHOW_THOSE_RE.test(trimmed)) {
@@ -1658,14 +1738,28 @@ async function tryHandleDeterministicPrompt({
     const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: {
         q: ctx.query,
-        limit: 6,
+        limit: 9,
         in_stock_only: true,
         sort: "price_asc", // different angle from the default bestseller ordering
         ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
         response_format: "json",
       },
     });
-    const moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
+    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
+    let moreProducts = extractProductsFromMcp(moreResult.content);
+    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[ctx.query];
+    const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[ctx.query];
+    if (relevanceFilter) {
+      moreProducts = moreProducts.filter((p) => {
+        const txt = `${p.name} ${p.category ?? ""}`;
+        return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
+      });
+    }
+    moreProducts = dedupeProducts(moreProducts.filter((p) => !seenIds.has(p.id)));
+    // If still empty after dedup, fall back to the full set without seen-ID filter
+    if (moreProducts.length === 0) {
+      moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
+    }
 
     if (moreProducts.length === 0) {
       await streamWords(controller, L("moreOptionsSamePicks", language));
@@ -1974,8 +2068,15 @@ async function tryHandleDeterministicPrompt({
         response_format: "json",
       },
     });
-    products = dedupeProducts(extractProductsFromMcp(searchResult.content));
-    if (products.length > 0) break;
+    let batch = extractProductsFromMcp(searchResult.content);
+    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[query];
+    if (relevanceFilter) {
+      batch = batch.filter(
+        (p) => relevanceFilter.test(p.name) || relevanceFilter.test(p.category ?? "")
+      );
+    }
+    products = dedupeProducts([...products, ...batch]);
+    if (products.length >= 3) break;
   }
 
   let deliveryCityForMessage = deliveryCity;
@@ -2059,7 +2160,7 @@ function extractLastSearchContext(
     // Match product category keywords
     const msgLow = msg.content.toLowerCase();
     if (/\bcake\b/.test(msgLow)) { query = "cake"; break; }
-    if (/\bflower/.test(msgLow)) { query = "roses"; break; }
+    if (/\bflower/.test(msgLow)) { query = "flowers"; break; }
     if (/\bchocolat/.test(msgLow)) { query = "chocolate"; break; }
     if (/\bhamper\b/.test(msgLow)) { query = "gift hamper"; break; }
     if (/\btoy\b/.test(msgLow)) { query = "toy"; break; }
