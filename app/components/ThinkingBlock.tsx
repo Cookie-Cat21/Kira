@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ProductCardSkeleton } from "./ProductCard";
 import { ShiningText } from "./ui/shining-text";
 
@@ -13,6 +13,16 @@ interface ThinkingLiveProps {
 }
 
 export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiveProps) {
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
@@ -35,6 +45,9 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-400" />
           </span>
           <ShiningText text="Kira is thinking…" className="bg-[linear-gradient(110deg,rgba(255,255,255,0.2),35%,rgba(200,180,255,0.95),50%,rgba(255,255,255,0.2),75%,rgba(255,255,255,0.2))] bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent" />
+          {elapsed > 0 && (
+            <span className="text-[10px] tabular-nums text-white/25">{elapsed}s</span>
+          )}
         </div>
 
         {/* Steps — left-bordered, no box */}

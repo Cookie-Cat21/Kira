@@ -19,6 +19,7 @@ function isConnectionError(err: unknown): boolean {
   const msg = err.message.toLowerCase();
   return (
     msg.includes("connection") ||
+    msg.includes("not connected") ||
     msg.includes("transport") ||
     msg.includes("closed") ||
     msg.includes("econnreset") ||
