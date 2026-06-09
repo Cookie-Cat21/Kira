@@ -659,7 +659,7 @@ export default function KiraExperience({
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder]
+    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder, addToCart]
   );
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
