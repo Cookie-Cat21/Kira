@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Serif_Display, Noto_Sans_Sinhala } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
 import KiraDock from "./components/store/KiraDock";
@@ -55,6 +56,7 @@ export default function RootLayout({
             <KiraDock />
           </KiraDockProvider>
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );
