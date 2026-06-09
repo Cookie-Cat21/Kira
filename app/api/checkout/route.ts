@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpClient, callMcpTool } from "@/lib/mcp-client";
-import { extractCheckoutInfoFromMcp } from "@/lib/mcp-parsing";
+import { extractCheckoutInfoFromMcp, extractProductsFromMcp } from "@/lib/mcp-parsing";
 import type { CartItem } from "@/types";
 
 export interface CheckoutRequest {
@@ -14,6 +14,52 @@ export interface CheckoutRequest {
   };
   giftMessage?: string;
   senderName?: string;
+}
+
+function normalizeName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function looksLikeMcpProductId(id: string): boolean {
+  return /^[A-Za-z0-9_]+$/.test(id);
+}
+
+async function resolveMcpProductId(
+  mcpClient: Awaited<ReturnType<typeof getMcpClient>>,
+  item: CartItem,
+  cache: Map<string, string>
+): Promise<string> {
+  const rawId = String(item.product.id ?? "").trim();
+  if (!rawId) return "";
+  if (looksLikeMcpProductId(rawId)) return rawId;
+
+  const name = String(item.product.name ?? "").trim();
+  if (!name) return rawId;
+  const cacheKey = normalizeName(name);
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: name,
+        limit: 6,
+        in_stock_only: true,
+        response_format: "json",
+      },
+    });
+    const candidates = extractProductsFromMcp(searchResult.content);
+    if (candidates.length === 0) return rawId;
+
+    const exact = candidates.find(
+      (candidate) => normalizeName(candidate.name) === cacheKey
+    );
+    const resolved = String((exact ?? candidates[0]).id ?? "").trim();
+    if (resolved) cache.set(cacheKey, resolved);
+    return resolved || rawId;
+  } catch {
+    return rawId;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -85,11 +131,34 @@ export async function POST(req: NextRequest) {
       // non-fatal — proceed with the raw city name
     }
 
-    // Build items array for create_order
-    const items = cart.map((item) => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-    }));
+    // Build items array for create_order; store/seed product ids can be local slugs
+    // (e.g. "cakes-01"), so resolve them to MCP ids when needed.
+    const idResolutionCache = new Map<string, string>();
+    const unresolvedNames: string[] = [];
+    const items = [];
+    for (const item of cart) {
+      const resolvedId = await resolveMcpProductId(mcpClient, item, idResolutionCache);
+      if (!looksLikeMcpProductId(resolvedId)) {
+        unresolvedNames.push(item.product.name || item.product.id || "item");
+      }
+      items.push({
+        product_id: resolvedId,
+        quantity: Math.trunc(item.quantity),
+      });
+    }
+
+    if (unresolvedNames.length > 0) {
+      const unique = [...new Set(unresolvedNames)];
+      return NextResponse.json(
+        {
+          error:
+            unique.length === 1
+              ? `Could not verify this item with Kapruka right now: ${unique[0]}`
+              : `Could not verify some items with Kapruka right now: ${unique.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
 
     if (items.some((item) => !item.product_id || item.quantity < 1)) {
       return NextResponse.json(
