@@ -10,8 +10,9 @@ export default function KiraDock() {
   const pathname = usePathname();
   const { isOpen, open, close } = useKiraDock();
 
-  // Don't show the dock on the standalone Kira page (it's already full-screen Kira).
-  if (pathname?.startsWith("/kira")) return null;
+  // The root route IS the full-screen Kira experience — the dock only exists
+  // on storefront pages (/shop, /product) as a way back into the conversation.
+  if (pathname === "/" || pathname?.startsWith("/kira")) return null;
 
   return (
     <>

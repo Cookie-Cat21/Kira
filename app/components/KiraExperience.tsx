@@ -8,6 +8,7 @@ import {
   type ComponentType,
 } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   CakeSlice,
   Flower2,
@@ -16,6 +17,7 @@ import {
   Shirt,
   Smartphone,
   SquarePen,
+  Store,
   Truck,
   CalendarDays,
   ShoppingBasket,
@@ -700,10 +702,21 @@ export default function KiraExperience({
           </div>
         </div>
 
-        {/* Right — Free delivery */}
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/38" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
-          <Truck className="size-3 text-kira-leaf/70" />
-          <span>Free delivery</span>
+        {/* Right — Free delivery + store bridge */}
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+            <Truck className="size-3 text-kira-leaf/70" />
+            <span>Free delivery</span>
+          </div>
+          {!embedded && (
+            <Link
+              href="/shop"
+              className="glass-chip flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white/80 transition-colors hover:text-white"
+            >
+              <Store className="size-3.5 text-kap-yellow/80" />
+              <span>Browse store</span>
+            </Link>
+          )}
         </div>
       </header>
 

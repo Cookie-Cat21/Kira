@@ -40,7 +40,7 @@ export default function ProductDetailClient({
   return (
     <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 pt-10 sm:px-8">
       <Link
-        href="/"
+        href="/shop"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="size-4" /> Continue shopping

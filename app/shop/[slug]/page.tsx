@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
@@ -6,6 +7,26 @@ import { getCategories, getProductsByCategory } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
+// Deduped per request — generateMetadata and the page share one DB call.
+const getCategoriesCached = cache(getCategories);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const categories = await getCategoriesCached();
+  const category = categories.find((c) => c.slug === slug);
+  if (!category) return { title: "Shop — Kapruka, reimagined" };
+  return {
+    title: `${category.name} — Kapruka`,
+    description:
+      category.blurb ??
+      `Shop ${category.name} on Kapruka — delivered islandwide. Or just ask Kira.`,
+  };
+}
+
 export default async function CategoryPage({
   params,
 }: {
@@ -13,7 +34,7 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const [categories, first] = await Promise.all([
-    getCategories(),
+    getCategoriesCached(),
     getProductsByCategory(slug, { limit: 12, sort: "featured" }),
   ]);
 
