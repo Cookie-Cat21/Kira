@@ -9,6 +9,9 @@
     "lint": "eslint",
     "seed": "node scripts/gen-seed.mjs",
     "sync": "node scripts/sync-catalog.mjs",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
     "test:all": "node scripts/run-tests.mjs",
     "test:batch": "node scripts/run-with-keys.mjs",
     "ceo:review": "node scripts/ceo-review-llm.mjs",
@@ -75,6 +78,7 @@
     "eslint-config-next": "16.2.7",
     "playwright": "^1.60.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.8"
   }
 }
