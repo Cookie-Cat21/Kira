@@ -293,6 +293,183 @@ body {
   animation: kira-ring 2.6s ease-out infinite;
 }
 
+/* ───────────────────── Apple Liquid Glass material ─────────────────────
+   Layered build (Bespalov-style): a frosted backdrop layer carries the blur
+   + optional SVG displacement refraction, a tint layer adds body, a shine
+   layer paints the beveled specular rim + a pointer-tracked highlight, and
+   content sits on top. Drives off CSS vars so one class scales to any size. */
+.lg-wrapper {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--lg-radius, 28px);
+  /* One contact line + one soft, far drop — a clean float, not a heavy slab. */
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.18),
+    0 18px 48px -22px rgba(0, 0, 0, 0.62);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Frost + refraction layer. Layout lives here; the actual backdrop-filter and
+   (optional) SVG displacement are applied INLINE by the component — Tailwind
+   v4's Lightning CSS bundler strips `backdrop-filter` when its value contains a
+   var(), so the live values must bypass the build pipeline. */
+.lg-effect {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+/* Edge-magnification ring — the cheap, always-on half of Apple's lensing. A thin
+   rim band carries its own backdrop-filter (brighter + a touch sharper than the
+   body frost) and is masked to the border only, so the very edge reads as the
+   curved lip of a glass lozenge. Static values → safe from Lightning CSS's
+   var()-in-backdrop-filter strip, so it can live here in CSS. */
+.lg-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  backdrop-filter: blur(1px) brightness(1.16) saturate(1.4);
+  -webkit-backdrop-filter: blur(1px) brightness(1.16) saturate(1.4);
+  /* Show only a ~6px rim: outer box minus content box, XOR'd to a frame. */
+  padding: 6px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* Clear-variant legibility scrim — Clear glass passes far more of the backdrop,
+   so it gets a soft inner darkening to keep foreground content readable, the way
+   Apple pairs Clear with a dimming layer. */
+.lg-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 120% at 50% 0%,
+    rgba(0, 0, 0, 0.28) 0%,
+    rgba(0, 0, 0, 0.12) 55%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+}
+
+/* Body tint — a whisper of top sheen and a barely-there fill. Restrained so
+   the glass stays neutral instead of turning into coloured gel. */
+.lg-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      150deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.015) 32%,
+      rgba(255, 255, 255, 0) 55%
+    ),
+    var(--lg-tint, rgba(255, 255, 255, 0.022));
+}
+
+/* A single hairline of light around the rim — bright at the top, fading down
+   the sides — plus a soft pointer gleam. The Apple edge, not a plastic bevel. */
+.lg-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.6),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.08),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset -1px 0 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -10px 16px -12px rgba(0, 0, 0, 0.45),
+    /* Chromatic fringe — a faint warm rim top-left, cool rim bottom-right, the
+       always-on hint of glass dispersion (subtler than the SVG `displace`). */
+    inset 1px 1px 1.5px rgba(255, 120, 120, 0.1),
+    inset -1px -1px 1.5px rgba(110, 170, 255, 0.1);
+}
+.lg-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    120px 120px at var(--lg-px, 50%) var(--lg-py, 0%),
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0) 60%
+  );
+  opacity: var(--lg-spec, 0.4);
+  transition: opacity 0.4s ease;
+}
+
+/* In @layer components so a `flex`/`grid` contentClassName utility overrides the
+   default display — un-layered CSS would otherwise beat Tailwind's utilities. */
+@layer components {
+  .lg-content {
+    position: relative;
+    z-index: 3;
+    display: block; /* stays valid when the wrapper renders as <button> (spans inside) */
+  }
+}
+
+/* Hairline divider for inside cards. */
+.lg-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+}
+
+/* Press feedback for interactive glass (buttons / chips / dock items). */
+.lg-press {
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lg-press:active {
+  transform: scale(0.96);
+}
+
+/* Gel press — a springier sibling of .lg-press: quick squish on press, then a
+   back-out overshoot on release so the glass "rebounds" like Apple's interactive
+   material. Hover lifts it a touch. */
+.lg-gel {
+  transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lg-gel:hover {
+  transform: scale(1.03);
+}
+.lg-gel:active {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+
+/* ── Demo stage: one soft, slowly breathing aura. Calm, single-hue, no circus. ── */
+.lg-aura {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  will-change: transform, opacity;
+}
+@keyframes lg-breathe {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.5; }
+  50% { transform: translateX(-50%) scale(1.12); opacity: 0.64; }
+}
+.lg-aura-breathe { animation: lg-breathe 11s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -303,4 +480,42 @@ body {
     transition-duration: 0.01ms !important;
   }
   .reveal { opacity: 1; transform: none; }
+  .lg-shine::after { transition: none; }
+}
+
+/* ── Liquid Glass accessibility — replicate what Apple's system does for these
+   settings, since we render the material ourselves. ── */
+
+/* Reduce Transparency → drop the see-through frost for an opaque smoked panel. */
+@media (prefers-reduced-transparency: reduce) {
+  .lg-effect,
+  .lg-edge {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    filter: none !important;
+  }
+  .lg-wrapper {
+    background: rgba(22, 18, 31, 0.94);
+  }
+  .lg-clear .lg-wrapper,
+  .lg-wrapper.lg-clear {
+    background: rgba(22, 18, 31, 0.9);
+  }
+}
+
+/* Increase Contrast → add a visible border, calm the blur, mute the gleam. */
+@media (prefers-contrast: more) {
+  .lg-wrapper {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.55),
+      0 1px 1px rgba(0, 0, 0, 0.2),
+      0 18px 48px -22px rgba(0, 0, 0, 0.62);
+  }
+  .lg-effect {
+    backdrop-filter: blur(6px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(140%) !important;
+  }
+  .lg-shine::after {
+    opacity: 0 !important;
+  }
 }
