@@ -7,10 +7,20 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { KiraProduct } from "@/types";
+
+// Optional opening context for the dock — e.g. "Ask Kira about this" on a
+// product page seeds the chat with a prompt (and the product, so Kira's
+// lastProducts follow-ups like "add it to my cart" work).
+export interface KiraDockSeed {
+  prompt: string;
+  product?: KiraProduct;
+}
 
 interface KiraDockValue {
   isOpen: boolean;
-  open: () => void;
+  seed: KiraDockSeed | null;
+  open: (seed?: KiraDockSeed) => void;
   close: () => void;
   toggle: () => void;
 }
@@ -25,13 +35,20 @@ export function useKiraDock(): KiraDockValue {
 
 export function KiraDockProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
+  const [seed, setSeed] = useState<KiraDockSeed | null>(null);
+  const open = useCallback((nextSeed?: KiraDockSeed) => {
+    setSeed(nextSeed ?? null);
+    setIsOpen(true);
+  }, []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setSeed(null);
+  }, []);
   const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
   const value = useMemo(
-    () => ({ isOpen, open, close, toggle }),
-    [isOpen, open, close, toggle]
+    () => ({ isOpen, seed, open, close, toggle }),
+    [isOpen, seed, open, close, toggle]
   );
 
   return (

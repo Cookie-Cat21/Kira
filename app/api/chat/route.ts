@@ -344,6 +344,16 @@ const LS: Record<string, Record<string, string>> = {
     si: "ඔබේ order ref එක {orderRef} — track කරන්න තියාගන්න හෝ 'order again' කියන්න.",
     ta: "உங்கள் order ref {orderRef} — track பண்ண வச்சுக்கோங்க அல்லது 'order again' சொல்லுங்கள்.",
   },
+  aboutProductInStock: {
+    en: "Good pick to ask about! **{name}** — {price}{category}.{summary} It's in stock right now. Want it in your tray, or should I check delivery to your city first?",
+    si: "හොඳ choice එකක්! **{name}** — {price}{category}.{summary} දැන් stock තියෙනවා. Tray එකට add කරන්නද, නැත්නම් delivery check කරන්නද?",
+    ta: "நல்ல choice! **{name}** — {price}{category}.{summary} இப்போது stock-இல் உள்ளது. Tray-இல் சேர்க்கலாமா, அல்லது delivery பார்க்கலாமா?",
+  },
+  aboutProductOutOfStock: {
+    en: "**{name}** — {price}{category}.{summary} It's out of stock at the moment though — want me to find something similar?",
+    si: "**{name}** — {price}{category}.{summary} දැන් stock නෑ — similar දෙයක් හොයලා දෙන්නද?",
+    ta: "**{name}** — {price}{category}.{summary} இப்போது stock இல்லை — similar ஒன்று தேடட்டுமா?",
+  },
 };
 
 function L(key: string, lang: string): string {
@@ -402,6 +412,27 @@ export async function POST(req: NextRequest) {
         const cartContext =
           cart.length > 0
             ? `\n\nCurrent cart: ${cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ")}`
+            : "";
+        // Products the client is currently showing as cards. Some come from the
+        // storefront catalog (Neon), which is separate from the live Kapruka MCP —
+        // searching MCP for those names returns nothing. Give the model the data
+        // so it can answer instead of reporting "not found". Only added when
+        // lastProducts is non-empty, so the prompt-length cost is conditional.
+        const lastProductsContext =
+          lastProducts && lastProducts.length > 0
+            ? `\n\nProducts currently shown to the user as cards:\n` +
+              lastProducts
+                .slice(0, 6)
+                .map(
+                  (p) =>
+                    `- ${p.name} — LKR ${p.price.toLocaleString("en-LK")}${
+                      p.category ? ` (${p.category})` : ""
+                    }${p.inStock === false ? " — OUT OF STOCK" : ""}${
+                      p.summary ? `: ${p.summary.replace(/\s+/g, " ").slice(0, 100)}` : ""
+                    }`
+                )
+                .join("\n") +
+              `\nIf the user asks about one of these, answer from this data. Some are storefront items missing from kapruka_search_products/kapruka_get_product — if a tool lookup finds nothing for one of them, describe it from the data above instead of saying it can't be found.`
             : "";
         const deliveryContext = deliveryCity
           ? `\nDelivery city: ${deliveryCity} (already confirmed — do not call check_delivery again for this city unless a product or date is now available)`
@@ -586,6 +617,7 @@ export async function POST(req: NextRequest) {
         const systemContent =
           KIRA_SYSTEM_PROMPT +
           cartContext +
+          lastProductsContext +
           deliveryContext +
           deliveryDateContext +
           dateContext +
@@ -1393,6 +1425,41 @@ async function tryHandleDeterministicPrompt({
     await streamWords(controller, L("trustAffirmation", language));
     controller.enqueue(sse("done"));
     return true;
+  }
+
+  // ── "Tell me about <product>" with the product already in hand ───────────
+  // The storefront "Ask Kira about this" button seeds exactly this prompt with the
+  // product attached as lastProducts. The storefront catalog (Neon/seed JSON) is
+  // separate from the live Kapruka MCP, so a tool lookup for these names returns
+  // nothing — answer from the product data the client already sent instead.
+  // Placed ahead of the topic-word intercepts (COD/OUT_OF_SCOPE) so product names
+  // containing trigger words can't cause a false redirect. Restricted to exactly
+  // one lastProducts item — multi-product "tell me about X" still goes to the LLM,
+  // which can fetch richer details for MCP-sourced results.
+  const TELL_ME_ABOUT_RE = /\btell\s+me\s+(?:a\s+bit\s+|more\s+)?about\b/i;
+  if (TELL_ME_ABOUT_RE.test(lower) && lastProducts?.length === 1) {
+    const target = lastProducts[0];
+    const namedTarget = target.name && lower.includes(target.name.toLowerCase());
+    const pronounTarget = /\b(it|this|that|the\s+one)\b/i.test(lower);
+    if (namedTarget || pronounTarget) {
+      let summary = (target.summary ?? "").replace(/\s+/g, " ").trim();
+      if (summary && !/[.!?]$/.test(summary)) summary += ".";
+      await streamWords(
+        controller,
+        Lf(
+          target.inStock === false ? "aboutProductOutOfStock" : "aboutProductInStock",
+          language,
+          {
+            name: target.name,
+            price: `LKR ${target.price.toLocaleString("en-LK")}`,
+            category: target.category ? ` (${target.category})` : "",
+            summary: summary ? ` ${summary}` : "",
+          }
+        )
+      );
+      controller.enqueue(sse("done"));
+      return true;
+    }
   }
 
   const COD_RE = /\b(cash\s+on\s+delivery|cod|pay\s+cash|cash\s+payment|payment\s+method|how\s+can\s+i\s+pay)\b/i;

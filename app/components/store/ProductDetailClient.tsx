@@ -37,6 +37,26 @@ export default function ProductDetailClient({
     }
   }
 
+  function handleAskKira() {
+    openKira({
+      prompt: `Tell me about "${product.name}" — is it a good pick?`,
+      // Slim down to the KiraProduct shape — the detail object drags along
+      // images/variants/addons that don't belong in the chat session store.
+      product: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        currency: product.currency,
+        image: hero,
+        summary: product.summary,
+        category: product.category,
+        url: product.url,
+        inStock: product.inStock,
+        stockLevel: product.stockLevel,
+      },
+    });
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 pt-10 sm:px-8">
       <Link
@@ -151,7 +171,7 @@ export default function ProductDetailClient({
 
             <button
               type="button"
-              onClick={openKira}
+              onClick={handleAskKira}
               className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
             >
               <Sparkles className="size-4 text-kap-yellow" /> Ask Kira about this

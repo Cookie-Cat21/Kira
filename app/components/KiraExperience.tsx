@@ -34,6 +34,7 @@ import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
 import { useCart } from "../context/CartContext";
+import type { KiraDockSeed } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
   CheckoutInfo,
@@ -189,8 +190,10 @@ function saveSession(
 
 export default function KiraExperience({
   embedded = false,
+  seed = null,
 }: {
   embedded?: boolean;
+  seed?: KiraDockSeed | null;
 }) {
   // When docked inside the storefront we skip the full-screen loader splash.
   const [appReady, setAppReady] = useState(embedded);
@@ -631,6 +634,44 @@ export default function KiraExperience({
     },
     [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder]
   );
+
+  // Seeded opening from a storefront surface (e.g. "Ask Kira about this" on a
+  // product page). Two-step on purpose: the setTimeout lands after the
+  // session-restore timeout above so restored messages aren't clobbered, and
+  // routing the prompt through state gives React one render to commit the
+  // product message before sendMessage scans `messages` for lastProducts.
+  const seedFiredRef = useRef(false);
+  const seedSentRef = useRef(false);
+  const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!seed?.prompt) return;
+    const timer = window.setTimeout(() => {
+      if (seedFiredRef.current) return;
+      seedFiredRef.current = true;
+      if (seed.product) {
+        const product = seed.product;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `seed-${Date.now()}`,
+            role: "assistant",
+            content: "Here's the one you were looking at:",
+            timestamp: Date.now(),
+            products: [product],
+          },
+        ]);
+      }
+      setPendingSeedPrompt(seed.prompt);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [seed]);
+
+  useEffect(() => {
+    if (!pendingSeedPrompt || seedSentRef.current) return;
+    seedSentRef.current = true;
+    sendMessage(pendingSeedPrompt);
+  }, [pendingSeedPrompt, sendMessage]);
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
   const showProductSkeleton =

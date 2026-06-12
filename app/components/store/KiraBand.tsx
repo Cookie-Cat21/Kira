@@ -31,7 +31,7 @@ export default function KiraBand() {
             </p>
             <button
               type="button"
-              onClick={open}
+              onClick={() => open()}
               className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(64,41,112,0.55)] transition-transform hover:scale-[1.03] active:scale-95"
             >
               <Sparkles className="size-4 text-kap-yellow" /> Start a conversation

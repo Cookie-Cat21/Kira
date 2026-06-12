@@ -8,11 +8,17 @@ import KiraExperience from "@/app/components/KiraExperience";
 
 export default function KiraDock() {
   const pathname = usePathname();
-  const { isOpen, open, close } = useKiraDock();
+  const { isOpen, open, close, seed } = useKiraDock();
 
   // The root route IS the full-screen Kira experience — the dock only exists
   // on storefront pages (/shop, /product) as a way back into the conversation.
-  if (pathname === "/" || pathname?.startsWith("/kira")) return null;
+  // /liquid-glass is a standalone material demo and stays uncluttered.
+  if (
+    pathname === "/" ||
+    pathname?.startsWith("/kira") ||
+    pathname?.startsWith("/liquid-glass")
+  )
+    return null;
 
   return (
     <>
@@ -21,7 +27,7 @@ export default function KiraDock() {
         {!isOpen && (
           <motion.button
             type="button"
-            onClick={open}
+            onClick={() => open()}
             aria-label="Open Kira, your shopping assistant"
             initial={{ opacity: 0, scale: 0.8, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -69,7 +75,7 @@ export default function KiraDock() {
                 <X className="size-4" />
               </button>
               <div className="min-h-0 flex-1">
-                <KiraExperience embedded />
+                <KiraExperience embedded seed={seed} />
               </div>
             </motion.aside>
           </>

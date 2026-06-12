@@ -102,7 +102,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
           {/* Ask Kira */}
           <button
             type="button"
-            onClick={openKira}
+            onClick={() => openKira()}
             className="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_4px_20px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.03] active:scale-95 sm:flex"
           >
             <Sparkles className="size-3.5" /> Ask Kira
