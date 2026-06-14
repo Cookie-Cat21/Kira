@@ -60,8 +60,8 @@ export default function CartDrawer() {
               role="dialog"
               aria-modal="true"
               aria-label="Gift tray"
-              className="relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
-              style={{ background: "#1C1C1E", fontFamily: SF }}
+              className="liquid-glass-sheet relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
+              style={{ fontFamily: SF }}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}

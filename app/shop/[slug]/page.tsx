@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import StoreAmbient from "@/app/components/store/StoreAmbient";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import ShopGrid from "@/app/components/store/ShopGrid";
@@ -21,23 +22,25 @@ export default async function CategoryPage({
   if (!category) notFound();
 
   return (
-    <div className="min-h-dvh">
-      <StoreNav categories={categories} />
-      <main className="mx-auto w-full max-w-[1280px] px-5 pb-12 pt-12 sm:px-8">
-        <div className="spotlight pointer-events-none absolute inset-x-0 top-14 h-64" />
-        <header className="relative mb-10">
-          <p className="text-sm font-medium text-kap-yellow/80">Kapruka</p>
-          <h1 className="display-hero mt-2 text-4xl text-white sm:text-5xl">
-            {category.name}
-          </h1>
-          {category.blurb && (
-            <p className="mt-3 max-w-lg text-[15px] text-white/50">{category.blurb}</p>
-          )}
-        </header>
+    <>
+      <StoreAmbient />
+      <div className="relative min-h-dvh">
+        <StoreNav categories={categories} />
+        <main className="mx-auto w-full max-w-[1200px] px-5 pb-16 pt-10 sm:px-8 sm:pt-14">
+          <header className="relative mb-10">
+            <p className="liquid-eyebrow">Kapruka</p>
+            <h1 className="display-serif mt-2 text-4xl font-normal text-white sm:text-5xl">
+              {category.name}
+            </h1>
+            {category.blurb && (
+              <p className="mt-3 max-w-md text-[15px] text-white/42">{category.blurb}</p>
+            )}
+          </header>
 
-        <ShopGrid slug={slug} initialItems={first.items} total={first.total} />
-      </main>
-      <StoreFooter categories={categories} />
-    </div>
+          <ShopGrid slug={slug} initialItems={first.items} total={first.total} />
+        </main>
+        <StoreFooter categories={categories} />
+      </div>
+    </>
   );
 }

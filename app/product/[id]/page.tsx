@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import StoreAmbient from "@/app/components/store/StoreAmbient";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import ProductDetailClient from "@/app/components/store/ProductDetailClient";
@@ -20,12 +21,15 @@ export default async function ProductPage({
   if (!product) notFound();
 
   return (
-    <div className="min-h-dvh">
-      <StoreNav categories={categories} />
-      <main className="relative">
-        <ProductDetailClient product={product} />
-      </main>
-      <StoreFooter categories={categories} />
-    </div>
+    <>
+      <StoreAmbient />
+      <div className="relative min-h-dvh">
+        <StoreNav categories={categories} />
+        <main className="relative">
+          <ProductDetailClient product={product} />
+        </main>
+        <StoreFooter categories={categories} />
+      </div>
+    </>
   );
 }

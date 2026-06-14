@@ -51,7 +51,7 @@ export default function ProductDetailClient({
         <div
           ref={imgRef}
           className={cn(
-            "ph-tile relative aspect-square w-full overflow-hidden rounded-3xl border border-white/10",
+            "ph-tile liquid-glass-card relative aspect-square w-full overflow-hidden rounded-[28px]",
             !showImage && phClass()
           )}
         >
@@ -80,11 +80,9 @@ export default function ProductDetailClient({
         {/* Info */}
         <div className="flex flex-col">
           {product.category && (
-            <p className="text-sm font-medium text-kap-yellow/80">
-              {product.category}
-            </p>
+            <p className="liquid-eyebrow">{product.category}</p>
           )}
-          <h1 className="display-hero mt-2 text-3xl text-white sm:text-4xl">
+          <h1 className="display-serif mt-2 text-3xl font-normal text-white sm:text-4xl">
             {product.name}
           </h1>
 
@@ -111,12 +109,12 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={handleAdd}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.03] active:scale-95"
+                className="liquid-btn-primary inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-semibold"
               >
                 <Plus className="size-4" /> Add to bag
               </button>
             ) : (
-              <div className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-2">
+              <div className="flex items-center gap-3 rounded-full liquid-glass-pill px-2 py-2">
                 <button
                   type="button"
                   onClick={() => updateQty(product.id, qty - 1)}
@@ -152,23 +150,23 @@ export default function ProductDetailClient({
             <button
               type="button"
               onClick={openKira}
-              className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
+              className="liquid-btn-secondary inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-sm font-semibold"
             >
-              <Sparkles className="size-4 text-kap-yellow" /> Ask Kira about this
+              <Sparkles className="size-4 text-white/60" /> Ask Kira about this
             </button>
           </div>
 
           {/* Reassurance */}
           <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-              <Truck className="size-5 text-kira-leaf" />
+            <div className="flex items-center gap-3 rounded-[18px] liquid-glass-card p-4">
+              <Truck className="size-4 text-white/50" />
               <div>
-                <p className="text-[13px] font-semibold text-white">Islandwide delivery</p>
-                <p className="text-[12px] text-white/45">Kira checks dates & fees live</p>
+                <p className="text-[13px] font-semibold tracking-tight text-white/85">Islandwide delivery</p>
+                <p className="text-[12px] text-white/38">Kira checks dates & fees live</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-              <ShieldCheck className="size-5 text-kira-leaf" />
+            <div className="flex items-center gap-3 rounded-[18px] liquid-glass-card p-4">
+              <ShieldCheck className="size-4 text-white/50" />
               <div>
                 <p className="text-[13px] font-semibold text-white">
                   {product.inStock === false ? "Currently unavailable" : "In stock"}

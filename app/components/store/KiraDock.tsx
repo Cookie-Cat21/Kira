@@ -26,15 +26,15 @@ export default function KiraDock() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 12 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-5 right-5 z-[90] flex items-center gap-2.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] py-3 pl-4 pr-5 shadow-[0_8px_30px_rgba(64,41,112,0.6)] transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
+            className="fixed bottom-5 right-5 z-[90] flex items-center gap-2 rounded-full liquid-btn-accent py-2.5 pl-3.5 pr-4 transition-transform hover:scale-[1.02] active:scale-[0.98] sm:bottom-6 sm:right-6"
           >
-            <span className="relative flex size-7 items-center justify-center">
-              <span className="kira-ring absolute inline-flex size-7 rounded-full bg-white/40" />
-              <span className="relative flex size-7 items-center justify-center rounded-full bg-white/15">
-                <Sparkles className="size-4 text-kap-yellow" />
+            <span className="relative flex size-6 items-center justify-center">
+              <span className="kira-ring absolute inline-flex size-6 rounded-full bg-white/30" />
+              <span className="relative flex size-6 items-center justify-center rounded-full bg-white/10">
+                <Sparkles className="size-3.5 text-white/90" />
               </span>
             </span>
-            <span className="text-sm font-semibold text-white">Ask Kira</span>
+            <span className="text-[13px] font-semibold text-white">Ask Kira</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -51,7 +51,7 @@ export default function KiraDock() {
               onClick={close}
             />
             <motion.aside
-              className="fixed inset-y-0 right-0 z-[96] flex w-full flex-col overflow-hidden border-l border-white/10 shadow-2xl sm:w-[440px]"
+              className="liquid-glass-sheet fixed inset-y-0 right-0 z-[96] flex w-full flex-col overflow-hidden sm:w-[440px]"
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -63,7 +63,7 @@ export default function KiraDock() {
                 type="button"
                 onClick={close}
                 aria-label="Close Kira"
-                className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur transition-colors hover:bg-white/20"
+                className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full liquid-glass-pill text-white/75"
               >
                 <X className="size-4" />
               </button>

@@ -13,41 +13,42 @@ const POINTS = [
 export default function KiraBand() {
   const { open } = useKiraDock();
   return (
-    <section className="relative mx-auto w-full max-w-[1280px] px-5 sm:px-8">
-      <div className="spotlight pointer-events-none absolute inset-x-0 -top-10 h-72" />
-      <Reveal className="relative overflow-hidden rounded-3xl glass-card-vivid p-8 sm:p-12">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+    <section className="relative mx-auto w-full max-w-[1200px] px-5 sm:px-8">
+      <div className="spotlight pointer-events-none absolute inset-x-0 -top-10 h-64" />
+      <Reveal className="relative overflow-hidden rounded-[28px] liquid-glass p-8 sm:p-12">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1 text-[12px] font-medium text-kap-yellow">
-              <Sparkles className="size-3.5" /> Meet Kira
+            <span className="liquid-eyebrow inline-flex items-center gap-1.5">
+              <Sparkles className="size-3 text-white/40" /> Kira
             </span>
-            <h2 className="display-hero mt-4 text-3xl text-white sm:text-4xl">
+            <h2 className="display-serif mt-3 text-3xl font-normal text-white sm:text-4xl">
               Shopping, by conversation.
             </h2>
-            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/55">
-              Kira is your shopping companion built into Kapruka. Tell her the
-              occasion, budget and city — she finds the gift, checks delivery,
-              and checks you out. The store and the assistant share one bag.
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/42">
+              Tell Kira the occasion, budget and city — she finds the gift,
+              checks delivery, and checks you out. One bag for store and chat.
             </p>
             <button
               type="button"
               onClick={open}
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-6 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(64,41,112,0.55)] transition-transform hover:scale-[1.03] active:scale-95"
+              className="liquid-btn-accent mt-7 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold"
             >
-              <Sparkles className="size-4 text-kap-yellow" /> Start a conversation
+              <Sparkles className="size-4 opacity-90" /> Start a conversation
             </button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
             {POINTS.map((p, i) => (
               <Reveal
                 key={p.title}
                 delay={i * 80}
-                className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"
+                className="rounded-[18px] liquid-glass-card p-5"
               >
-                <p.icon className="size-5 text-kap-yellow" />
-                <h3 className="mt-3 text-sm font-semibold text-white">{p.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-white/50">
+                <p.icon className="size-4 text-white/50" />
+                <h3 className="mt-3 text-[13px] font-semibold tracking-tight text-white/90">
+                  {p.title}
+                </h3>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-white/38">
                   {p.body}
                 </p>
               </Reveal>

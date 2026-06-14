@@ -32,9 +32,24 @@
 html,
 body {
   height: 100%;
-  background: linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%);
-  background-attachment: fixed;
+  background: #08060f;
   color: rgba(255, 255, 255, 0.92);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient canvas — fixed mesh behind storefront */
+.liquid-canvas {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(88, 56, 160, 0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(64, 41, 112, 0.12), transparent),
+    radial-gradient(ellipse 50% 30% at 0% 80%, rgba(120, 80, 200, 0.08), transparent),
+    linear-gradient(180deg, #0a0712 0%, #08060f 40%, #06050c 100%);
+}
+
+.liquid-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
 }
 
 * {
@@ -56,19 +71,154 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-/* Apple Liquid Glass — iOS 26 / visionOS material */
+/* ── Apple Liquid Glass material system ── */
+
+/* Base panel — cards, panels, drawers */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(40px) saturate(200%) brightness(1.06);
+  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.04),
+    0 8px 32px -8px rgba(0, 0, 0, 0.35);
+}
+
+/* Navigation bar — stronger blur, thinner border */
 .liquid-glass-nav {
-  background: rgba(12, 8, 24, 0.55);
-  backdrop-filter: blur(48px) saturate(220%) brightness(1.08);
-  -webkit-backdrop-filter: blur(48px) saturate(220%) brightness(1.08);
-  /* specular highlight top edge + soft inner depth */
+  background: rgba(8, 6, 15, 0.62);
+  backdrop-filter: blur(52px) saturate(220%) brightness(1.08);
+  -webkit-backdrop-filter: blur(52px) saturate(220%) brightness(1.08);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.03),
+    0 1px 24px rgba(0, 0, 0, 0.2);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Elevated card — product tiles, category cards */
+.liquid-glass-card {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(32px) saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.05);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 4px 24px -6px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    background 0.35s ease;
+}
+.liquid-glass-card:hover {
+  background: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
-    inset 1px 0 0 rgba(255, 255, 255, 0.04),
-    inset -1px 0 0 rgba(255, 255, 255, 0.04),
-    0 2px 32px rgba(0, 0, 0, 0.22);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    0 12px 40px -10px rgba(64, 41, 112, 0.35);
+}
+
+/* Pill chip — nav items, icon buttons */
+.liquid-glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+  transition: background 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
+}
+.liquid-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.liquid-glass-pill:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Primary CTA — frosted white pill */
+.liquid-btn-primary {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a0712;
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 4px 20px -4px rgba(255, 255, 255, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.15s ease;
+}
+.liquid-btn-primary:hover {
+  background: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 8px 28px -6px rgba(255, 255, 255, 0.2);
+}
+.liquid-btn-primary:active {
+  transform: scale(0.97);
+}
+
+/* Secondary CTA — glass outline */
+.liquid-btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.liquid-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.liquid-btn-secondary:active {
+  transform: scale(0.97);
+}
+
+/* Accent CTA — Kapruka purple glass */
+.liquid-btn-accent {
+  background: linear-gradient(
+    135deg,
+    rgba(64, 41, 112, 0.85) 0%,
+    rgba(109, 78, 201, 0.75) 100%
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 8px 28px -6px rgba(64, 41, 112, 0.55);
+  color: #fff;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.liquid-btn-accent:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 12px 36px -8px rgba(64, 41, 112, 0.65);
+}
+.liquid-btn-accent:active {
+  transform: scale(0.97);
+}
+
+/* Section eyebrow label */
+.liquid-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+/* Drawer / sheet surface */
+.liquid-glass-sheet {
+  background: rgba(14, 10, 24, 0.78);
+  backdrop-filter: blur(56px) saturate(200%) brightness(1.05);
+  -webkit-backdrop-filter: blur(56px) saturate(200%) brightness(1.05);
+  border-left: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+    -8px 0 40px rgba(0, 0, 0, 0.4);
 }
 
 .glass-input {
@@ -221,20 +371,35 @@ body {
 
 /* ───────────────────────── Storefront ───────────────────────── */
 
-/* Product card — near-black base so imagery glows; lift + purple glow on hover */
+/* Product card — liquid glass tile */
 .store-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.35s ease;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 4px 20px -8px rgba(0, 0, 0, 0.35);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    background 0.35s ease;
   will-change: transform;
 }
 .store-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(148, 100, 255, 0.35);
-  box-shadow: 0 18px 50px -12px rgba(64, 41, 112, 0.6),
-    0 0 0 1px rgba(148, 100, 255, 0.15) inset;
+  transform: translateY(-4px) scale(1.01);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 16px 48px -12px rgba(64, 41, 112, 0.4);
+}
+
+/* Image well inside product card */
+.store-card-image {
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Deterministic gradient tiles for products without imagery (pre-sync state) */
@@ -259,16 +424,24 @@ body {
 .ph-home { background: linear-gradient(135deg, #4a4f6b 0%, #1f2236 100%); }
 .ph-default { background: linear-gradient(135deg, #402970 0%, #1a0f33 100%); }
 
-/* Big editorial headline */
+/* Big editorial headline — Apple-style tight tracking */
 .display-hero {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+/* Serif accent for hero only */
+.display-serif {
   font-family: var(--font-display);
   line-height: 1.02;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 /* Spotlight glow used behind hero + Kira band */
 .spotlight {
-  background: radial-gradient(60% 60% at 50% 0%, rgba(148, 100, 255, 0.22), transparent 70%);
+  background: radial-gradient(70% 55% at 50% 0%, rgba(120, 80, 200, 0.14), transparent 72%);
 }
 
 /* Scroll-reveal base (JS adds .is-visible) */
