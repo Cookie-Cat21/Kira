@@ -50,6 +50,24 @@ const OCCASION_CHIPS = getOccasionChips();
 // An occasion is active iff getOccasionChips surfaced an urgent chip. When it
 // is, the hero headline already announces it — so we drop the duplicate chip.
 const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
+const STARTER_PROMPTS: { label: string; value: string }[] = [
+  {
+    label: "Birthday gifts",
+    value: "I need birthday gift ideas under LKR 5,000",
+  },
+  {
+    label: "Track order",
+    value: "I want to track my order",
+  },
+  {
+    label: "Same-day in Colombo",
+    value: "Show me gifts with same-day delivery in Colombo",
+  },
+  {
+    label: "Popular now",
+    value: "What are the most popular gifts right now?",
+  },
+];
 type KiraIcon = ComponentType<{ className?: string }>;
 
 // Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
@@ -207,6 +225,9 @@ export default function KiraExperience({
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
   const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
+  const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
+  const [requestHealth, setRequestHealth] = useState<"idle" | "loading" | "error">("idle");
+  const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
 
   // Restore session from localStorage after hydration (client only).
   useEffect(() => {
@@ -302,6 +323,8 @@ export default function KiraExperience({
     setLiveSteps([]);
     setIsLoading(false);
     setIsStreaming(false);
+    setRequestHealth("idle");
+    setLastErrorMessage(null);
     setMessages((prev) => [
       ...prev,
       {
@@ -339,10 +362,13 @@ export default function KiraExperience({
         content: trimmed,
         timestamp: Date.now(),
       };
+      setLastUserPrompt(trimmed);
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
       setIsStreaming(false);
       setLiveSteps([]);
+      setRequestHealth("loading");
+      setLastErrorMessage(null);
       cancelledRef.current = false;
       streamingMsgIdRef.current = null;
       pendingDeliveryRef.current = null;
@@ -563,6 +589,8 @@ export default function KiraExperience({
                 });
                 setIsLoading(false);
                 setIsStreaming(false);
+                setRequestHealth("idle");
+                setLastErrorMessage(null);
                 abortControllerRef.current = null;
               } else if (payload.t === "error") {
                 const errMsg =
@@ -586,6 +614,8 @@ export default function KiraExperience({
                 }
                 setIsLoading(false);
                 setIsStreaming(false);
+                setRequestHealth("error");
+                setLastErrorMessage(errMsg);
                 abortControllerRef.current = null;
               }
             } catch {
@@ -617,6 +647,8 @@ export default function KiraExperience({
             },
           ]);
         }
+        setRequestHealth("error");
+        setLastErrorMessage(errMsg);
       } finally {
         // Always clear pending buffered events so they don't bleed into the next request.
         pendingDeliveryRef.current = null;
@@ -632,7 +664,7 @@ export default function KiraExperience({
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder]
+    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder, addToCart]
   );
 
   // Seeded opening from a storefront surface (e.g. "Ask Kira about this" on a
@@ -682,6 +714,18 @@ export default function KiraExperience({
         step.includes("Searching Kapruka catalog") ||
         step.includes("Browsing categories")
     );
+  const latestLiveStep = liveSteps[liveSteps.length - 1];
+  const latestDeliveryInfo = [...messages]
+    .reverse()
+    .find((msg) => msg.role === "assistant" && msg.deliveryInfo)?.deliveryInfo;
+  const cartSubtotal = cart.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+  const cartCurrency = cart[0]?.product.currency ?? latestDeliveryInfo?.currency ?? "LKR";
+  const estimatedTotal =
+    latestDeliveryInfo?.fee !== undefined ? cartSubtotal + latestDeliveryInfo.fee : undefined;
+  const canRetryLastPrompt = !!lastUserPrompt && !isLoading;
 
   return (
     <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
@@ -787,6 +831,27 @@ export default function KiraExperience({
           </div>
 
           <div
+            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3"
+            style={{ animationDelay: "90ms" }}
+          >
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+              Start fast
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt.label}
+                  type="button"
+                  onClick={() => sendMessage(prompt.value)}
+                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
+                >
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
             className="mt-4 flex flex-wrap sm:flex-nowrap justify-center gap-2 px-4 animate-fade-up"
             style={{ animationDelay: "120ms" }}
           >
@@ -884,6 +949,42 @@ export default function KiraExperience({
             className="relative z-10 shrink-0"
           >
             <div className="mx-auto w-full max-w-3xl px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+              {cart.length > 0 && (
+                <StickyOrderSummary
+                  cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  city={deliveryCity}
+                  date={deliveryDate}
+                  subtotal={cartSubtotal}
+                  currency={cartCurrency}
+                  deliveryFee={latestDeliveryInfo?.fee}
+                  estimatedTotal={estimatedTotal}
+                  onCheckout={() => setCheckoutOpen(true)}
+                  onCheckDelivery={() =>
+                    sendMessage(
+                      `Check delivery for my cart to ${deliveryCity ?? "Colombo"} on ${deliveryDate}`
+                    )
+                  }
+                  isBusy={isLoading}
+                />
+              )}
+
+              {(isLoading || requestHealth === "error") && (
+                <ResponseStatusBanner
+                  isLoading={isLoading}
+                  latestStep={latestLiveStep}
+                  errorMessage={lastErrorMessage}
+                  canRetry={canRetryLastPrompt}
+                  onRetry={() => {
+                    if (lastUserPrompt) sendMessage(lastUserPrompt);
+                  }}
+                  onTryAlternatives={() => sendMessage("Show me alternative gift options in a similar budget")}
+                  onContinueWithoutDelivery={() =>
+                    sendMessage("Continue without delivery quote and show available gift options")
+                  }
+                  onCancel={cancelActiveResponse}
+                />
+              )}
+
               <KiraChatInput
                 onSendMessage={sendMessage}
                 isLoading={isLoading}
@@ -961,4 +1062,169 @@ function DeliveryDatePicker({
       />
     </label>
   );
+}
+
+function ResponseStatusBanner({
+  isLoading,
+  latestStep,
+  errorMessage,
+  canRetry,
+  onRetry,
+  onTryAlternatives,
+  onContinueWithoutDelivery,
+  onCancel,
+}: {
+  isLoading: boolean;
+  latestStep?: string;
+  errorMessage?: string | null;
+  canRetry: boolean;
+  onRetry: () => void;
+  onTryAlternatives: () => void;
+  onContinueWithoutDelivery: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="mb-2 rounded-xl border px-3 py-2"
+      style={{
+        background: "rgba(255,255,255,0.06)",
+        borderColor: isLoading ? "rgba(248,218,8,0.34)" : "rgba(255,140,140,0.35)",
+      }}
+    >
+      <p className="text-xs text-white/80">
+        {isLoading
+          ? latestStep ?? "Still checking live availability and delivery details..."
+          : errorMessage ?? "Something failed while fetching from Kapruka. Try a quick recovery action."}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {isLoading ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+          >
+            Stop
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onRetry}
+              disabled={!canRetry}
+              className={cn(
+                "rounded-full px-3 py-1 text-[11px] font-semibold",
+                canRetry
+                  ? "bg-kap-yellow text-gray-950 hover:brightness-95"
+                  : "bg-white/10 text-white/35"
+              )}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={onTryAlternatives}
+              className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+            >
+              Try alternatives
+            </button>
+            <button
+              type="button"
+              onClick={onContinueWithoutDelivery}
+              className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+            >
+              Continue without quote
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StickyOrderSummary({
+  cartCount,
+  city,
+  date,
+  subtotal,
+  deliveryFee,
+  estimatedTotal,
+  currency,
+  onCheckout,
+  onCheckDelivery,
+  isBusy,
+}: {
+  cartCount: number;
+  city?: string;
+  date: string;
+  subtotal: number;
+  deliveryFee?: number;
+  estimatedTotal?: number;
+  currency: string;
+  onCheckout: () => void;
+  onCheckDelivery: () => void;
+  isBusy: boolean;
+}) {
+  return (
+    <div
+      className="mb-2 rounded-2xl border px-3 py-2.5"
+      style={{
+        background: "rgba(64,41,112,0.35)",
+        borderColor: "rgba(248,218,8,0.28)",
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-white/92">
+            Order summary ({cartCount} item{cartCount > 1 ? "s" : ""})
+          </p>
+          <p className="text-[11px] text-white/58">
+            {city ? `Deliver to ${city}` : "Select a city"} · {date}
+          </p>
+          <div className="mt-1 space-y-0.5 text-[11px] text-white/75">
+            <p>Items: {formatMoney(subtotal, currency)}</p>
+            {deliveryFee !== undefined ? (
+              <p>Delivery: {formatMoney(deliveryFee, currency)}</p>
+            ) : (
+              <p className="text-white/55">Delivery: quote pending</p>
+            )}
+            {estimatedTotal !== undefined && (
+              <p className="font-semibold text-kap-yellow">
+                Est. total: {formatMoney(estimatedTotal, currency)}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={onCheckout}
+            className="rounded-full bg-kap-yellow px-3 py-1 text-[11px] font-bold text-gray-950 transition hover:brightness-95"
+          >
+            Review checkout
+          </button>
+          <button
+            type="button"
+            onClick={onCheckDelivery}
+            disabled={isBusy}
+            className={cn(
+              "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
+              isBusy
+                ? "border-white/10 text-white/35"
+                : "border-white/20 text-white/85 hover:bg-white/10"
+            )}
+          >
+            Refresh delivery
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat("en-LK", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }

@@ -20,12 +20,12 @@ const notoSinhala = Noto_Sans_Sinhala({
 });
 
 export const metadata: Metadata = {
-  title: "Kira — Kapruka's AI shopping companion",
+  title: "Kapruka — Gifting, reimagined with Kira",
   description:
-    "Tell Kira who it's for, your budget, and where it needs to go — she finds the gift, checks delivery, and checks you out. Live Kapruka catalog, islandwide.",
+    "Sri Lanka's gifting destination. Cakes, flowers, hampers and more — delivered islandwide, with Kira, your AI shopping companion, built in.",
   openGraph: {
-    title: "Kira — Kapruka's AI shopping companion",
-    description: "Shopping, by conversation. Live Kapruka catalog, real delivery, checkout in the chat.",
+    title: "Kapruka — Gifting, reimagined with Kira",
+    description: "Shop Sri Lanka's favourites, or just ask Kira. Delivered islandwide.",
     type: "website",
   },
 };

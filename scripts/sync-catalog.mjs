@@ -347,6 +347,13 @@ async function main() {
             ]
           );
         }
+
+        await dbQuery(
+          `delete from products
+           where category_slug = $1
+             and not (id = any($2::text[]))`,
+          [category.slug, normalized.map((product) => product.id)]
+        );
       }
     } catch (error) {
       counts.push({ slug: category.slug, name: category.name, count: 0 });
