@@ -8,6 +8,7 @@ import {
   type ComponentType,
 } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   CakeSlice,
   Flower2,
@@ -16,6 +17,7 @@ import {
   Shirt,
   Smartphone,
   SquarePen,
+  Store,
   Truck,
   CalendarDays,
   ShoppingBasket,
@@ -32,6 +34,7 @@ import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
 import { useCart } from "../context/CartContext";
+import type { KiraDockSeed } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
   CheckoutInfo,
@@ -205,8 +208,10 @@ function saveSession(
 
 export default function KiraExperience({
   embedded = false,
+  seed = null,
 }: {
   embedded?: boolean;
+  seed?: KiraDockSeed | null;
 }) {
   // When docked inside the storefront we skip the full-screen loader splash.
   const [appReady, setAppReady] = useState(embedded);
@@ -662,6 +667,44 @@ export default function KiraExperience({
     [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder, addToCart]
   );
 
+  // Seeded opening from a storefront surface (e.g. "Ask Kira about this" on a
+  // product page). Two-step on purpose: the setTimeout lands after the
+  // session-restore timeout above so restored messages aren't clobbered, and
+  // routing the prompt through state gives React one render to commit the
+  // product message before sendMessage scans `messages` for lastProducts.
+  const seedFiredRef = useRef(false);
+  const seedSentRef = useRef(false);
+  const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!seed?.prompt) return;
+    const timer = window.setTimeout(() => {
+      if (seedFiredRef.current) return;
+      seedFiredRef.current = true;
+      if (seed.product) {
+        const product = seed.product;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `seed-${Date.now()}`,
+            role: "assistant",
+            content: "Here's the one you were looking at:",
+            timestamp: Date.now(),
+            products: [product],
+          },
+        ]);
+      }
+      setPendingSeedPrompt(seed.prompt);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [seed]);
+
+  useEffect(() => {
+    if (!pendingSeedPrompt || seedSentRef.current) return;
+    seedSentRef.current = true;
+    sendMessage(pendingSeedPrompt);
+  }, [pendingSeedPrompt, sendMessage]);
+
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
   const showProductSkeleton =
     isLoading &&
@@ -744,10 +787,21 @@ export default function KiraExperience({
           </div>
         </div>
 
-        {/* Right — Free delivery */}
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/38" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
-          <Truck className="size-3 text-kira-leaf/70" />
-          <span>Free delivery</span>
+        {/* Right — Free delivery + store bridge */}
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+            <Truck className="size-3 text-kira-leaf/70" />
+            <span>Free delivery</span>
+          </div>
+          {!embedded && (
+            <Link
+              href="/shop"
+              className="glass-chip flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white/80 transition-colors hover:text-white"
+            >
+              <Store className="size-3.5 text-kap-yellow/80" />
+              <span>Browse store</span>
+            </Link>
+          )}
         </div>
       </header>
 

@@ -116,7 +116,7 @@ export default function StoreHero() {
             </Link>
             <button
               type="button"
-              onClick={openKira}
+              onClick={() => openKira()}
               className="hero-cta inline-flex items-center gap-2 rounded-full glass-card px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
             >
               <Sparkles className="size-4 text-kap-yellow" /> Ask Kira

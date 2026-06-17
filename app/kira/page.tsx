@@ -1,10 +1,7 @@
-import KiraExperience from "@/app/components/KiraExperience";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata = {
-  title: "Kira — your shopping companion",
-};
-
-// Standalone, full-screen Kira experience (the original chat-first surface).
+// The full-screen Kira experience moved back to the root route. Keep /kira
+// alive for old links and shared URLs.
 export default function KiraPage() {
-  return <KiraExperience />;
+  permanentRedirect("/");
 }

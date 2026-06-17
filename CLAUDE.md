@@ -27,7 +27,7 @@ Two automated test suites exist — see `docs/TESTING.md` for the full runbook.
 
 ## Architecture
 
-This is a single-page chat app. The entire UI lives in `app/page.tsx`. There is no routing beyond the one page and one API route.
+The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `app/components/KiraExperience.tsx`). The challenge brief explicitly demands an "immersive conversation as the main surface — not a tiny widget in a corner", so do not demote the chat. Secondary storefront surfaces: `/shop` (store home), `/shop/[slug]` (category), `/product/[id]` (detail) — all dark liquid-glass, sharing the chat's cart via `CartContext`. On store pages a `KiraDock` corner launcher opens the chat as a slide-over (`KiraExperience embedded`); the dock is hidden on `/`. `/kira` permanently redirects to `/`.
 
 **Data flow:**
 1. User message → `POST /api/chat` (`app/api/chat/route.ts`)

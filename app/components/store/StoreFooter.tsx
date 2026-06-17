@@ -38,7 +38,7 @@ export default function StoreFooter({ categories }: { categories: StoreCategory[
             </h4>
             <ul className="mt-4 space-y-2.5">
               <li>
-                <Link href="/kira" className="text-[13px] text-white/60 transition-colors hover:text-white">
+                <Link href="/" className="text-[13px] text-white/60 transition-colors hover:text-white">
                   Open Kira
                 </Link>
               </li>
