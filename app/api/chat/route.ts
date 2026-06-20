@@ -15,6 +15,7 @@ import type {
   CartItem,
   ChatRequest,
   CheckoutInfo,
+  DeliveryQuote,
   KiraProduct,
   LastOrder,
   TrackingItem,
@@ -383,6 +384,141 @@ function sse(t: string, v?: unknown): Uint8Array {
   );
 }
 
+const CATALOG_GUARD_INTENT_RE =
+  /\b(show|search|find|browse|buy|get|send|order|recommend|gift|present|cake|flower|rose|bouquet|chocolat|hamper|toy|fashion|cloth|dress|saree|electronic|phone|perfume|jewel|delivery|checkout|cart|tray|budget|under|below|max|price|lkr|rs\.?)\b/i;
+const CURRENCY_AMOUNT_RE = /\b(?:LKR|Rs\.?|රු)\s*([\d,]+(?:\.\d+)?)/gi;
+const BUDGET_CONTEXT_AMOUNT_RE =
+  /\b(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+(?:\.\d+)?)/i;
+
+function parseBudgetAmount(value?: string): number | undefined {
+  if (!value) return undefined;
+  const match =
+    value.match(BUDGET_CONTEXT_AMOUNT_RE) ??
+    value.match(/\b(?:lkr|rs\.?)\s*([\d,]+(?:\.\d+)?)/i) ??
+    value.match(/\b([\d,]{3,}(?:\.\d+)?)\b/);
+  const amount = match ? Number(match[1].replace(/,/g, "")) : undefined;
+  return amount && Number.isFinite(amount) && amount > 0 ? Math.round(amount) : undefined;
+}
+
+function extractCurrencyAmounts(text: string): number[] {
+  const amounts: number[] = [];
+  for (const match of text.matchAll(CURRENCY_AMOUNT_RE)) {
+    const amount = Number(match[1].replace(/,/g, ""));
+    if (Number.isFinite(amount) && amount > 0) amounts.push(Math.round(amount));
+  }
+  return amounts;
+}
+
+function isBudgetPhraseAroundAmount(text: string, amount: number): boolean {
+  const escaped = amount.toLocaleString("en-LK").replace(/,/g, "\\s*,?\\s*");
+  const plain = String(amount).split("").join("\\s*,?\\s*");
+  const amountPattern = `(?:${escaped}|${plain})`;
+  const budgetNear = new RegExp(
+    `(?:under|below|max(?:imum)?|budget|less than|up to|ceiling).{0,24}(?:LKR|Rs\\.?)?\\s*${amountPattern}|` +
+      `(?:LKR|Rs\\.?)?\\s*${amountPattern}.{0,24}(?:budget|limit|ceiling)`,
+    "i"
+  );
+  return budgetNear.test(text);
+}
+
+function shouldGuardCatalogText(
+  latestUserText: string,
+  toolsCalled: Set<string>
+): boolean {
+  return (
+    CATALOG_GUARD_INTENT_RE.test(latestUserText) ||
+    toolsCalled.has("kapruka_search_products") ||
+    toolsCalled.has("kapruka_get_product") ||
+    toolsCalled.has("kapruka_check_delivery") ||
+    toolsCalled.has("kapruka_create_order")
+  );
+}
+
+function safeCatalogAmounts({
+  products,
+  deliveryQuotes,
+  checkoutInfo,
+  latestUserText,
+  budget,
+}: {
+  products: KiraProduct[];
+  deliveryQuotes: DeliveryQuote[];
+  checkoutInfo?: CheckoutInfo;
+  latestUserText: string;
+  budget?: string;
+}): Set<number> {
+  const safe = new Set<number>();
+  for (const product of products) safe.add(Math.round(product.price));
+  for (const quote of deliveryQuotes) {
+    if (quote.fee !== undefined) safe.add(Math.round(quote.fee));
+  }
+  const summary = checkoutInfo?.summary;
+  for (const amount of [
+    summary?.itemsTotal,
+    summary?.deliveryFee,
+    summary?.addonsTotal,
+    summary?.grandTotal,
+    parseBudgetAmount(latestUserText),
+    parseBudgetAmount(budget),
+  ]) {
+    if (amount !== undefined && Number.isFinite(amount)) safe.add(Math.round(amount));
+  }
+  return safe;
+}
+
+function isUnsafeCatalogClaim({
+  text,
+  products,
+  deliveryQuotes,
+  checkoutInfo,
+  latestUserText,
+  budget,
+}: {
+  text: string;
+  products: KiraProduct[];
+  deliveryQuotes: DeliveryQuote[];
+  checkoutInfo?: CheckoutInfo;
+  latestUserText: string;
+  budget?: string;
+}): boolean {
+  if (!text.trim()) return false;
+  if (/₹/.test(text)) return true;
+
+  const amounts = extractCurrencyAmounts(text);
+  if (amounts.length > 0) {
+    const safe = safeCatalogAmounts({
+      products,
+      deliveryQuotes,
+      checkoutInfo,
+      latestUserText,
+      budget,
+    });
+    for (const amount of amounts) {
+      if (safe.has(amount)) continue;
+      if (isBudgetPhraseAroundAmount(text, amount)) continue;
+      return true;
+    }
+  }
+
+  const hasRealCatalogFact =
+    products.length > 0 || deliveryQuotes.length > 0 || checkoutInfo !== undefined;
+  const repeatedListingShape =
+    /\b(?:\d+[\).]|[-•])\s*[A-Z][^\n]{8,80}?(?:LKR|Rs\.?|priced|costs?|at)\b[\s\S]*\b(?:\d+[\).]|[-•])\s*[A-Z][^\n]{8,80}?(?:LKR|Rs\.?|priced|costs?|at)\b/i.test(
+      text
+    );
+  return !hasRealCatalogFact && repeatedListingShape;
+}
+
+function stripKnownProductNames(text: string, products: KiraProduct[]): string {
+  let stripped = text;
+  for (const product of products) {
+    const name = product.name?.trim();
+    if (!name) continue;
+    stripped = stripped.split(name).join("");
+  }
+  return stripped;
+}
+
 const TOOL_STEPS: Record<string, string> = {
   kapruka_search_products: "Searching Kapruka catalog",
   kapruka_list_categories: "Browsing categories",
@@ -404,7 +540,17 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts, lastOrder } = body;
+        const {
+          messages,
+          cart,
+          deliveryCity,
+          deliveryDate,
+          budget,
+          occasion,
+          recipient,
+          lastProducts,
+          lastOrder,
+        } = body;
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -440,6 +586,19 @@ export async function POST(req: NextRequest) {
         const deliveryDateContext = deliveryDate
           ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
           : "";
+        const budgetContext = budget
+          ? `\nBudget context: ${budget}${
+              parseBudgetAmount(budget)
+                ? ` — use max_price:${parseBudgetAmount(budget)} for product searches unless the user overrides it.`
+                : ""
+            }`
+          : "";
+        const occasionContext = occasion
+          ? `\nOccasion context: ${occasion} — use this to choose and explain fitting products.`
+          : "";
+        const recipientContext = recipient
+          ? `\nRecipient context: ${recipient} — use this to choose and explain fitting products.`
+          : "";
 
         const internationalContext = body.internationalMode
           ? "\n\nSender is overseas — quote LKR prices and approximate USD (LKR 300 ≈ USD 1). Reassure: Kapruka delivers islandwide; need recipient's Sri Lanka address."
@@ -458,6 +617,9 @@ export async function POST(req: NextRequest) {
             language,
             mcpClient,
             controller,
+          budget,
+          occasion,
+          recipient,
           })
         ) {
           controller.close();
@@ -603,7 +765,7 @@ export async function POST(req: NextRequest) {
             ? "\n\nIMPORTANT — LANGUAGE: You MUST respond entirely in Sinhala script (Unicode, U+0D80–U+0DFF). Every word of your response must be written in Sinhala Unicode characters. Do NOT use Latin script, Romanized Sinhala, or English in your response. You can understand input in any language or script — only your RESPONSES must be in Sinhala Unicode."
             : language === "ta"
             ? "\n\nIMPORTANT — LANGUAGE: You MUST respond primarily in Tamil script (Unicode, U+0B80–U+0BFF). Tamil Unicode characters must appear in every response — do not respond in pure English. For product names or individual words you cannot write in Tamil, you may include the English word; but frame the sentence in Tamil. NEVER use Sinhala Unicode (U+0D80–U+0DFF) — Sinhala and Tamil are completely different scripts. Example of acceptable format: 'Kapruka-இல் 3 options — stock-இல் உள்ளவை.'"
-            : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English or Tanglish. Tanglish means casual English mixed with ROMANIZED Sinhala/Tamil words only (e.g. 'aiyo', 'machang', 'amma', 'podi', 'nona') — NOT Unicode script. Under NO circumstances write Sinhala Unicode (U+0D80–U+0DFF) or Tamil Unicode (U+0B80–U+0BFF) characters, even if the user writes in those scripts. The selected language mode OVERRIDES the input script.";
+            : "\n\nIMPORTANT — LANGUAGE: You MUST respond in English or Tanglish. Tanglish means casual English mixed with ROMANIZED Sinhala/Tamil words only (e.g. 'aiyo', 'machang', 'amma', 'podi', 'nona'). Do not write Sinhala Unicode (U+0D80–U+0DFF) or Tamil Unicode (U+0B80–U+0BFF) in your own prose, even if the user writes in those scripts. Exception: exact Kapruka product names returned by tools may remain in their original Sinhala/Tamil Unicode script. The selected language mode OVERRIDES the input script.";
 
         // Authoritative per-request date. KIRA_SYSTEM_PROMPT bakes `new Date()` at
         // module-load time, which goes stale after a cold start; this line is
@@ -620,6 +782,9 @@ export async function POST(req: NextRequest) {
           lastProductsContext +
           deliveryContext +
           deliveryDateContext +
+          budgetContext +
+          occasionContext +
+          recipientContext +
           dateContext +
           internationalContext +
           langInstruction +
@@ -640,7 +805,7 @@ export async function POST(req: NextRequest) {
           if (lastIdx >= 0 && mappedRecent[lastIdx].role === "user") {
             mappedRecent[lastIdx] = {
               ...mappedRecent[lastIdx],
-              content: "[RESPOND IN ENGLISH/TANGLISH ONLY — NO SINHALA UNICODE, NO TAMIL UNICODE]\n" + mappedRecent[lastIdx].content,
+              content: "[RESPOND IN ENGLISH/TANGLISH PROSE ONLY — EXACT KAPRUKA PRODUCT NAMES MAY KEEP ORIGINAL SCRIPT]\n" + mappedRecent[lastIdx].content,
             };
           }
         }
@@ -652,6 +817,7 @@ export async function POST(req: NextRequest) {
 
         let finalText = "";
         const collectedProducts: KiraProduct[] = [];
+        const collectedDeliveryQuotes: DeliveryQuote[] = [];
         let checkoutInfo: CheckoutInfo | undefined;
         // Recipient / delivery / gift-message captured from the create_order call so the
         // lastOrder snapshot can pre-fill a reorder, not just re-show the items.
@@ -794,7 +960,10 @@ export async function POST(req: NextRequest) {
 
             if (toolName === "kapruka_check_delivery") {
               const deliveryInfo = extractDeliveryInfoFromMcp(resultContent);
-              if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+              if (deliveryInfo) {
+                collectedDeliveryQuotes.push(deliveryInfo);
+                controller.enqueue(sse("delivery", deliveryInfo));
+              }
             }
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
               const rawForLlm = extractProductsFromMcp(resultContent);
@@ -901,6 +1070,7 @@ export async function POST(req: NextRequest) {
           // or continue both loops independently.
           let rateExhausted = false;
           let failedGenHandled = false;
+          let responseHadUnsafeBufferedText = false;
 
           callLoop: while (true) {
             const isLastModel = modelIndex === MODELS.length - 1;
@@ -926,10 +1096,11 @@ export async function POST(req: NextRequest) {
               const sToolMap = new Map<number, { id: string; name: string; args: string }>();
               let sFinish = "";
               let sUsage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
-              // Lookahead buffer — hold the first HAL_LOOKAHEAD chars before committing
-              // tokens to SSE so the post-stream hallucination check can still fire.
+              const guardText = shouldGuardCatalogText(latestUserText, toolsCalledThisRequest);
+              // Guarded shopping/catalog turns buffer the whole text response until
+              // the stream completes, so post-tool hallucinated product/price claims
+              // can still be rejected instead of leaking after a short lookahead.
               const pendingBuf: string[] = [];
-              const HAL_LOOKAHEAD = 150;
 
               const groqStream = await getGroq().chat.completions.create({
                 model: MODELS[modelIndex],
@@ -952,22 +1123,11 @@ export async function POST(req: NextRequest) {
                 };
                 if (delta.content) {
                   sContent += delta.content;
-                  if (!streamedText) {
+                  if (guardText) {
                     pendingBuf.push(delta.content);
-                    // One-time lookahead check once we have enough chars.
-                    if (sContent.length >= HAL_LOOKAHEAD) {
-                      const earlyHal =
-                        /LKR\s*[\d,]+/.test(sContent) &&
-                        collectedProducts.length === 0 &&
-                        checkoutInfo === undefined &&
-                        hallucinationRetries < 1;
-                      if (!earlyHal) {
-                        for (const t of pendingBuf) controller.enqueue(sse("token", t));
-                        pendingBuf.length = 0;
-                        streamedText = true;
-                      }
-                      // else: keep buffering silently — post-loop hook fires the retry.
-                    }
+                  } else if (!streamedText) {
+                    controller.enqueue(sse("token", delta.content));
+                    streamedText = true;
                   } else {
                     controller.enqueue(sse("token", delta.content));
                   }
@@ -983,16 +1143,20 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              // Flush lookahead buffer if the completed response looks clean.
-              // If it still matches the hallucination pattern, leave the buffer
-              // unset so streamedText stays false and the post-loop hook can retry.
+              // Flush guarded response text only after the completed response
+              // validates against live products/delivery/checkout facts.
               if (pendingBuf.length > 0) {
-                const postHal =
-                  /LKR\s*[\d,]+/.test(sContent) &&
-                  collectedProducts.length === 0 &&
-                  checkoutInfo === undefined &&
-                  hallucinationRetries < 1;
-                if (!postHal) {
+                const unsafe = isUnsafeCatalogClaim({
+                  text: sContent,
+                  products: collectedProducts,
+                  deliveryQuotes: collectedDeliveryQuotes,
+                  checkoutInfo,
+                  latestUserText,
+                  budget,
+                });
+                if (unsafe) {
+                  responseHadUnsafeBufferedText = true;
+                } else {
                   for (const t of pendingBuf) controller.enqueue(sse("token", t));
                   pendingBuf.length = 0;
                   streamedText = true;
@@ -1152,30 +1316,42 @@ export async function POST(req: NextRequest) {
               .trim();
 
             // ── Hallucination stop-hook ───────────────────────────────────────
-            // Only fires when no tokens have been streamed yet — once tokens are
-            // on the wire we can't retract them, so skip correction in that case.
+            // Guarded catalog text is buffered until this validation passes, so
+            // post-tool unsafe price/product claims can still be retried even
+            // after earlier safe "checking..." prose was streamed.
+            const unsafeCatalogClaim = isUnsafeCatalogClaim({
+              text: finalText,
+              products: collectedProducts,
+              deliveryQuotes: collectedDeliveryQuotes,
+              checkoutInfo,
+              latestUserText,
+              budget,
+            });
             if (
-              !streamedText &&
+              (!streamedText || responseHadUnsafeBufferedText) &&
               finalText &&
-              /LKR\s*[\d,]+/.test(finalText) &&
-              collectedProducts.length === 0 &&
-              checkoutInfo === undefined &&
+              unsafeCatalogClaim &&
               round < MAX_TOOL_ROUNDS - 1 &&
               hallucinationRetries < 1
             ) {
               hallucinationRetries++;
-              streamedText = false; // reset so next round can stream afresh
+              // Preserve any previously-safe tokens, but the unsafe current
+              // response was not emitted because it was buffered.
               currentMessages.push({ role: "assistant", content: finalText });
               currentMessages.push({
                 role: "user",
                 content:
-                  "You mentioned LKR prices but haven't called " +
-                  "kapruka_search_products or kapruka_check_delivery yet this " +
-                  "turn. Do not quote any prices you haven't fetched from " +
-                  "Kapruka. Search now, then respond.",
+                  "You mentioned product/price/delivery facts that were not " +
+                  "verified by Kapruka tool results in this turn. Do not quote " +
+                  "any products, prices, fees, delivery dates, or availability " +
+                  "you have not fetched from Kapruka. Search/check now, then respond.",
               });
               finalText = "";
               continue; // retry with correction injected
+            }
+
+            if (responseHadUnsafeBufferedText && unsafeCatalogClaim) {
+              finalText = L("troubleConnecting", language);
             }
 
             break;
@@ -1251,11 +1427,12 @@ export async function POST(req: NextRequest) {
           const hasTamil   = TAMIL_RE.test(finalText);
           if (language === "en" && (hasSinhala || hasTamil)) {
             // Kapruka product names are often in Sinhala/Tamil script, so a small number
-            // of foreign-script chars in an EN reply is expected and correct. Only replace
-            // if foreign script makes up > 20% of the response — a clear language violation.
-            const sChars = (finalText.match(/[඀-෿]/g) ?? []).length;
-            const tChars = (finalText.match(/[஀-௿]/g) ?? []).length;
-            if ((sChars + tChars) / Math.max(finalText.length, 1) > 0.20) {
+            // of foreign-script chars in an EN reply is expected and correct.
+            // Strip known product names before calculating the prose ratio.
+            const proseOnly = stripKnownProductNames(finalText, collectedProducts);
+            const sChars = (proseOnly.match(/[඀-෿]/g) ?? []).length;
+            const tChars = (proseOnly.match(/[஀-௿]/g) ?? []).length;
+            if ((sChars + tChars) / Math.max(proseOnly.length, 1) > 0.20) {
               finalText = L("troubleConnecting", "en");
             }
           } else if (language === "si" && !hasSinhala) {
@@ -1375,6 +1552,9 @@ async function tryHandleDeterministicPrompt({
   language,
   mcpClient,
   controller,
+  budget,
+  occasion,
+  recipient,
 }: {
   text: string;
   messages: { role: string; content: string }[];
@@ -1386,6 +1566,9 @@ async function tryHandleDeterministicPrompt({
   language: string;
   mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
   controller: ReadableStreamDefaultController<Uint8Array>;
+  budget?: string;
+  occasion?: string;
+  recipient?: string;
 }): Promise<boolean> {
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
@@ -1531,9 +1714,11 @@ async function tryHandleDeterministicPrompt({
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
   const kiraJustAskedForOrderNumber = lastAssistantMsg.includes("order number") || lastAssistantMsg.includes("order_number") || lastAssistantMsg.includes("confirmation email");
   const looksLikeOrderNumber = /^[A-Z0-9]{5,20}$/i.test(trimmed.replace(/\s+/g, ""));
+  const TRACKING_VERB_RE = /\b(track|tracking|status|where(?:'s| is)|locate|find)\b/i;
+  const TRACKING_NOUN_RE = /\b(order|delivery|package|parcel|shipment)\b/i;
 
   const wantsTracking =
-    (lower.includes("track") && (lower.includes("order") || lower.includes("delivery"))) ||
+    (TRACKING_VERB_RE.test(lower) && TRACKING_NOUN_RE.test(lower)) ||
     (kiraJustAskedForOrderNumber && looksLikeOrderNumber);
   if (wantsTracking) {
     const orderNumber = extractOrderNumber(trimmed);
@@ -1660,6 +1845,53 @@ async function tryHandleDeterministicPrompt({
       controller.enqueue(sse("done"));
       return true;
     }
+  }
+
+  const CART_DELIVERY_RE =
+    /\b(check|refresh|confirm)\b.{0,24}\b(delivery|deliver)\b.{0,30}\b(cart|tray|basket|bag)\b|\b(cart|tray|basket|bag)\b.{0,30}\b(delivery|deliver)\b/i;
+  if (CART_DELIVERY_RE.test(lower)) {
+    if (cart.length === 0) {
+      await streamWords(controller, L("checkoutEmptyCart", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+    const city = extractCityHint(trimmed) ?? deliveryCity;
+    const date = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    if (!city) {
+      await streamWords(controller, "Tell me the delivery city and I'll check the live Kapruka fee for your tray.");
+      controller.enqueue(sse("done"));
+      return true;
+    }
+    const firstItem = cart[0];
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+    const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+      params: {
+        city,
+        product_id: firstItem.product.id,
+        ...(date ? { delivery_date: date } : {}),
+        response_format: "json",
+      },
+    });
+    const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+    if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    if (deliveryInfo?.fee !== undefined) {
+      await streamWords(
+        controller,
+        `Delivery to ${deliveryInfo.city} is LKR ${deliveryInfo.fee.toLocaleString("en-LK")}. Items are LKR ${subtotal.toLocaleString("en-LK")} — estimated total LKR ${(subtotal + deliveryInfo.fee).toLocaleString("en-LK")}.`
+      );
+    } else if (deliveryInfo) {
+      await streamWords(
+        controller,
+        deliveryInfo.available
+          ? `Delivery to ${deliveryInfo.city} looks available${date ? ` on ${date}` : ""}.`
+          : `Delivery to ${deliveryInfo.city} is not available for that date${deliveryInfo.nextAvailableDate ? ` — next available is ${deliveryInfo.nextAvailableDate}` : ""}.`
+      );
+    } else {
+      await streamWords(controller, "I couldn't read the live delivery quote for your tray. Try again in a moment?");
+    }
+    controller.enqueue(sse("done"));
+    return true;
   }
 
   // "Add it/that/the first one to cart" — emit addToCart event so the client
@@ -1881,43 +2113,79 @@ async function tryHandleDeterministicPrompt({
   // hasFamilyHint is intentionally NOT in the right-hand guard — a family term alone (no
   // budget/occasion/city) doesn't give us enough to search usefully.
   if ((GIFT_INTENT_RE.test(lower) || hasFamilyHint) && (hasBudgetHint || hasOccasionHint || hasCityHint)) {
-    const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
-    const giftMaxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+    const giftMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     const giftCityHint = extractCityHint(trimmed) ?? deliveryCity;
+    const giftDate = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const giftOccasion = extractOccasionHint(trimmed) ?? occasion;
+    const giftRecipient = extractRecipientHint(trimmed) ?? recipient;
 
-    controller.enqueue(sse("step", `Searching Kapruka for "gift"`));
-    const giftResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-      params: {
-        q: "gift",
-        limit: 6,
-        in_stock_only: true,
-        ...(giftMaxPrice ? { max_price: giftMaxPrice } : {}),
-        response_format: "json",
-      },
-    });
-    const giftProducts = dedupeProducts(extractProductsFromMcp(giftResult.content));
+    controller.enqueue(
+      sse("context", {
+        ...(giftMaxPrice ? { budget: `Under LKR ${giftMaxPrice.toLocaleString("en-LK")}` } : {}),
+        ...(giftCityHint ? { city: giftCityHint } : {}),
+        ...(giftDate ? { deliveryDate: giftDate } : {}),
+        ...(giftOccasion ? { occasion: giftOccasion } : {}),
+        ...(giftRecipient ? { recipient: giftRecipient } : {}),
+      })
+    );
 
-    if (giftCityHint && giftProducts[0]) {
+    const relationshipGift =
+      /\b(girlfriend|boyfriend|wife|husband|partner)\b/i.test(giftRecipient ?? trimmed);
+    const searchQueries =
+      giftOccasion?.toLowerCase().includes("birthday") && relationshipGift
+        ? ["flowers", "chocolate", "gift hamper", "cake"]
+        : ["gift", "chocolate", "flowers", "hamper", "cake"];
+    const giftProducts: KiraProduct[] = [];
+    for (const query of searchQueries) {
+      controller.enqueue(sse("step", `Searching Kapruka for "${query}"`));
+      const giftResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q: query,
+          limit: 6,
+          in_stock_only: true,
+          ...(giftMaxPrice ? { max_price: giftMaxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      giftProducts.push(...extractProductsFromMcp(giftResult.content));
+      if (dedupeProducts(giftProducts).length >= 6) break;
+    }
+    const dedupedGiftProducts = dedupeProducts(giftProducts).slice(0, 6);
+
+    if (giftCityHint && dedupedGiftProducts[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
       const giftCityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
         params: { query: giftCityHint, limit: 3, response_format: "json" },
       });
       const canonicalGiftCity = extractFirstCity(giftCityResult.content) ?? giftCityHint;
-      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
-      const giftDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
-        params: {
-          city: canonicalGiftCity,
-          product_id: giftProducts[0].id,
-          ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
-          response_format: "json",
-        },
-      });
-      const giftDelivery = extractDeliveryInfoFromMcp(giftDeliveryResult.content);
-      if (giftDelivery) controller.enqueue(sse("delivery", giftDelivery));
+      for (const product of dedupedGiftProducts.slice(0, 3)) {
+        controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+        const giftDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+          params: {
+            city: canonicalGiftCity,
+            product_id: product.id,
+            ...(giftDate ? { delivery_date: giftDate } : {}),
+            response_format: "json",
+          },
+        });
+        const giftDelivery = extractDeliveryInfoFromMcp(giftDeliveryResult.content);
+        if (giftDelivery) {
+          product.deliveryInfo = giftDelivery;
+          product.badges = buildReasonBadges(product, {
+            budgetAmount: giftMaxPrice,
+            occasion: giftOccasion,
+            recipient: giftRecipient,
+            city: canonicalGiftCity,
+            deliveryDate: giftDate,
+            deliveryInfo: giftDelivery,
+          });
+          if (product === dedupedGiftProducts[0]) controller.enqueue(sse("delivery", giftDelivery));
+        }
+      }
     }
 
     // If q:"gift" returned nothing, try common gift categories before giving up.
-    if (giftProducts.length === 0) {
+    if (dedupedGiftProducts.length === 0) {
       for (const fallbackQ of ["chocolate", "flowers", "hamper", "cake"]) {
         const fb = await callMcpTool(mcpClient, "kapruka_search_products", {
           params: {
@@ -1930,23 +2198,37 @@ async function tryHandleDeterministicPrompt({
         });
         const fbProducts = dedupeProducts(extractProductsFromMcp(fb.content));
         if (fbProducts.length > 0) {
-          giftProducts.push(...fbProducts);
+          dedupedGiftProducts.push(...fbProducts);
           break;
         }
       }
     }
 
-    if (giftProducts.length === 0) {
+    for (const product of dedupedGiftProducts) {
+      if (!product.badges?.length) {
+        product.badges = buildReasonBadges(product, {
+          budgetAmount: giftMaxPrice,
+          occasion: giftOccasion,
+          recipient: giftRecipient,
+          city: giftCityHint,
+          deliveryDate: giftDate,
+          deliveryInfo: product.deliveryInfo,
+        });
+      }
+    }
+
+    if (dedupedGiftProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: "gift" }));
     } else {
       const budgetText = giftMaxPrice ? ` under LKR ${giftMaxPrice.toLocaleString("en-LK")}` : "";
       const cityText = giftCityHint ? ` to ${giftCityHint}` : "";
-      const giftKey = giftProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+      const dateText = giftDate ? ` on ${giftDate}` : "";
+      const giftKey = dedupedGiftProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
       await streamWords(
         controller,
-        Lf(giftKey, language, { n: giftProducts.length, budget: budgetText, city: cityText, date: "" })
+        Lf(giftKey, language, { n: dedupedGiftProducts.length, budget: budgetText, city: cityText, date: dateText })
       );
-      controller.enqueue(sse("products", giftProducts));
+      controller.enqueue(sse("products", dedupedGiftProducts));
     }
     controller.enqueue(sse("done"));
     return true;
@@ -2119,6 +2401,7 @@ async function tryHandleDeterministicPrompt({
 
   const searchIntent = parseSearchIntent(trimmed);
   if (!searchIntent) return false;
+  const contextMaxPrice = searchIntent.maxPrice ?? parseBudgetAmount(budget);
 
   controller.enqueue(sse("step", `Searching Kapruka for "${searchIntent.query}"`));
   let products: KiraProduct[] = [];
@@ -2130,7 +2413,7 @@ async function tryHandleDeterministicPrompt({
         q: query,
         limit: 6,
         in_stock_only: true,
-        ...(searchIntent.maxPrice ? { max_price: searchIntent.maxPrice } : {}),
+        ...(contextMaxPrice ? { max_price: contextMaxPrice } : {}),
         ...(searchIntent.sort ? { sort: searchIntent.sort } : {}),
         response_format: "json",
       },
@@ -2180,8 +2463,8 @@ async function tryHandleDeterministicPrompt({
       Lf("searchNothingFound", language, { query: searchIntent.query })
     );
   } else {
-    const budgetText = searchIntent.maxPrice
-      ? ` under LKR ${searchIntent.maxPrice.toLocaleString("en-LK")}`
+    const budgetText = contextMaxPrice
+      ? ` under LKR ${contextMaxPrice.toLocaleString("en-LK")}`
       : "";
     const cityText = deliveryCityForMessage ? ` to ${deliveryCityForMessage}` : "";
     const dateText = effectiveDate ? ` on ${effectiveDate}` : "";
@@ -2385,6 +2668,55 @@ function fallbackQuery(query: string): string | undefined {
 function extractCityHint(text: string): string | undefined {
   const match = text.match(SERVER_CITY_REGEX);
   return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function extractOccasionHint(text: string): string | undefined {
+  const match = text.match(
+    /\b(birthday|anniversary|wedding|christmas|vesak|avurudu|father'?s\s+day|mother'?s\s+day|new\s+year|get well|congratulations)\b/i
+  );
+  if (!match) return undefined;
+  return match[1].replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function extractRecipientHint(text: string): string | undefined {
+  const match = text.match(
+    /\bfor\s+(?:my\s+)?(girlfriend|boyfriend|wife|husband|mum|mom|mother|amma|dad|father|thaththa|friend|sister|brother|daughter|son|boss|colleague|partner)\b/i
+  );
+  if (!match) return undefined;
+  return match[1].replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function extractRelativeDeliveryDate(text: string): string | undefined {
+  const lower = text.toLowerCase();
+  const d = new Date();
+  if (/\btomorrow\b/.test(lower)) {
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  if (/\btoday\b/.test(lower)) return d.toISOString().slice(0, 10);
+  return text.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
+}
+
+function buildReasonBadges(
+  product: KiraProduct,
+  context: {
+    budgetAmount?: number;
+    occasion?: string;
+    recipient?: string;
+    city?: string;
+    deliveryDate?: string;
+    deliveryInfo?: DeliveryQuote;
+  }
+): string[] {
+  const badges: string[] = [];
+  if (context.occasion) badges.push(`${context.occasion} fit`);
+  if (context.recipient) badges.push(`For ${context.recipient}`);
+  if (context.budgetAmount && product.price <= context.budgetAmount) badges.push("Under budget");
+  if (context.deliveryInfo?.perishable) badges.push("Fresh");
+  if (context.deliveryInfo?.available && context.city) badges.push(`${context.city} delivery`);
+  if (context.deliveryInfo?.available && context.deliveryDate) badges.push("Date ✓");
+  if (context.deliveryInfo?.available === false) badges.push("Next available");
+  return [...new Set(badges)].slice(0, 4);
 }
 
 function extractFirstCity(content: unknown): string | undefined {

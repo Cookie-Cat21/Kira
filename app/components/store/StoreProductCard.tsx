@@ -9,6 +9,8 @@ import { useCart } from "@/app/context/CartContext";
 import { categoryIcon, phClass, formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
+const PlaceholderIcon = categoryIcon();
+
 export default function StoreProductCard({
   product,
   categorySlug,
@@ -24,7 +26,6 @@ export default function StoreProductCard({
 
   const inCart = cart.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
-  const Icon = categoryIcon();
   const showImage = Boolean(product.image) && !imgError;
 
   function handleAdd(e: React.MouseEvent) {
@@ -65,7 +66,7 @@ export default function StoreProductCard({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <Icon className="size-10 text-white/30" />
+              <PlaceholderIcon className="size-10 text-white/30" />
             </div>
           )}
 
