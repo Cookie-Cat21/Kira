@@ -119,7 +119,7 @@ test.describe("Smoke", () => {
   test("commerce rail chips are editable", async ({ page }) => {
     await expect(page.getByText("Gift Brief")).toBeVisible();
     await page.getByRole("button", { name: /Budget/i }).click();
-    await page.getByPlaceholder("Budget").fill("Under LKR 12,000");
+    await page.getByRole("textbox", { name: "Budget", exact: true }).fill("Under LKR 12,000");
     await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: /Under LKR 12,000/i })).toBeVisible();
   });
