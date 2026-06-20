@@ -742,4 +742,48 @@ export const TESTS = [
     ],
     notes: "Global shop coming-soon message",
   }),
+  test({
+    id: 63,
+    name: "TRACK: package noun asks for order number",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "track my package" }],
+    checks: [
+      notEmpty,
+      { fn: "textMatches", args: [/order number|confirmation email/i] },
+    ],
+    notes: "Tracking intent includes package",
+  }),
+  test({
+    id: 64,
+    name: "TRACK: parcel with reference",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "track parcel KP12345" }],
+    checks: [notEmpty],
+    notes: "Tracking intent includes parcel",
+  }),
+  test({
+    id: 65,
+    name: "TRACK: shipment with numeric reference",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "where is my shipment 10234567" }],
+    checks: [notEmpty],
+    notes: "Tracking intent includes shipment and numeric-only references",
+  }),
+  test({
+    id: 66,
+    name: "DEMO: birthday gift girlfriend Colombo tomorrow under budget",
+    group: "feature",
+    subgroup: "demo",
+    messages: [
+      {
+        role: "user",
+        content: "I need a birthday gift for my girlfriend in Colombo tomorrow under Rs. 12,000.",
+      },
+    ],
+    checks: [notEmpty, eventHasProducts, noHallucinatedProducts],
+    notes: "Primary challenge demo path should return real product cards without unnecessary clarifying questions",
+  }),
 ];
