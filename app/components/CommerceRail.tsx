@@ -172,7 +172,7 @@ function TextChip({
         className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1"
         style={{ background: styles.full, border: `1px solid ${styles.border}` }}
       >
-        <Icon className="size-3 shrink-0" style={{ color: styles.text }} />
+        <Icon className="size-3 shrink-0" />
         <input
           ref={inputRef}
           value={draft}
