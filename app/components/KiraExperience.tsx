@@ -151,6 +151,14 @@ function parseBudgetChip(text: string): string | undefined {
   return `Under LKR ${amount.toLocaleString("en-LK")}`;
 }
 
+function parseBudgetAmountFromChip(text?: string): number | undefined {
+  if (!text) return undefined;
+  const match = text.match(/\b([\d,]{3,})\b/);
+  if (!match) return undefined;
+  const amount = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
 function parseOccasionChip(text: string): string | undefined {
   const match = text.match(
     /\b(birthday|anniversary|wedding|christmas|vesak|avurudu|father'?s\s+day|mother'?s\s+day|get well|congratulations)\b/i
@@ -867,6 +875,7 @@ export default function KiraExperience({
   const estimatedTotal =
     latestDeliveryInfo?.fee !== undefined ? cartSubtotal + latestDeliveryInfo.fee : undefined;
   const canRetryLastPrompt = !!lastUserPrompt && !isLoading;
+  const budgetAmount = parseBudgetAmountFromChip(budget);
   const commerceContext: CommerceContext = {
     city: deliveryCity,
     deliveryDate,
@@ -1128,6 +1137,7 @@ export default function KiraExperience({
                   currency={cartCurrency}
                   deliveryFee={latestDeliveryInfo?.fee}
                   estimatedTotal={estimatedTotal}
+                  budgetAmount={budgetAmount}
                   onCheckout={() => setCheckoutOpen(true)}
                   onCheckDelivery={() =>
                     sendMessage(
@@ -1200,6 +1210,7 @@ export default function KiraExperience({
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
+        initialDelivery={{ city: deliveryCity, date: deliveryDate }}
       />
     </div>
   );
@@ -1318,6 +1329,7 @@ function StickyOrderSummary({
   subtotal,
   deliveryFee,
   estimatedTotal,
+  budgetAmount,
   currency,
   onCheckout,
   onCheckDelivery,
@@ -1329,6 +1341,7 @@ function StickyOrderSummary({
   subtotal: number;
   deliveryFee?: number;
   estimatedTotal?: number;
+  budgetAmount?: number;
   currency: string;
   onCheckout: () => void;
   onCheckDelivery: () => void;
@@ -1360,6 +1373,11 @@ function StickyOrderSummary({
             {estimatedTotal !== undefined && (
               <p className="font-semibold text-kap-yellow">
                 Est. total: {formatMoney(estimatedTotal, currency)}
+              </p>
+            )}
+            {budgetAmount !== undefined && subtotal > budgetAmount && (
+              <p className="font-semibold text-amber-300">
+                Over budget by {formatMoney(subtotal - budgetAmount, currency)}
               </p>
             )}
           </div>

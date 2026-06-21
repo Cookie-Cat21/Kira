@@ -2223,11 +2223,24 @@ async function tryHandleDeterministicPrompt({
       const budgetText = giftMaxPrice ? ` under LKR ${giftMaxPrice.toLocaleString("en-LK")}` : "";
       const cityText = giftCityHint ? ` to ${giftCityHint}` : "";
       const dateText = giftDate ? ` on ${giftDate}` : "";
-      const giftKey = dedupedGiftProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
-      await streamWords(
-        controller,
-        Lf(giftKey, language, { n: dedupedGiftProducts.length, budget: budgetText, city: cityText, date: dateText })
+      const checkedDeliveries = dedupedGiftProducts
+        .map((product) => product.deliveryInfo)
+        .filter((info): info is DeliveryQuote => Boolean(info));
+      const hasUnavailableForRequestedDate = checkedDeliveries.some(
+        (info) => info.available === false
       );
+      if (hasUnavailableForRequestedDate && giftCityHint && giftDate) {
+        await streamWords(
+          controller,
+          `Here are ${dedupedGiftProducts.length} real Kapruka picks${budgetText}${cityText}. Delivery badges show the exact date confidence — some may need the next available slot after ${giftDate}.`
+        );
+      } else {
+        const giftKey = dedupedGiftProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+        await streamWords(
+          controller,
+          Lf(giftKey, language, { n: dedupedGiftProducts.length, budget: budgetText, city: cityText, date: dateText })
+        );
+      }
       controller.enqueue(sse("products", dedupedGiftProducts));
     }
     controller.enqueue(sse("done"));

@@ -48,12 +48,17 @@ interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
   payLink?: string;
+  initialDelivery?: {
+    city?: string;
+    date?: string;
+  };
 }
 
 export default function CheckoutModal({
   open,
   onClose,
   payLink,
+  initialDelivery,
 }: CheckoutModalProps) {
   const { cart, cartTotal, clearCart, payLink: contextPayLink } = useCart();
   const prefersReduced = useReducedMotion();
@@ -62,9 +67,9 @@ export default function CheckoutModal({
   const [delivery, setDelivery] = useState({
     name: "",
     phone: "",
-    city: "",
+    city: initialDelivery?.city ?? "",
     address: "",
-    date: getTomorrowIsoDate(),
+    date: initialDelivery?.date ?? getTomorrowIsoDate(),
   });
   const [giftMessage, setGiftMessage] = useState("");
   const [senderName, setSenderName] = useState("");
@@ -73,6 +78,18 @@ export default function CheckoutModal({
   const [modalCheckoutInfo, setModalCheckoutInfo] = useState<CheckoutInfo | undefined>();
   const checkoutUrl = modalCheckoutInfo?.checkoutUrl ?? payLink ?? contextPayLink;
   const stepIndex = STEPS.indexOf(step);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => {
+      setDelivery((current) => ({
+        ...current,
+        city: current.city || initialDelivery?.city || "",
+        date: initialDelivery?.date || current.date || getTomorrowIsoDate(),
+      }));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open, initialDelivery?.city, initialDelivery?.date]);
 
   // Focus trap — keep keyboard focus inside the modal
   useEffect(() => {
@@ -113,6 +130,11 @@ export default function CheckoutModal({
     setModalCheckoutInfo(undefined);
     setGiftMessage("");
     setSenderName("");
+    setDelivery((current) => ({
+      ...current,
+      city: initialDelivery?.city ?? "",
+      date: initialDelivery?.date ?? getTomorrowIsoDate(),
+    }));
     onClose();
   }
 
