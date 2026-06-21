@@ -10,6 +10,8 @@ import { useKiraDock } from "@/app/context/KiraDockContext";
 import { categoryIcon, formatLKR, phClass } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
+const PlaceholderIcon = categoryIcon();
+
 export default function ProductDetailClient({
   product,
 }: {
@@ -22,7 +24,6 @@ export default function ProductDetailClient({
 
   const inCart = cart.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
-  const Icon = categoryIcon();
   const hero = product.images?.[0] ?? product.image;
   const showImage = Boolean(hero) && !imgError;
   const discount =
@@ -87,7 +88,7 @@ export default function ProductDetailClient({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <Icon className="size-20 text-white/25" />
+              <PlaceholderIcon className="size-20 text-white/25" />
             </div>
           )}
           {discount > 0 && (

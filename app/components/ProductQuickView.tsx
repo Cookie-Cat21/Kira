@@ -100,6 +100,8 @@ export default function ProductQuickView({
         category: display.category,
         url: display.url,
         inStock: selectedVariant.inStock ?? display.inStock,
+        badges: product.badges,
+        deliveryInfo: product.deliveryInfo,
       }
     : product;
   const inCart = cart.some((item) => item.product.id === activeProduct.id);
@@ -201,6 +203,18 @@ export default function ProductQuickView({
                   <p className="text-sm text-kira-text-2 leading-relaxed mt-2">
                     {display.summary}
                   </p>
+                )}
+                {product.badges && product.badges.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {product.badges.slice(0, 4).map((badge) => (
+                      <span
+                        key={badge}
+                        className="rounded-full border border-kap-purple/15 bg-kap-purple/10 px-2 py-0.5 text-[10px] font-semibold text-kap-purple"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
 

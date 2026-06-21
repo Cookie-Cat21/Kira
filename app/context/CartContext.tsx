@@ -33,6 +33,10 @@ interface CartContextValue {
   cartTotal: number;
   isOpen: boolean;
   payLink?: string;
+  checkoutDefaults?: {
+    city?: string;
+    date?: string;
+  };
   openCart: () => void;
   closeCart: () => void;
   addToCart: (product: KiraProduct) => void;
@@ -40,6 +44,7 @@ interface CartContextValue {
   updateQty: (productId: string, qty: number) => void;
   clearCart: () => void;
   setPayLink: (payLink?: string) => void;
+  setCheckoutDefaults: (defaults: { city?: string; date?: string }) => void;
   triggerFly: (rect: DOMRect, imageUrl: string) => void;
   cartButtonRef: RefObject<HTMLButtonElement | null>;
   bagControls: ReturnType<typeof useAnimation>;
@@ -119,6 +124,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartHydrated, setCartHydrated] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [payLink, setPayLink] = useState<string | undefined>();
+  const [checkoutDefaults, setCheckoutDefaults] = useState<
+    { city?: string; date?: string } | undefined
+  >();
   const [flyItems, setFlyItems] = useState<FlyItemData[]>([]);
   const flyCounter = useRef(0);
   const cartButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -234,6 +242,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cartTotal,
       isOpen,
       payLink,
+      checkoutDefaults,
       openCart,
       closeCart,
       addToCart,
@@ -241,6 +250,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateQty,
       clearCart,
       setPayLink,
+      setCheckoutDefaults,
       triggerFly,
       cartButtonRef,
       bagControls,
@@ -251,6 +261,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cart,
       cartCount,
       cartTotal,
+      checkoutDefaults,
       clearCart,
       closeCart,
       isOpen,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { MapPin, Calendar, X, Sparkles, User, Wallet } from "lucide-react";
+import { MapPin, Calendar, X, Sparkles, User, Wallet, ShoppingBag } from "lucide-react";
+import type { ComponentType } from "react";
+import { getColomboTodayIso } from "@/lib/colombo-date";
 
 export interface CommerceContext {
   city?: string;
@@ -10,6 +12,8 @@ export interface CommerceContext {
   occasion?: string;
   recipient?: string;
 }
+
+type ChipIcon = ComponentType<{ className?: string }>;
 
 // ── City chip ─────────────────────────────────────────────────────────────────
 
@@ -101,6 +105,129 @@ function CityChip({
   );
 }
 
+// ── Generic editable text chip ────────────────────────────────────────────────
+
+function TextChip({
+  icon: Icon,
+  value,
+  placeholder,
+  title,
+  onSet,
+  onClear,
+  tone = "purple",
+}: {
+  icon: ChipIcon;
+  value?: string;
+  placeholder: string;
+  title: string;
+  onSet: (v: string) => void;
+  onClear: () => void;
+  tone?: "purple" | "yellow" | "white";
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }
+  }, [editing]);
+
+  const styles =
+    tone === "yellow"
+      ? {
+          full: "rgba(248,218,8,0.12)",
+          text: "rgba(248,218,8,0.85)",
+          border: "rgba(248,218,8,0.2)",
+        }
+      : tone === "white"
+      ? {
+          full: "rgba(255,255,255,0.07)",
+          text: "rgba(255,255,255,0.65)",
+          border: "rgba(255,255,255,0.1)",
+        }
+      : {
+          full: "rgba(167,139,250,0.12)",
+          text: "rgba(196,181,253,0.9)",
+          border: "rgba(167,139,250,0.2)",
+        };
+
+  function startEditing() {
+    setDraft(value ?? "");
+    setEditing(true);
+  }
+
+  function commit() {
+    const next = draft.trim();
+    if (next) onSet(next);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div
+        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1"
+        style={{ background: styles.full, border: `1px solid ${styles.border}` }}
+      >
+        <Icon className="size-3 shrink-0" />
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={commit}
+          className="w-28 bg-transparent text-[11px] font-medium text-white/90 outline-none placeholder:text-white/30"
+          placeholder={placeholder}
+        />
+      </div>
+    );
+  }
+
+  if (value) {
+    return (
+      <div
+        className="flex shrink-0 items-center rounded-lg text-[11px] font-semibold"
+        style={{ background: styles.full, color: styles.text, border: `1px solid ${styles.border}` }}
+      >
+        <button
+          onClick={startEditing}
+          title={title}
+          className="flex max-w-[11rem] items-center gap-1.5 truncate px-2.5 py-1 hover:bg-white/5"
+        >
+          <Icon className="size-3 shrink-0" />
+          <span className="truncate">{value}</span>
+        </button>
+        <button
+          onClick={onClear}
+          aria-label={`Clear ${placeholder}`}
+          className="flex size-6 items-center justify-center border-l border-white/10 hover:bg-white/5"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={startEditing}
+      title={title}
+      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
+      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
+    >
+      <Icon className="size-3 shrink-0" />
+      <span>{placeholder}</span>
+    </button>
+  );
+}
+
 // ── Date chip ─────────────────────────────────────────────────────────────────
 
 function DateChip({
@@ -113,7 +240,7 @@ function DateChip({
   onClear: () => void;
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const today = new Date().toISOString().split("T")[0];
+  const today = getColomboTodayIso();
 
   const formatted = deliveryDate
     ? new Date(deliveryDate + "T12:00:00").toLocaleDateString("en-GB", {
@@ -191,9 +318,24 @@ function DateChip({
 interface CommerceRailProps {
   context: CommerceContext;
   onChange: (updates: Partial<CommerceContext>) => void;
+  cartCount?: number;
+  cartTotal?: number;
+  onOpenCart?: () => void;
 }
 
-export default function CommerceRail({ context, onChange }: CommerceRailProps) {
+const lkrFormatter = new Intl.NumberFormat("en-LK", {
+  style: "currency",
+  currency: "LKR",
+  maximumFractionDigits: 0,
+});
+
+export default function CommerceRail({
+  context,
+  onChange,
+  cartCount = 0,
+  cartTotal = 0,
+  onOpenCart,
+}: CommerceRailProps) {
   const { city, deliveryDate, budget, occasion, recipient } = context;
 
   return (
@@ -213,23 +355,49 @@ export default function CommerceRail({ context, onChange }: CommerceRailProps) {
           onClear={() => onChange({ deliveryDate: undefined })}
         />
 
-        {budget && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(248,218,8,0.12)", color: "rgba(248,218,8,0.85)", border: "1px solid rgba(248,218,8,0.2)" }}>
-            <Wallet className="size-3" />
-            {budget}
-          </div>
-        )}
-        {occasion && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(167,139,250,0.12)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(167,139,250,0.2)" }}>
-            <Sparkles className="size-3 shrink-0" />
-            {occasion}
-          </div>
-        )}
-        {recipient && (
-          <div className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <User className="size-3 shrink-0" />
-            {recipient}
-          </div>
+        <TextChip
+          icon={Wallet}
+          value={budget}
+          placeholder="Budget"
+          title="Set budget"
+          tone="yellow"
+          onSet={(v) => onChange({ budget: v })}
+          onClear={() => onChange({ budget: undefined })}
+        />
+        <TextChip
+          icon={Sparkles}
+          value={occasion}
+          placeholder="Occasion"
+          title="Set occasion"
+          onSet={(v) => onChange({ occasion: v })}
+          onClear={() => onChange({ occasion: undefined })}
+        />
+        <TextChip
+          icon={User}
+          value={recipient}
+          placeholder="Recipient"
+          title="Set recipient"
+          tone="white"
+          onSet={(v) => onChange({ recipient: v })}
+          onClear={() => onChange({ recipient: undefined })}
+        />
+        {onOpenCart && (
+          <button
+            type="button"
+            onClick={onOpenCart}
+            title="Open gift tray"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:text-white"
+            style={{
+              background: cartCount > 0 ? "rgba(248,218,8,0.12)" : "rgba(255,255,255,0.05)",
+              color: cartCount > 0 ? "rgba(248,218,8,0.85)" : "rgba(255,255,255,0.42)",
+              border: cartCount > 0 ? "1px solid rgba(248,218,8,0.2)" : "1px dashed rgba(255,255,255,0.15)",
+            }}
+          >
+            <ShoppingBag className="size-3 shrink-0" />
+            {cartCount > 0
+              ? `${cartCount} · ${lkrFormatter.format(cartTotal)}`
+              : "Tray"}
+          </button>
         )}
       </div>
     </div>
