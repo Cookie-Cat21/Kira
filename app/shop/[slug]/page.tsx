@@ -44,18 +44,18 @@ export default async function CategoryPage({
   if (!category) notFound();
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
       <StoreNav categories={categories} />
       <TrustBar />
       <main className="mx-auto w-full max-w-[1280px] px-5 pb-12 pt-12 sm:px-8">
         <div className="spotlight pointer-events-none absolute inset-x-0 top-14 h-64" />
         <header className="relative mb-10">
-          <p className="text-sm font-medium text-kap-yellow/80">Kapruka</p>
-          <h1 className="display-hero mt-2 text-4xl text-white sm:text-5xl">
+          <p className="text-[15px] font-medium text-kira-text-2">Kapruka</p>
+          <h1 className="display-hero mt-2 text-4xl text-kira-text sm:text-5xl">
             {category.name}
           </h1>
           {category.blurb && (
-            <p className="mt-3 max-w-lg text-[15px] text-white/50">{category.blurb}</p>
+            <p className="mt-3 max-w-lg text-[17px] text-kira-text-2">{category.blurb}</p>
           )}
         </header>
 

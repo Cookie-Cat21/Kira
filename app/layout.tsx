@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, Noto_Sans_Sinhala } from "next/font/google";
+import { DM_Serif_Display, Noto_Sans_Sinhala, Geist } from "next/font/google";
 import CartDrawer from "./components/CartDrawer";
-import FloatingCartButton from "./components/FloatingCartButton";
 import KiraDock from "./components/store/KiraDock";
 import { CartProvider } from "./context/CartContext";
 import { KiraDockProvider } from "./context/KiraDockContext";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
@@ -44,15 +47,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerif.variable} ${notoSinhala.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", dmSerif.variable, notoSinhala.variable, "font-sans", geist.variable)}
     >
       <body className="h-full font-sans">
         <CartProvider>
           <KiraDockProvider>
             <CartDrawer />
-            <FloatingCartButton />
             {children}
             <KiraDock />
+            <Toaster position="top-center" richColors />
           </KiraDockProvider>
         </CartProvider>
       </body>

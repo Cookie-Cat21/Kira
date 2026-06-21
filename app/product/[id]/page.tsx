@@ -40,7 +40,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
       <StoreNav categories={categories} />
       <main className="relative">
         <ProductDetailClient product={product} />

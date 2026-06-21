@@ -79,11 +79,11 @@ export default function StoreProductCard({
 
         {/* Body */}
         <div className="flex flex-1 flex-col gap-1 p-3.5">
-          <h3 className="line-clamp-2 text-[13.5px] font-medium leading-snug text-white/90">
+          <h3 className="line-clamp-2 text-[15px] font-medium leading-snug text-kira-text">
             {product.name}
           </h3>
           <div className="mt-auto flex items-end justify-between pt-2">
-            <span className="text-[15px] font-semibold tracking-tight text-white">
+            <span className="text-[15px] font-semibold tracking-tight text-kira-text">
               {formatLKR(product.price, product.currency)}
             </span>
 
@@ -92,30 +92,30 @@ export default function StoreProductCard({
                 type="button"
                 onClick={handleAdd}
                 aria-label={`Add ${product.name} to cart`}
-                className="flex size-8 items-center justify-center rounded-full bg-white/10 text-white/90 transition-all hover:bg-kap-purple hover:text-white active:scale-90"
+                className="flex size-11 items-center justify-center rounded-full bg-kap-purple text-white transition-colors hover:bg-kap-purple/90 active:scale-95"
               >
                 <Plus className="size-4" />
               </button>
             ) : (
-              <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-1 py-1">
+              <div className="flex items-center gap-1 rounded-full border border-kira-border bg-[#f5f5f7] px-1 py-1">
                 <button
                   type="button"
                   onClick={(e) => step(e, qty - 1)}
                   aria-label="Decrease quantity"
-                  className="flex size-6 items-center justify-center rounded-full text-white/80 hover:bg-white/15 active:scale-90"
+                  className="flex size-9 items-center justify-center rounded-full text-kira-text hover:bg-white"
                 >
-                  <Minus className="size-3" />
+                  <Minus className="size-4" />
                 </button>
-                <span className="min-w-4 text-center text-xs font-semibold text-white">
+                <span className="min-w-5 text-center text-sm font-semibold text-kira-text">
                   {qty}
                 </span>
                 <button
                   type="button"
                   onClick={(e) => step(e, qty + 1)}
                   aria-label="Increase quantity"
-                  className="flex size-6 items-center justify-center rounded-full text-white/80 hover:bg-white/15 active:scale-90"
+                  className="flex size-9 items-center justify-center rounded-full text-kira-text hover:bg-white"
                 >
-                  <Plus className="size-3" />
+                  <Plus className="size-4" />
                 </button>
               </div>
             )}
@@ -123,7 +123,7 @@ export default function StoreProductCard({
         </div>
       </Link>
       {qty > 0 && (
-        <div className="flex items-center justify-center gap-1 border-t border-white/8 bg-kira-leaf/10 py-1 text-[11px] font-medium text-kira-leaf">
+        <div className="flex items-center justify-center gap-1 border-t border-kira-border bg-emerald-50 py-2 text-[13px] font-medium text-emerald-700">
           <Check className="size-3" /> In your bag
         </div>
       )}

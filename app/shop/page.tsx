@@ -27,7 +27,7 @@ export default async function ShopHomePage() {
   const [categories, rails] = await Promise.all([getCategories(), getRails()]);
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
       <StoreNav categories={categories} />
       <TrustBar />
 
@@ -55,10 +55,10 @@ export default async function ShopHomePage() {
         {/* 4. Categories — secondary, horizontal scroll (not a wall) */}
         <section className="mx-auto mt-24 w-full max-w-[1280px] px-5 sm:px-8">
           <Reveal className="mb-5">
-            <h2 className="display-hero text-2xl text-white sm:text-3xl">
+            <h2 className="display-hero text-2xl text-kira-text sm:text-3xl">
               Or browse by department
             </h2>
-            <p className="mt-1 text-sm text-white/45">
+            <p className="mt-1 text-[15px] text-kira-text-2">
               Kapruka&apos;s full catalog — when you know what you want.
             </p>
           </Reveal>

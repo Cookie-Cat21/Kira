@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, ShoppingBag, Sparkles, X } from "lucide-react";
+import { Search, ShoppingBag, X } from "lucide-react";
 import type { KiraProduct } from "@/types";
 import type { StoreCategory } from "@/types/store";
 import { useCart } from "@/app/context/CartContext";
 import { useKiraDock } from "@/app/context/KiraDockContext";
+import { Button } from "@/components/ui/button";
 import { formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
@@ -63,18 +64,11 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
     <header
       className={cn(
         "sticky top-0 z-[80] transition-all duration-300",
-        scrolled ? "liquid-glass-nav" : "bg-transparent"
+        scrolled ? "store-nav" : "bg-[#f5f5f7]/80"
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center gap-4 px-5 sm:px-8">
-        {/* Brand */}
-        <Link
-          href="/shop"
-          className={cn(
-            "flex shrink-0 items-center gap-2 transition-opacity duration-300",
-            scrolled ? "opacity-100" : "opacity-85"
-          )}
-        >
+      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-4 px-5 sm:px-8">
+        <Link href="/shop" className="flex shrink-0 items-center">
           <Image
             src="/kapruka-logo.svg"
             alt="Kapruka"
@@ -85,23 +79,16 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
           />
         </Link>
 
-        {/* Categories */}
         <nav className="ml-2 hidden items-center gap-1 lg:flex">
           <Link
             href="/shop"
-            className={cn(
-              "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
-              scrolled ? "text-white/70" : "text-white/45"
-            )}
+            className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
           >
             Gifts
           </Link>
           <Link
             href="/track"
-            className={cn(
-              "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
-              scrolled ? "text-white/70" : "text-white/45"
-            )}
+            className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
           >
             Track
           </Link>
@@ -109,10 +96,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
             <Link
               key={c.slug}
               href={`/shop/${c.slug}`}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
-                scrolled ? "text-white/70" : "text-white/45"
-              )}
+              className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
             >
               {c.name}
             </Link>
@@ -120,35 +104,33 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Ask Kira */}
-          <button
+          <Button
             type="button"
+            variant="default"
+            className="hidden h-11 rounded-full bg-kap-purple px-5 text-[15px] font-semibold hover:bg-kap-purple/90 sm:inline-flex"
             onClick={() => openKira()}
-            className="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_4px_20px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.03] active:scale-95 sm:flex"
           >
-            <Sparkles className="size-3.5" /> Ask Kira
-          </button>
+            Ask Kira
+          </Button>
 
-          {/* Search */}
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
             aria-label="Search"
-            className="flex size-9 items-center justify-center rounded-full glass-chip text-white/80"
+            className="flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text-2 transition-colors hover:bg-[#f5f5f7]"
           >
-            {searchOpen ? <X className="size-4" /> : <Search className="size-4" />}
+            {searchOpen ? <X className="size-5" /> : <Search className="size-5" />}
           </button>
 
-          {/* Cart */}
           <button
             type="button"
             onClick={openCart}
             aria-label={`Open bag, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-            className="relative flex size-9 items-center justify-center rounded-full glass-chip text-white/90"
+            className="relative flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text transition-colors hover:bg-[#f5f5f7]"
           >
-            <ShoppingBag className="size-4" />
+            <ShoppingBag className="size-5" />
             {cartCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-kap-yellow px-1 text-[10px] font-bold text-kap-purple">
+              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-kap-yellow px-1 text-[10px] font-bold text-kap-purple">
                 {cartCount}
               </span>
             )}
@@ -156,20 +138,19 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
         </div>
       </div>
 
-      {/* Search panel */}
       {searchOpen && (
-        <div className="liquid-glass-nav border-t border-white/8">
+        <div className="store-nav border-t border-kira-border">
           <div className="mx-auto w-full max-w-[1280px] px-5 py-4 sm:px-8">
             <div className="glass-input flex items-center gap-3 rounded-xl px-4 py-3">
-              <Search className="size-4 shrink-0 text-white/40" />
+              <Search className="size-4 shrink-0 text-kira-muted" />
               <input
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search cakes, flowers, gifts…"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                className="w-full bg-transparent text-[17px] text-kira-text outline-none placeholder:text-kira-muted"
               />
-              {searching && <span className="text-[11px] text-white/40">…</span>}
+              {searching && <span className="text-[13px] text-kira-muted">…</span>}
             </div>
 
             {results.length > 0 && (
@@ -179,10 +160,10 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
                     key={p.id}
                     href={`/product/${p.id}`}
                     onClick={() => setSearchOpen(false)}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-white/6"
+                    className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-black/5"
                   >
-                    <span className="truncate text-sm text-white/85">{p.name}</span>
-                    <span className="ml-3 shrink-0 text-xs font-semibold text-white/55">
+                    <span className="truncate text-[15px] text-kira-text">{p.name}</span>
+                    <span className="ml-3 shrink-0 text-[13px] font-semibold text-kira-text-2">
                       {formatLKR(p.price, p.currency)}
                     </span>
                   </Link>
@@ -190,8 +171,18 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
               </div>
             )}
             {q.trim() && !searching && results.length === 0 && (
-              <p className="mt-3 px-1 text-sm text-white/40">
-                No matches — try asking Kira instead.
+              <p className="mt-3 px-1 text-[15px] text-kira-text-2">
+                No matches.{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-kap-purple underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setSearchOpen(false);
+                    openKira({ prompt: `Find "${q.trim()}" on Kapruka` });
+                  }}
+                >
+                  Ask Kira instead
+                </button>
               </p>
             )}
           </div>

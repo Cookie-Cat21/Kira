@@ -287,14 +287,7 @@ export default function ChatMessage({
   if (!isKira) {
     return (
       <div className="flex justify-end mb-3 animate-fade-up">
-        <div
-          className="max-w-[75%] rounded-2xl rounded-br-sm px-4 py-2.5 text-sm leading-relaxed text-white"
-          style={{
-            background: "linear-gradient(135deg, rgba(64,41,112,0.95), rgba(90,55,160,0.95))",
-            border: "1px solid rgba(148,100,255,0.3)",
-            boxShadow: "0 4px 24px rgba(64,41,112,0.4)",
-          }}
-        >
+        <div className="max-w-[75%] rounded-2xl rounded-br-md bg-kap-purple px-4 py-3 text-[17px] leading-relaxed text-white">
           {message.content}
         </div>
       </div>
@@ -304,14 +297,7 @@ export default function ChatMessage({
   return (
     <div className="flex items-end gap-2.5 mb-4 animate-fade-up">
       {/* Avatar */}
-      <div
-        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-        style={{
-          background: "rgba(64,41,112,0.5)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(248,218,8,0.25)",
-        }}
-      >
+      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-kira-border bg-white">
         <Image
           src="/kira-logo.svg"
           alt="Kira"
@@ -327,19 +313,13 @@ export default function ChatMessage({
         {message.content && (
           <div
             className={cn(
-              "rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed",
+              "rounded-2xl rounded-tl-md border border-kira-border bg-white px-4 py-3 text-[17px] leading-relaxed text-kira-text shadow-sm",
               "prose prose-sm max-w-none",
-              "[&_strong]:font-semibold [&_strong]:text-white/90",
+              "[&_strong]:font-semibold [&_strong]:text-kira-text",
               "[&_ol]:pl-4 [&_ol]:space-y-1 [&_ul]:pl-4 [&_ul]:space-y-1",
-              "[&_p]:m-0 [&_p+p]:mt-2 [&_p]:text-white/85",
-              "[&_li]:text-white/85"
+              "[&_p]:m-0 [&_p+p]:mt-2 [&_p]:text-kira-text",
+              "[&_li]:text-kira-text"
             )}
-            style={{
-              background: "rgba(255,255,255,0.09)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              color: "rgba(255,255,255,0.85)",
-            }}
           >
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>

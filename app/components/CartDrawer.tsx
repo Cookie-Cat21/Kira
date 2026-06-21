@@ -70,7 +70,7 @@ export default function CartDrawer() {
               aria-modal="true"
               aria-label="Gift tray"
               className="relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
-              style={{ background: "#1C1C1E", fontFamily: SF }}
+              style={{ background: "#ffffff", fontFamily: SF }}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
@@ -80,11 +80,11 @@ export default function CartDrawer() {
               <div className="flex items-start justify-between px-6 pb-4 pt-10">
                 <div>
                   <h2
-                    className="text-[28px] font-bold leading-none tracking-tight text-white"
+                    className="text-[28px] font-semibold leading-none tracking-tight text-kira-text"
                   >
                     Gift tray
                   </h2>
-                  <p className="mt-1 text-[15px]" style={{ color: "rgba(235,235,245,0.6)" }}>
+                  <p className="mt-1 text-[15px] text-kira-text-2">
                     {cartCount} item{cartCount === 1 ? "" : "s"}
                   </p>
                 </div>
@@ -92,33 +92,25 @@ export default function CartDrawer() {
                   type="button"
                   onClick={closeCart}
                   aria-label="Close"
-                  className="mt-1 flex size-[30px] shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70 active:opacity-50"
-                  style={{ background: "#3A3A3C" }}
+                  className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-full border border-kira-border bg-[#f5f5f7] transition-colors hover:bg-[#ebebef]"
                 >
-                  <X className="size-3.5" style={{ color: "rgba(235,235,245,0.7)" }} strokeWidth={2.5} />
+                  <X className="size-4 text-kira-text-2" strokeWidth={2.5} />
                 </button>
               </div>
 
               {/* Hairline separator */}
-              <div style={{ height: "0.5px", background: "rgba(84,84,88,0.65)", marginInline: "24px" }} />
+              <div style={{ height: "0.5px", background: "rgba(60,60,67,0.12)", marginInline: "24px" }} />
 
               {/* Items list */}
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {cart.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center gap-4 px-6 py-20 text-center">
-                    <div
-                      className="flex size-[72px] items-center justify-center rounded-[20px]"
-                      style={{ background: "#2C2C2E" }}
-                    >
-                      <ShoppingBag className="size-8" style={{ color: "rgba(235,235,245,0.25)" }} />
+                    <div className="flex size-[72px] items-center justify-center rounded-[20px] bg-[#f5f5f7]">
+                      <ShoppingBag className="size-8 text-kira-muted" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[17px] font-semibold text-white">
-                        Your tray is empty
-                      </p>
-                      <p className="text-[15px]" style={{ color: "rgba(235,235,245,0.5)" }}>
-                        Ask Kira to find the perfect gift.
-                      </p>
+                      <p className="text-[17px] font-semibold text-kira-text">Your tray is empty</p>
+                      <p className="text-[15px] text-kira-text-2">Ask Kira to find the perfect gift.</p>
                     </div>
                   </div>
                 ) : (
@@ -130,10 +122,7 @@ export default function CartDrawer() {
                         )}
                         <div className="flex gap-4 py-[14px]">
                           {/* Thumbnail */}
-                          <div
-                            className="relative size-[60px] shrink-0 overflow-hidden rounded-[14px]"
-                            style={{ background: "#2C2C2E" }}
-                          >
+                          <div className="relative size-[60px] shrink-0 overflow-hidden rounded-[14px] bg-[#f5f5f7]">
                             {item.product.image ? (
                               <Image
                                 src={item.product.image}
@@ -144,7 +133,7 @@ export default function CartDrawer() {
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center">
-                                <Gift className="size-5" style={{ color: "rgba(235,235,245,0.25)" }} />
+                                <Gift className="size-5 text-kira-muted" />
                               </div>
                             )}
                           </div>
@@ -152,55 +141,44 @@ export default function CartDrawer() {
                           {/* Content */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
-                              <p
-                                className="line-clamp-2 text-[15px] font-medium leading-snug text-white"
-                              >
+                              <p className="line-clamp-2 text-[15px] font-medium leading-snug text-kira-text">
                                 {item.product.name}
                               </p>
                               <button
                                 type="button"
                                 onClick={() => removeFromCart(item.product.id)}
                                 aria-label={`Remove ${item.product.name}`}
-                                className="mt-0.5 flex size-[22px] shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-60 active:opacity-40"
-                                style={{ background: "rgba(120,120,128,0.36)" }}
+                                className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-kira-border bg-[#f5f5f7] hover:bg-[#ebebef]"
                               >
-                                <Trash2 className="size-3" style={{ color: "rgba(235,235,245,0.6)" }} />
+                                <Trash2 className="size-3.5 text-kira-muted" />
                               </button>
                             </div>
 
                             <div className="mt-2.5 flex items-center justify-between">
-                              <p
-                                className="text-[15px] font-semibold"
-                                style={{ color: "#f8da08" }}
-                              >
+                              <p className="text-[15px] font-semibold text-kap-purple">
                                 {lkrFormatter.format(item.product.price * item.quantity)}
                               </p>
 
                               {/* iOS-style stepper */}
-                              <div
-                                className="flex items-center overflow-hidden rounded-full"
-                                style={{ background: "#3A3A3C" }}
-                              >
+                              <div className="flex items-center overflow-hidden rounded-full border border-kira-border bg-[#f5f5f7]">
                                 <button
                                   type="button"
                                   onClick={() => updateQty(item.product.id, item.quantity - 1)}
                                   aria-label={`Decrease quantity for ${item.product.name}`}
-                                  className="flex size-[30px] items-center justify-center transition-opacity hover:opacity-70 active:opacity-40"
+                                  className="flex size-9 items-center justify-center hover:bg-white"
                                 >
-                                  <Minus className="size-3 text-white" strokeWidth={2.5} />
+                                  <Minus className="size-3.5 text-kira-text" strokeWidth={2.5} />
                                 </button>
-                                <span
-                                  className="min-w-[26px] text-center text-[13px] font-semibold tabular-nums text-white"
-                                >
+                                <span className="min-w-[26px] text-center text-[13px] font-semibold tabular-nums text-kira-text">
                                   {item.quantity}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => updateQty(item.product.id, item.quantity + 1)}
                                   aria-label={`Increase quantity for ${item.product.name}`}
-                                  className="flex size-[30px] items-center justify-center transition-opacity hover:opacity-70 active:opacity-40"
+                                  className="flex size-9 items-center justify-center hover:bg-white"
                                 >
-                                  <Plus className="size-3 text-white" strokeWidth={2.5} />
+                                  <Plus className="size-3.5 text-kira-text" strokeWidth={2.5} />
                                 </button>
                               </div>
                             </div>
@@ -216,17 +194,15 @@ export default function CartDrawer() {
               {cart.length > 0 && (
                 <div
                   className="shrink-0 px-6 pb-10 pt-4"
-                  style={{ borderTop: "0.5px solid rgba(84,84,88,0.65)" }}
+                  style={{ borderTop: "0.5px solid rgba(60,60,67,0.12)" }}
                 >
                   <div className="mb-1 flex items-baseline justify-between">
-                    <span className="text-[15px]" style={{ color: "rgba(235,235,245,0.6)" }}>
-                      Subtotal
-                    </span>
-                    <span className="text-[22px] font-bold tracking-tight text-white">
+                    <span className="text-[15px] text-kira-text-2">Subtotal</span>
+                    <span className="text-[22px] font-semibold tracking-tight text-kira-text">
                       {lkrFormatter.format(cartTotal)}
                     </span>
                   </div>
-                  <p className="mb-5 text-[12px]" style={{ color: "rgba(235,235,245,0.3)" }}>
+                  <p className="mb-5 text-[13px] text-kira-muted">
                     Delivery fee confirmed by Kapruka based on city.
                   </p>
 

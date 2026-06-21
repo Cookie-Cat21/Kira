@@ -72,21 +72,21 @@ function CityChip({
 
   if (city) {
     return (
-      <div className="flex shrink-0 items-center rounded-lg text-[11px] font-semibold" style={{ background: "rgba(64,41,112,0.35)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(148,100,255,0.3)" }}>
+      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-kap-purple/20 bg-kap-purple/5 text-[13px] font-semibold text-kap-purple">
         <button
           onClick={startEditing}
           title="Change city"
-          className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-kap-purple/10"
+          className="flex min-h-11 items-center gap-1.5 px-3 hover:bg-kap-purple/10"
         >
-          <MapPin className="size-3 shrink-0" />
+          <MapPin className="size-3.5 shrink-0" />
           {city}
         </button>
         <button
           onClick={onClear}
           aria-label="Clear city"
-          className="flex size-6 items-center justify-center border-l border-kap-purple/20 hover:bg-kap-purple/10"
+          className="flex size-11 items-center justify-center border-l border-kap-purple/20 hover:bg-kap-purple/10"
         >
-          <X className="size-3" />
+          <X className="size-3.5" />
         </button>
       </div>
     );
@@ -341,8 +341,8 @@ export default function CommerceRail({
   return (
     <div className="glass-rail z-10 shrink-0">
       <div className="scrollbar-hide flex items-center gap-2 overflow-x-auto px-4 py-2">
-        <span className="hidden text-[10px] font-bold uppercase tracking-widest text-white/30 sm:inline">
-          Gift Brief
+        <span className="hidden text-[11px] font-semibold uppercase tracking-wide text-kira-muted sm:inline">
+          Context
         </span>
         <CityChip
           city={city}
@@ -386,12 +386,7 @@ export default function CommerceRail({
             type="button"
             onClick={onOpenCart}
             title="Open gift tray"
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors hover:text-white"
-            style={{
-              background: cartCount > 0 ? "rgba(248,218,8,0.12)" : "rgba(255,255,255,0.05)",
-              color: cartCount > 0 ? "rgba(248,218,8,0.85)" : "rgba(255,255,255,0.42)",
-              border: cartCount > 0 ? "1px solid rgba(248,218,8,0.2)" : "1px dashed rgba(255,255,255,0.15)",
-            }}
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-kira-border bg-[#f5f5f7] px-3 text-[13px] font-semibold text-kira-text transition-colors hover:bg-white"
           >
             <ShoppingBag className="size-3 shrink-0" />
             {cartCount > 0

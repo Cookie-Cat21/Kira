@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Package, Sparkles, ArrowRight } from "lucide-react";
+import { Package, ArrowRight } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import TrustBar from "@/app/components/store/TrustBar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { StoreCategory } from "@/types/store";
 
 export default function TrackOrderClient({
@@ -25,70 +28,62 @@ export default function TrackOrderClient({
   }
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
       <StoreNav categories={categories} />
       <TrustBar />
 
       <main className="mx-auto w-full max-w-lg px-5 py-16 sm:px-8 sm:py-24">
         <div className="text-center">
-          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-kap-purple/20 text-kap-yellow">
+          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-white text-kap-purple shadow-sm">
             <Package className="size-7" />
           </span>
-          <h1 className="display-hero mt-6 text-3xl text-white sm:text-4xl">
-            Track your order
-          </h1>
-          <p className="mt-3 text-[15px] text-white/50">
-            Enter your Kapruka order reference — Kira will pull live status from
-            the catalog.
+          <h1 className="display-hero mt-6 text-3xl sm:text-4xl">Track your order</h1>
+          <p className="mt-3 text-[17px] text-kira-text-2">
+            Enter your Kapruka order reference. Kira will pull live status.
           </p>
         </div>
 
-        <form onSubmit={handleTrack} className="mt-10 space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-white/70">
+        <form onSubmit={handleTrack} className="mt-10 space-y-4 rounded-2xl border border-kira-border bg-white p-6 shadow-sm">
+          <div className="space-y-2">
+            <Label htmlFor="order-ref" className="text-[15px]">
               Order reference
-            </span>
-            <input
+            </Label>
+            <Input
+              id="order-ref"
               type="text"
               value={orderRef}
               onChange={(e) => setOrderRef(e.target.value)}
               placeholder="e.g. KP123456789012"
-              className="mt-2 w-full rounded-xl border border-white/12 bg-white/6 px-4 py-3.5 text-white outline-none placeholder:text-white/30 focus:border-kap-purple/50"
+              className="h-12 text-[17px]"
               autoComplete="off"
             />
-            <span className="mt-2 block text-[12px] text-white/35">
+            <p className="text-[13px] text-kira-muted">
               12-digit number from your confirmation email or receipt.
-            </span>
-          </label>
+            </p>
+          </div>
 
-          <button
+          <Button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] py-3.5 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.01] active:scale-95"
+            className="h-12 w-full rounded-full bg-kap-purple text-[17px] font-semibold hover:bg-kap-purple/90"
           >
             Track with Kira
             <ArrowRight className="size-4" />
-          </button>
+          </Button>
         </form>
 
-        <div className="mt-8 rounded-xl border border-white/8 bg-white/[0.03] p-4 text-center">
-          <p className="text-sm text-white/55">
-            Prefer conversation?{" "}
-            <button
-              type="button"
-              onClick={() => open({ prompt: "I want to track my order" })}
-              className="inline-flex items-center gap-1 font-semibold text-kap-yellow hover:underline"
-            >
-              <Sparkles className="size-3.5" />
-              Ask Kira
-            </button>
-          </p>
-          <Link
-            href="/shop"
-            className="mt-3 inline-block text-[13px] text-white/40 hover:text-white/70"
+        <p className="mt-8 text-center text-[15px] text-kira-text-2">
+          <button
+            type="button"
+            onClick={() => open({ prompt: "I want to track my order" })}
+            className="font-semibold text-kap-purple hover:underline"
           >
-            ← Back to shop
+            Ask Kira without the number
+          </button>
+          <span className="mx-2 text-kira-muted">·</span>
+          <Link href="/shop" className="text-kap-purple hover:underline">
+            Back to shop
           </Link>
-        </div>
+        </p>
       </main>
 
       <StoreFooter categories={categories} />

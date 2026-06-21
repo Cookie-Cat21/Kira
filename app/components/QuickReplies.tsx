@@ -190,7 +190,7 @@ export default function QuickReplies({
             onClick={() =>
               chip.checkout && onCheckout ? onCheckout() : onSelect(chip.value)
             }
-            className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/75 transition-colors hover:text-white"
+            className="rounded-full border border-kira-border bg-[#f5f5f7] px-3 py-2 text-[13px] font-medium text-kira-text transition-colors hover:border-kap-purple/30 hover:text-kap-purple"
           >
             {chip.label}
           </button>

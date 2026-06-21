@@ -11,14 +11,14 @@ const ITEMS = [
 
 export default function TrustBar() {
   return (
-    <div className="border-b border-white/6 bg-white/[0.02]">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-center gap-x-6 gap-y-2 px-5 py-2.5 sm:justify-between sm:px-8">
+    <div className="border-b border-kira-border bg-white">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-center gap-x-8 gap-y-2 px-5 py-3 sm:justify-between sm:px-8">
         {ITEMS.map(({ icon: Icon, label }) => (
           <span
             key={label}
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/45"
+            className="inline-flex items-center gap-2 text-[13px] font-medium text-kira-text-2"
           >
-            <Icon className="size-3.5 text-kira-leaf/80" />
+            <Icon className="size-4 text-kap-purple" />
             {label}
           </span>
         ))}

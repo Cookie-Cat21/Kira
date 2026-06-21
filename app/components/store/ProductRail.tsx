@@ -29,9 +29,9 @@ export default function ProductRail({
     <section className="mx-auto w-full max-w-[1280px] px-5 sm:px-8">
       <Reveal className="mb-5 flex items-end justify-between gap-4">
         <div>
-          <h2 className="display-hero text-2xl text-white sm:text-3xl">{title}</h2>
+          <h2 className="display-hero text-2xl text-kira-text sm:text-3xl">{title}</h2>
           {subtitle && (
-            <p className="mt-1 text-sm text-white/45">{subtitle}</p>
+            <p className="mt-1 text-[15px] text-kira-text-2">{subtitle}</p>
           )}
         </div>
         <div className="hidden shrink-0 items-center gap-2 sm:flex">
@@ -39,7 +39,7 @@ export default function ProductRail({
             type="button"
             onClick={() => nudge(-1)}
             aria-label="Scroll left"
-            className="flex size-9 items-center justify-center rounded-full glass-chip text-white/80"
+            className="flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text-2 hover:bg-[#f5f5f7]"
           >
             <ChevronLeft className="size-4" />
           </button>
@@ -47,7 +47,7 @@ export default function ProductRail({
             type="button"
             onClick={() => nudge(1)}
             aria-label="Scroll right"
-            className="flex size-9 items-center justify-center rounded-full glass-chip text-white/80"
+            className="flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text-2 hover:bg-[#f5f5f7]"
           >
             <ChevronRight className="size-4" />
           </button>

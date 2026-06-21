@@ -54,18 +54,14 @@ export default function ProductCard({
   }
 
   return (
-    <article
-      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl transition-shadow hover:shadow-[0_8px_32px_rgba(64,41,112,0.4)]"
-      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-    >
+    <article className="store-card flex w-56 shrink-0 flex-col overflow-hidden rounded-2xl">
       {/* Image */}
       <button
         ref={imgRef}
         type="button"
         onClick={() => onOpenProduct?.(product)}
         aria-label={`View details for ${product.name}`}
-        className="group relative aspect-square w-full overflow-hidden text-left"
-        style={{ background: "rgba(255,255,255,0.05)" }}
+        className="group relative aspect-square w-full overflow-hidden bg-[#f5f5f7] text-left"
       >
         {product.image && !imgError ? (
           <Image
@@ -107,11 +103,11 @@ export default function ProductCard({
         <button
           type="button"
           onClick={() => onOpenProduct?.(product)}
-          className="line-clamp-2 text-left text-sm font-semibold leading-tight text-white/85 transition-colors hover:text-white"
+          className="line-clamp-2 text-left text-[15px] font-semibold leading-tight text-kira-text transition-colors hover:text-kap-purple"
         >
           {product.name}
         </button>
-        <p className="text-sm font-bold text-kap-yellow">{formattedPrice}</p>
+        <p className="text-[15px] font-bold text-kap-purple">{formattedPrice}</p>
 
         {product.badges && product.badges.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -142,12 +138,12 @@ export default function ProductCard({
               {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
             {effectiveDeliveryInfo?.nextAvailableDate && (
-              <p className="text-[10px] text-white/40 pl-3.5">
+              <p className="pl-4 text-[10px] text-kira-muted">
                 {effectiveDeliveryInfo.nextAvailableDate}
               </p>
             )}
             {fee !== undefined && (
-              <p className="text-[10px] text-white/40 pl-3.5">
+              <p className="pl-4 text-[10px] text-kira-muted">
                 + LKR {fee.toLocaleString()} delivery
               </p>
             )}

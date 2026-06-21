@@ -10,20 +10,10 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import {
-  CakeSlice,
-  Flower2,
-  Gift,
-  Package,
-  Shirt,
-  Smartphone,
   SquarePen,
   Store,
-  Truck,
-  CalendarDays,
-  ShoppingBasket,
-  Baby,
-  Home,
   ShoppingBag,
+  CalendarDays,
 } from "lucide-react";
 import KiraLoader from "./KiraLoader";
 import McpStatusBadge from "./McpStatusBadge";
@@ -37,7 +27,7 @@ import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
-import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
+import { getContextualGreeting } from "@/lib/kira-client";
 import {
   getColomboTodayIso,
   getColomboTomorrowIso,
@@ -53,10 +43,6 @@ import type {
 } from "@/types";
 import { cn } from "@/lib/utils";
 
-const OCCASION_CHIPS = getOccasionChips();
-// An occasion is active iff getOccasionChips surfaced an urgent chip. When it
-// is, the hero headline already announces it — so we drop the duplicate chip.
-const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
 const STARTER_PROMPTS: { label: string; value: string }[] = [
   {
     label: "Birthday gifts",
@@ -77,75 +63,8 @@ const STARTER_PROMPTS: { label: string; value: string }[] = [
 ];
 type KiraIcon = ComponentType<{ className?: string }>;
 
-// Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
 const CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
-
-const CATEGORIES: {
-  icon: KiraIcon;
-  label: string;
-  value: string;
-  tone: string;
-}[] = [
-  {
-    icon: CakeSlice,
-    label: "Cakes",
-    value: "Show me cakes on Kapruka",
-    tone: "border-rose-100 bg-rose-50 text-rose-800",
-  },
-  {
-    icon: Flower2,
-    label: "Flowers",
-    value: "Show me flowers on Kapruka",
-    tone: "border-emerald-100 bg-emerald-50 text-emerald-800",
-  },
-  {
-    icon: Gift,
-    label: "Chocolates",
-    value: "Show me chocolates on Kapruka",
-    tone: "border-orange-100 bg-orange-50 text-orange-900",
-  },
-  {
-    icon: Smartphone,
-    label: "Electronics",
-    value: "Show me electronics on Kapruka",
-    tone: "border-sky-100 bg-sky-50 text-sky-800",
-  },
-  {
-    icon: Shirt,
-    label: "Fashion",
-    value: "Show me fashion on Kapruka",
-    tone: "border-fuchsia-100 bg-fuchsia-50 text-fuchsia-800",
-  },
-  {
-    icon: Package,
-    label: "Hampers",
-    value: "Show me gift hampers on Kapruka",
-    tone: "border-amber-100 bg-amber-50 text-amber-900",
-  },
-  {
-    icon: ShoppingBasket,
-    label: "Grocery",
-    value: "Show me grocery items on Kapruka",
-    tone: "border-lime-100 bg-lime-50 text-lime-900",
-  },
-  {
-    icon: Baby,
-    label: "Kids & Toys",
-    value: "Show me soft toys and kids gifts on Kapruka",
-    tone: "border-violet-100 bg-violet-50 text-violet-900",
-  },
-  {
-    icon: Home,
-    label: "Home",
-    value: "Show me home and lifestyle products on Kapruka",
-    tone: "border-stone-100 bg-stone-50 text-stone-900",
-  },
-];
-
-function stripDecorativeGlyphs(text: string) {
-  return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
-}
 
 function parseBudgetChip(text: string): string | undefined {
   const match =
@@ -906,16 +825,12 @@ export default function KiraExperience({
   };
 
   return (
-    <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
+    <div className={cn("relative flex flex-col overflow-hidden bg-[#f5f5f7] text-kira-text", embedded ? "h-full" : "h-dvh min-h-dvh")}>
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
-      {/* Ambient blobs */}
-      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
-      <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
-      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
 
-      <header className="liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
+      <header className="store-nav relative z-10 flex h-14 shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Left cluster */}
         <div className="flex min-w-0 items-center gap-2.5">
           {!isOnlyOpening && (
@@ -931,7 +846,7 @@ export default function KiraExperience({
                   localStorage.removeItem(SESSION_KEY);
                 }
               }}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-white/30 transition-all duration-150 hover:bg-white/6 hover:text-white/70"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-kira-muted transition-colors hover:bg-black/5 hover:text-kira-text"
             >
               <SquarePen className="size-3.5" />
             </button>
@@ -946,21 +861,12 @@ export default function KiraExperience({
             priority
           />
           {/* Status strip — hidden on mobile */}
-          <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif", letterSpacing: "0.01em" }}>
+          <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(60,60,67,0.12)" }}>
+            <span className="text-[13px] font-medium text-kira-muted">
               by Kapruka
             </span>
-            {/* Live catalog pill */}
-            <span className="ml-3 flex items-center gap-1" title="Live catalog connected">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-kira-leaf opacity-60" style={{ animationDuration: "2.4s" }} />
-                <span className="relative inline-flex size-1.5 rounded-full bg-kira-leaf" />
-              </span>
-              <span className="text-[11px] font-medium text-white/40" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
-                Live
-              </span>
-            </span>
-            <span aria-hidden="true" className="mx-2.5 text-white/12 select-none">·</span>
+            <span className="ml-3 text-[13px] font-medium text-kira-text-2">Live catalog</span>
+            <span aria-hidden="true" className="mx-2.5 text-kira-muted select-none">·</span>
             <McpStatusBadge />
           </div>
         </div>
@@ -972,7 +878,7 @@ export default function KiraExperience({
               type="button"
               onClick={openCart}
               aria-label={`Open gift tray with ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-              className="relative flex size-9 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white/85 transition-colors hover:bg-white/12"
+              className="relative flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text transition-colors hover:bg-[#f5f5f7]"
             >
               <ShoppingBag className="size-4" />
               <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-kap-yellow text-[9px] font-bold text-gray-950">
@@ -980,29 +886,27 @@ export default function KiraExperience({
               </span>
             </button>
           )}
-          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
-            <Truck className="size-3 text-kira-leaf/70" />
-            <span>Free delivery</span>
-          </div>
           {!embedded && (
             <Link
               href="/shop"
-              className="glass-chip flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white/80 transition-colors hover:text-white"
+              className="hidden min-h-11 items-center gap-1.5 rounded-full border border-kira-border bg-white px-4 py-2 text-[15px] font-medium text-kira-text transition-colors hover:bg-[#f5f5f7] sm:flex"
             >
-              <Store className="size-3.5 text-kap-yellow/80" />
+              <Store className="size-4 text-kap-purple" />
               <span>Browse store</span>
             </Link>
           )}
         </div>
       </header>
 
-      <CommerceRail
-        context={commerceContext}
-        onChange={handleCommerceContextChange}
-        cartCount={cartCount}
-        cartTotal={cartTotal}
-        onOpenCart={openCart}
-      />
+      {!isOnlyOpening && (
+        <CommerceRail
+          context={commerceContext}
+          onChange={handleCommerceContextChange}
+          cartCount={cartCount}
+          cartTotal={cartTotal}
+          onOpenCart={openCart}
+        />
+      )}
 
       {groqConfigured === false && (
         <div
@@ -1019,11 +923,11 @@ export default function KiraExperience({
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
           <div className="mb-8 text-center animate-fade-up">
             <KaprukaSmileMark />
-            <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
+            <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-semibold leading-[1.14] tracking-[-0.02em] text-kira-text sm:text-5xl">
               {heroGreeting ?? "What can I find for you?"}
             </h1>
-            <p className="text-white/40 text-sm">
-              Live Kapruka catalog · Real delivery · Checkout
+            <p className="text-[17px] text-kira-text-2">
+              Live Kapruka catalog · Delivery checked · Checkout in chat
             </p>
           </div>
 
@@ -1040,74 +944,16 @@ export default function KiraExperience({
             />
           </div>
 
-          <div
-            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3"
-            style={{ animationDelay: "90ms" }}
-          >
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
-              Start fast
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt.label}
-                  type="button"
-                  onClick={() => sendMessage(prompt.value)}
-                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
-                >
-                  {prompt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div
-            className="mt-4 flex flex-wrap sm:flex-nowrap justify-center gap-2 px-4 animate-fade-up"
-            style={{ animationDelay: "120ms" }}
-          >
-            {[
-              // The hero headline already announces any active occasion, so drop
-              // the redundant urgent occasion chip and lead with categories.
-              ...OCCASION_CHIPS.slice(0, 4)
-                .map((chip) => ({
-                  label: stripDecorativeGlyphs(chip.label),
-                  value: chip.value,
-                  Icon: null,
-                  urgent: chip.urgent,
-                }))
-                .filter(
-                  (option) =>
-                    option.label !== "Flowers & cake" &&
-                    option.label !== "Just browsing" &&
-                    !(HAS_ACTIVE_OCCASION && option.urgent)
-                )
-                .sort((a, b) => Number(b.urgent) - Number(a.urgent)),
-              ...CATEGORIES.slice(0, HAS_ACTIVE_OCCASION ? 5 : 4).map((category) => ({
-                label: category.label,
-                value: category.value,
-                Icon: category.icon,
-                urgent: false,
-              })),
-            ].map((option) => {
-              const Icon = option.Icon;
-              return (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() => sendMessage(option.value)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap",
-                    option.urgent
-                      ? "glass-chip-urgent text-[rgba(255,210,80,0.95)]"
-                      : "glass-chip text-white/88"
-                  )}
-                >
-                  {Icon && <Icon className="size-3 opacity-60" />}
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
+          <p className="mt-5 text-center text-[15px] text-kira-text-2">
+            Try{" "}
+            <button
+              type="button"
+              onClick={() => sendMessage(STARTER_PROMPTS[0].value)}
+              className="font-semibold text-kap-purple underline-offset-2 hover:underline"
+            >
+              {STARTER_PROMPTS[0].label.toLowerCase()}
+            </button>
+          </p>
         </div>
       ) : (
         <>
@@ -1211,13 +1057,13 @@ export default function KiraExperience({
                     onChange={setDeliveryDate}
                   />
                 </div>
-                <p className="text-[10px] text-white/25">
+                <p className="text-[11px] text-kira-muted">
                   Powered by{" "}
                   <a
                     href="https://www.kapruka.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-semibold text-kap-yellow/50 hover:text-kap-yellow"
+                    className="font-semibold text-kap-purple hover:underline"
                   >
                     Kapruka
                   </a>
@@ -1255,21 +1101,15 @@ function DeliveryDatePicker({
   onChange: (date: string) => void;
 }) {
   return (
-    <label
-      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white/70"
-      style={{
-        background: "rgba(255,255,255,0.07)",
-        border: "1px solid rgba(255,255,255,0.12)",
-      }}
-    >
-      <CalendarDays className="size-3 shrink-0" />
+    <label className="flex min-h-11 items-center gap-1.5 rounded-full border border-kira-border bg-white px-3 text-[13px] font-medium text-kira-text">
+      <CalendarDays className="size-4 shrink-0 text-kira-muted" />
       <span className="sr-only">Delivery date</span>
       <input
         type="date"
         min={getColomboTodayIso()}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-[7.6rem] bg-transparent text-xs font-semibold text-white/80 outline-none [color-scheme:dark]"
+        className="w-[8rem] bg-transparent text-[13px] font-medium text-kira-text outline-none"
         aria-label="Delivery date"
       />
     </label>
@@ -1296,14 +1136,8 @@ function ResponseStatusBanner({
   onCancel: () => void;
 }) {
   return (
-    <div
-      className="mb-2 rounded-xl border px-3 py-2"
-      style={{
-        background: "rgba(255,255,255,0.06)",
-        borderColor: isLoading ? "rgba(248,218,8,0.34)" : "rgba(255,140,140,0.35)",
-      }}
-    >
-      <p className="text-xs text-white/80">
+    <div className="mb-2 rounded-xl border border-kira-border bg-white px-3 py-2 shadow-sm">
+      <p className="text-[13px] text-kira-text">
         {isLoading
           ? latestStep ?? "Still checking live availability and delivery details..."
           : errorMessage ?? "Something failed while fetching from Kapruka. Try a quick recovery action."}
@@ -1313,7 +1147,7 @@ function ResponseStatusBanner({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+            className="min-h-9 rounded-full border border-kira-border px-3 text-[13px] font-semibold text-kira-text hover:bg-[#f5f5f7]"
           >
             Stop
           </button>
@@ -1335,14 +1169,14 @@ function ResponseStatusBanner({
             <button
               type="button"
               onClick={onTryAlternatives}
-              className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+              className="min-h-9 rounded-full border border-kira-border px-3 text-[13px] font-semibold text-kira-text hover:bg-[#f5f5f7]"
             >
               Try alternatives
             </button>
             <button
               type="button"
               onClick={onContinueWithoutDelivery}
-              className="rounded-full border border-white/20 px-3 py-1 text-[11px] font-semibold text-white/85 transition-colors hover:bg-white/10"
+              className="min-h-9 rounded-full border border-kira-border px-3 text-[13px] font-semibold text-kira-text hover:bg-[#f5f5f7]"
             >
               Continue without quote
             </button>
@@ -1379,16 +1213,10 @@ function StickyOrderSummary({
   isBusy: boolean;
 }) {
   return (
-    <div
-      className="mb-2 rounded-2xl border px-3 py-2.5"
-      style={{
-        background: "rgba(64,41,112,0.35)",
-        borderColor: "rgba(248,218,8,0.28)",
-      }}
-    >
+    <div className="mb-2 rounded-2xl border border-kira-border bg-white px-4 py-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-white/92">
+          <p className="text-[15px] font-semibold text-kira-text">
             Order summary ({cartCount} item{cartCount > 1 ? "s" : ""})
           </p>
           <p className="text-[11px] text-white/58">

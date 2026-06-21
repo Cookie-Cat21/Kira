@@ -62,7 +62,7 @@ export default function ProductDetailClient({
     <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 pt-10 sm:px-8">
       <Link
         href="/shop"
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white"
+        className="mb-8 inline-flex min-h-11 items-center gap-1.5 text-[15px] text-kira-text-2 transition-colors hover:text-kap-purple"
       >
         <ArrowLeft className="size-4" /> Continue shopping
       </Link>
@@ -72,7 +72,7 @@ export default function ProductDetailClient({
         <div
           ref={imgRef}
           className={cn(
-            "ph-tile relative aspect-square w-full overflow-hidden rounded-3xl border border-white/10",
+            "relative aspect-square w-full overflow-hidden rounded-3xl border border-kira-border bg-white",
             !showImage && phClass()
           )}
         >
@@ -105,23 +105,23 @@ export default function ProductDetailClient({
               {product.category}
             </p>
           )}
-          <h1 className="display-hero mt-2 text-3xl text-white sm:text-4xl">
+          <h1 className="display-hero mt-2 text-3xl text-kira-text sm:text-4xl">
             {product.name}
           </h1>
 
           <div className="mt-5 flex items-end gap-3">
-            <span className="text-3xl font-semibold tracking-tight text-white">
+            <span className="text-3xl font-semibold tracking-tight text-kira-text">
               {formatLKR(product.price, product.currency)}
             </span>
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="pb-1 text-lg text-white/35 line-through">
+              <span className="pb-1 text-lg text-kira-muted line-through">
                 {formatLKR(product.compareAtPrice, product.currency)}
               </span>
             )}
           </div>
 
           {product.description && (
-            <p className="mt-5 max-w-prose text-[15px] leading-relaxed text-white/55">
+            <p className="mt-5 max-w-prose text-[17px] leading-relaxed text-kira-text-2">
               {product.description}
             </p>
           )}

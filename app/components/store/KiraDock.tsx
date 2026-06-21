@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import KiraExperience from "@/app/components/KiraExperience";
 
@@ -33,15 +33,9 @@ export default function KiraDock() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 12 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-5 right-5 z-[90] flex items-center gap-2.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] py-3 pl-4 pr-5 shadow-[0_8px_30px_rgba(64,41,112,0.6)] transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
+            className="fixed bottom-5 right-5 z-[90] flex h-12 min-w-12 items-center gap-2 rounded-full bg-kap-purple px-5 shadow-lg transition-transform hover:scale-[1.02] active:scale-95 sm:bottom-6 sm:right-6"
           >
-            <span className="relative flex size-7 items-center justify-center">
-              <span className="kira-ring absolute inline-flex size-7 rounded-full bg-white/40" />
-              <span className="relative flex size-7 items-center justify-center rounded-full bg-white/15">
-                <Sparkles className="size-4 text-kap-yellow" />
-              </span>
-            </span>
-            <span className="text-sm font-semibold text-white">Ask Kira</span>
+            <span className="text-[15px] font-semibold text-white">Ask Kira</span>
           </motion.button>
         )}
       </AnimatePresence>
