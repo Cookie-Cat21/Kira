@@ -301,7 +301,7 @@ const LS: Record<string, Record<string, string>> = {
     ta: "சரி — முந்தைய order மாதிரியே! Date நாளை unless you say otherwise. Items:",
   },
   reorderNoHistory: {
-    en: "I don't have a previous order saved yet — place one first, or give me your Kapruka order number (e.g. KP-12345) and I'll pull it up.",
+    en: "I don't have a previous order saved yet — place one first, or give me your Kapruka order number (e.g. KP-12345) and I'll pull it up. What would you like to send today?",
     si: "Previous order save නෑ — පළමු order එක place කරන්න, නැත්නම් order number (KP-12345) දෙන්න.",
     ta: "Previous order save இல்லை — முதலில் order place செய்யுங்கள், அல்லது order number (KP-12345) அனுப்புங்கள்.",
   },
@@ -1591,7 +1591,7 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  const JAILBREAK_RE = /\b(dan\s+mode|pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(all\s+)?(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai|no\s+restrictions)\b/i;
+  const JAILBREAK_RE = /\b(dan\s+mode|pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(all\s+)?(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|system\s+prompt|your\s+prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai|no\s+restrictions)\b/i;
   if (JAILBREAK_RE.test(lower)) {
     await streamWords(controller, L("jailbreakRedirect", language));
     controller.enqueue(sse("done"));
@@ -1660,7 +1660,7 @@ async function tryHandleDeterministicPrompt({
   }
 
   const OUT_OF_SCOPE_RE =
-    /\b(weather|flight|restaurant|translate|cover letter|quantum|homework|cricket|time in|loan|poem|movie|doctor|appointment|call someone|job in|forex|usd|lkr rate|joke|hack|instagram|girlfriend broke|lonely|be my friend|pizza)\b/i;
+    /\b(weather|flight|restaurant|translate|cover letter|quantum|homework|cricket|time in|what time|world clock|loan|poem|movie|doctor|appointment|call someone|job in|forex|usd|lkr rate|joke|hack|instagram|girlfriend broke|lonely|be my friend|pizza)\b/i;
   if (OUT_OF_SCOPE_RE.test(lower)) {
     await streamWords(controller, L("outOfScopeRedirect", language));
     controller.enqueue(sse("done"));
@@ -1713,6 +1713,50 @@ async function tryHandleDeterministicPrompt({
     /\b(i am looking for a really good gift|looking for a really good gift)\b/i.test(lower)
   ) {
     await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const VAGUE_HELP_RE =
+    /\b(i want to send something|i need it by|something for (?:a|my)?\s*(girl|guy|kid)|mum'?s birthday|surprise for my wife|something nice lah|treat someone|help me pick something|flowers or chocolates|i'?m in \w+,?\s*help me|anything for guys)\b/i;
+  if (VAGUE_HELP_RE.test(lower)) {
+    await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (/^[\W_]*[🎂🎁🌸💐❤️🔥\s]+$/u.test(trimmed)) {
+    await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (/^[a-z]{6,}(?:\s+[a-z]{5,})+$/i.test(trimmed)) {
+    await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (/^'?;\s*drop\b|drop\s+table|--\s*$/i.test(lower)) {
+    await streamWords(controller, L("outOfScopeRedirect", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (/^(?:\+?94|0)\d{9}$/i.test(trimmed.replace(/[\s-]/g, ""))) {
+    await streamWords(
+      controller,
+      "Got the phone number. What product should I add to the order first?"
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  if (/\b(what categories|which categories|browse categories|list categories)\b/i.test(lower)) {
+    await streamWords(
+      controller,
+      "Kapruka is strongest for cakes, flowers, chocolates, hampers, clothing, electronics, toys, grocery, and home gifts. What category should I open first?"
+    );
     controller.enqueue(sse("done"));
     return true;
   }
@@ -1884,6 +1928,25 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  const CHECKOUT_DETAIL_RE = /\b(order|place\s+an\s+order|checkout|send|deliver)\b/i;
+  const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
+  const ADDRESS_RE =
+    /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
+  if (CHECKOUT_DETAIL_RE.test(lower)) {
+    const hasPhone = PHONE_RE.test(trimmed);
+    const hasAddress = ADDRESS_RE.test(trimmed);
+    if (hasAddress && !hasPhone) {
+      await streamWords(controller, L("checkoutNeedPhone", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+    if (hasPhone && !hasAddress) {
+      await streamWords(controller, L("checkoutNeedAddress", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
   const simpleProductQuery =
     extractProductKeyword(lower) ??
     (/කේක්|கேக்/i.test(trimmed) ? "cake" : null) ??
@@ -1969,25 +2032,6 @@ async function tryHandleDeterministicPrompt({
     }
     controller.enqueue(sse("done"));
     return true;
-  }
-
-  const CHECKOUT_DETAIL_RE = /\b(order|place\s+an\s+order|checkout|send|deliver)\b/i;
-  const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
-  const ADDRESS_RE =
-    /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
-  if (CHECKOUT_DETAIL_RE.test(lower)) {
-    const hasPhone = PHONE_RE.test(trimmed);
-    const hasAddress = ADDRESS_RE.test(trimmed);
-    if (hasAddress && !hasPhone) {
-      await streamWords(controller, L("checkoutNeedPhone", language));
-      controller.enqueue(sse("done"));
-      return true;
-    }
-    if (hasPhone && !hasAddress) {
-      await streamWords(controller, L("checkoutNeedAddress", language));
-      controller.enqueue(sse("done"));
-      return true;
-    }
   }
 
   const CART_DELIVERY_RE =
