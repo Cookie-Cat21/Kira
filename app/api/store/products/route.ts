@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFeaturedProducts, getProductsByCategory } from "@/lib/catalog";
+import {
+  getAllProducts,
+  getFeaturedProducts,
+  getProductsByCategory,
+} from "@/lib/catalog";
 import type { StoreSort } from "@/types/store";
 
 export const runtime = "nodejs";
@@ -17,11 +21,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items, total: items.length });
     }
 
+    const offset = clampInt(sp.get("offset"), 0, 0, 10_000);
+    const sortParam = sp.get("sort") as StoreSort | null;
+    const sort = sortParam && SORTS.includes(sortParam) ? sortParam : "featured";
     const category = sp.get("category");
-    if (category) {
-      const offset = clampInt(sp.get("offset"), 0, 0, 10_000);
-      const sortParam = sp.get("sort") as StoreSort | null;
-      const sort = sortParam && SORTS.includes(sortParam) ? sortParam : "featured";
+
+    if (category && category !== "all") {
       const { items, total } = await getProductsByCategory(category, {
         limit,
         offset,
@@ -30,8 +35,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ items, total });
     }
 
-    const items = await getFeaturedProducts(limit);
-    return NextResponse.json({ items, total: items.length });
+    const { items, total } = await getAllProducts({ limit, offset, sort });
+    return NextResponse.json({ items, total });
   } catch {
     return NextResponse.json({ items: [], total: 0 });
   }

@@ -41,7 +41,7 @@ export default async function ProductPage({
 
   return (
     <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
-      <StoreNav categories={categories} />
+      <StoreNav />
       <main className="relative">
         <ProductDetailClient product={product} />
       </main>

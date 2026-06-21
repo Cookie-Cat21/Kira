@@ -169,6 +169,35 @@ export async function getFeaturedProducts(limit = 12): Promise<KiraProduct[]> {
   );
 }
 
+export async function getAllProducts(
+  opts: { limit?: number; offset?: number; sort?: StoreSort } = {}
+): Promise<{ items: KiraProduct[]; total: number }> {
+  const { limit = 24, offset = 0, sort = "featured" } = opts;
+  return db(
+    async () => {
+      const rows = await query<DbRow>(
+        `select ${PRODUCT_COLS} from products order by ${ORDER[sort]} limit $1 offset $2`,
+        [limit, offset]
+      );
+      const totalRows = await query<{ count: string }>(
+        "select count(*)::text as count from products"
+      );
+      return {
+        items: rows.map(rowToProduct),
+        total: Number(totalRows[0]?.count ?? rows.length),
+      };
+    },
+    () => {
+      const items = sortSeed([...seed().products], sort);
+      const total = items.length;
+      return {
+        items: items.slice(offset, offset + limit).map(seedToProduct),
+        total,
+      };
+    }
+  );
+}
+
 export async function getProductsByCategory(
   slug: string,
   opts: { limit?: number; offset?: number; sort?: StoreSort } = {}

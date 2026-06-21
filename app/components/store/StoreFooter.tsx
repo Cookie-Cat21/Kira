@@ -22,7 +22,7 @@ export default function StoreFooter({ categories }: { categories: StoreCategory[
                 {categories.slice(0, 6).map((c) => (
                   <li key={c.slug}>
                     <Link
-                      href={`/shop/${c.slug}`}
+                      href={`/shop?category=${c.slug}`}
                       className="text-[15px] text-kira-text-2 transition-colors hover:text-kap-purple"
                     >
                       {c.name}
@@ -41,7 +41,7 @@ export default function StoreFooter({ categories }: { categories: StoreCategory[
                   </Link>
                 </li>
                 <li>
-                  <Link href="/track" className="text-[15px] text-kira-text-2 hover:text-kap-purple">
+                  <Link href="/shop#track" className="text-[15px] text-kira-text-2 hover:text-kap-purple">
                     Track order
                   </Link>
                 </li>

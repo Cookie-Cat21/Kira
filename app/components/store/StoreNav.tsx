@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, ShoppingBag, Sparkles, X } from "lucide-react";
 import type { KiraProduct } from "@/types";
-import type { StoreCategory } from "@/types/store";
 import { useCart } from "@/app/context/CartContext";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import KaprukaLogo from "@/app/components/store/KaprukaLogo";
@@ -16,7 +15,7 @@ import { cn } from "@/lib/utils";
 const navLink =
   "min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-white/90 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 
-export default function StoreNav({ categories }: { categories: StoreCategory[] }) {
+export default function StoreNav() {
   const pathname = usePathname();
   const { cartCount, openCart } = useCart();
   const { open: openKira } = useKiraDock();
@@ -55,12 +54,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
     return () => clearTimeout(t);
   }, [q]);
 
-  const topCategories = categories.slice(0, 4);
-
-  function isActive(href: string) {
-    if (href === "/shop") return pathname === "/shop";
-    return pathname === href || pathname?.startsWith(`${href}/`);
-  }
+  const onShop = pathname === "/shop";
 
   return (
     <header className="store-nav-purple sticky top-0 z-[80]">
@@ -74,48 +68,28 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
         </Link>
 
         <nav
-          className="ml-1 hidden min-w-0 flex-1 items-center gap-0.5 lg:flex"
+          className="ml-1 hidden min-w-0 flex-1 items-center gap-0.5 sm:flex"
           aria-label="Store"
         >
           <Link
             href="/shop"
-            aria-current={isActive("/shop") ? "page" : undefined}
-            className={cn(
-              navLink,
-              isActive("/shop") && "bg-white/15"
-            )}
+            aria-current={onShop ? "page" : undefined}
+            className={cn(navLink, onShop && "bg-white/15")}
           >
-            Gifts
+            Shop
           </Link>
           <Link
-            href="/track"
-            aria-current={isActive("/track") ? "page" : undefined}
-            className={cn(
-              navLink,
-              isActive("/track") && "bg-white/15"
-            )}
+            href="/shop#catalog"
+            className={navLink}
+          >
+            Browse
+          </Link>
+          <Link
+            href="/shop#track"
+            className={navLink}
           >
             Track
           </Link>
-          {topCategories.map((c) => {
-            const href = `/shop/${c.slug}`;
-            const active = isActive(href);
-            return (
-              <Link
-                key={c.slug}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  navLink,
-                  "max-w-[9.5rem] truncate",
-                  active && "bg-white/15"
-                )}
-                title={c.name}
-              >
-                {c.name}
-              </Link>
-            );
-          })}
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">

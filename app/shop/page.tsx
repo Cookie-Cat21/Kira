@@ -1,12 +1,16 @@
+import { Suspense } from "react";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import TrustBar from "@/app/components/store/TrustBar";
 import GiftFinder from "@/app/components/store/GiftFinder";
-import CategoryRail from "@/app/components/store/CategoryRail";
-import ProductRail from "@/app/components/store/ProductRail";
+import UnifiedShopCatalog from "@/app/components/store/UnifiedShopCatalog";
+import TrackOrderSection from "@/app/components/store/TrackOrderSection";
 import KiraBand from "@/app/components/store/KiraBand";
-import Reveal from "@/app/components/store/Reveal";
-import { getCategories, getRails } from "@/lib/catalog";
+import {
+  getAllProducts,
+  getCategories,
+  getProductsByCategory,
+} from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -22,45 +26,42 @@ export const metadata = {
   },
 };
 
-export default async function ShopHomePage() {
-  const [categories, rails] = await Promise.all([getCategories(), getRails()]);
+export default async function ShopHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category: categoryParam } = await searchParams;
+  const categories = await getCategories();
+  const activeCategory =
+    categoryParam && categories.some((c) => c.slug === categoryParam)
+      ? categoryParam
+      : null;
+
+  const catalog = activeCategory
+    ? await getProductsByCategory(activeCategory, { limit: 12, sort: "featured" })
+    : await getAllProducts({ limit: 12, sort: "featured" });
 
   return (
     <div className="min-h-dvh bg-[#f5f5f7] text-kira-text">
-      <StoreNav categories={categories} />
+      <StoreNav />
       <TrustBar />
 
       <main>
-        {/* 1. Intent-first — replaces legacy category wall */}
         <GiftFinder />
 
-        {/* 2. Editorial picks — merchandising without overload */}
-        <div className="mt-20 space-y-20">
-          {rails.map((rail) => (
-            <ProductRail
-              key={rail.title}
-              title={rail.title}
-              subtitle={rail.subtitle}
-              items={rail.items}
-            />
-          ))}
-        </div>
+        <Suspense fallback={null}>
+          <UnifiedShopCatalog
+            categories={categories}
+            initialCategory={activeCategory}
+            initialItems={catalog.items}
+            total={catalog.total}
+          />
+        </Suspense>
 
-        {/* 3. Categories — secondary, horizontal scroll (not a wall) */}
-        <section className="mx-auto mt-24 w-full max-w-[1280px] px-5 sm:px-8">
-          <Reveal className="mb-5">
-            <h2 className="display-hero text-2xl text-kira-text sm:text-3xl">
-              Or browse by department
-            </h2>
-            <p className="mt-1 text-[15px] text-kira-text-2">
-              Kapruka&apos;s full catalog — when you know what you want.
-            </p>
-          </Reveal>
-        </section>
-        <CategoryRail categories={categories} />
+        <TrackOrderSection />
 
-        {/* 4. Kira story */}
-        <div className="mt-32 pb-8">
+        <div className="mt-16 pb-8">
           <KiraBand />
         </div>
       </main>
