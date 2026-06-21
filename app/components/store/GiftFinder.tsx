@@ -43,7 +43,15 @@ export default function GiftFinder() {
     BUDGETS.find((b) => String(b.value) === budget)?.label ?? "Rs. 10,000";
 
   function handleAskKira() {
-    open({ prompt });
+    open({
+      prompt,
+      commerce: {
+        city,
+        budget: `Under LKR ${Number(budget).toLocaleString("en-LK")}`,
+        occasion,
+        recipient,
+      },
+    });
   }
 
   return (

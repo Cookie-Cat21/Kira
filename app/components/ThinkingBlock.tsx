@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import McpThinkingFlow from "./McpThinkingFlow";
 import { ProductCardSkeleton } from "./ProductCard";
 import { ShiningText } from "./ui/shining-text";
 
@@ -31,6 +32,8 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
       </div>
 
       <div className="max-w-[88%] flex-1 pt-1.5">
+        <McpThinkingFlow activeStep={steps[steps.length - 1]} />
+
         <div className="mb-2 flex items-center gap-2">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-kap-purple/40 opacity-50" />

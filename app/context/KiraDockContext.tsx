@@ -14,6 +14,14 @@ import type { KiraProduct } from "@/types";
 export interface KiraDockSeed {
   prompt: string;
   product?: KiraProduct;
+  /** Pre-fill CommerceRail chips when landing from GiftFinder etc. */
+  commerce?: {
+    city?: string;
+    deliveryDate?: string;
+    budget?: string;
+    occasion?: string;
+    recipient?: string;
+  };
 }
 
 interface KiraDockValue {

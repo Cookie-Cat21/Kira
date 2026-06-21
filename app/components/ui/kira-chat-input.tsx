@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import LanguageSwitcher from "@/app/components/ui/LanguageSwitcher";
 
 interface KiraChatInputProps {
   onSendMessage: (message: string) => void;
@@ -77,30 +78,10 @@ export function KiraChatInput({
 
           <div className="flex items-center gap-2">
             {onLanguageChange && (
-              <div className="flex items-center rounded-lg border border-kira-border bg-[#f5f5f7] p-0.5">
-                {(["en", "si", "ta"] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => onLanguageChange(lang)}
-                    className={cn(
-                      "min-h-9 min-w-9 rounded-md px-2.5 text-[13px] font-semibold transition-colors",
-                      language === lang
-                        ? "bg-white text-kap-purple shadow-sm"
-                        : "text-kira-muted hover:text-kira-text"
-                    )}
-                    aria-label={
-                      lang === "en"
-                        ? "Reply in English"
-                        : lang === "si"
-                          ? "Reply in Sinhala"
-                          : "Reply in Tamil"
-                    }
-                  >
-                    {lang === "en" ? "EN" : lang === "si" ? "සිං" : "தமி"}
-                  </button>
-                ))}
-              </div>
+              <LanguageSwitcher
+                language={language}
+                onChange={onLanguageChange}
+              />
             )}
 
             <div className="flex-1" />

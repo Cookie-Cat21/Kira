@@ -160,6 +160,44 @@ export function getContextualGreeting(isReturning = false): string {
   ]);
 }
 
+export interface OccasionHero {
+  badge: string;
+  prompt: string;
+}
+
+/** Urgent seasonal occasion for hero banner (one tap). */
+export function getOccasionHero(): OccasionHero | null {
+  const chip = getOccasionChips().find((c) => c.urgent);
+  if (!chip) return null;
+  return { badge: chip.label, prompt: chip.value };
+}
+
+/** Short subline for opening hero when an occasion is active. */
+export function getOccasionHeroSubline(): string | null {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  if (month === 4 && day >= 10 && day <= 16) {
+    return "Avurudu hampers, sweets & gifts — delivered islandwide.";
+  }
+  if (month === 5 && day >= 10 && day <= 18) {
+    return "Vesak lanterns, dansals & hampers — order ahead.";
+  }
+  if (month === 6 && day >= 7 && day <= 14) {
+    return "Poson dansal packs & family gifts.";
+  }
+  if (month === 5 && day >= 1 && day <= 14) {
+    return "Flowers, cakes & hampers Amma will love.";
+  }
+  if (month === 6 && day >= 1 && day <= 21) {
+    return "Thoughtful picks for Dad — cakes to gadgets.";
+  }
+  if (month === 12 && day >= 10) {
+    return "Christmas hampers, cakes & toys.";
+  }
+  return null;
+}
+
 function getUpcomingOccasionText(month: number, day: number): string | null {
   // Mirror the chip priority order (tighter windows first)
   if (month === 4 && day >= 10 && day <= 16) {

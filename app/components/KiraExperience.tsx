@@ -27,7 +27,8 @@ import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import { useKiraDock } from "../context/KiraDockContext";
-import { getContextualGreeting } from "@/lib/kira-client";
+import { getContextualGreeting, getOccasionHero, getOccasionHeroSubline } from "@/lib/kira-client";
+import LanguageSwitcher from "./ui/LanguageSwitcher";
 import {
   getColomboTodayIso,
   getColomboTomorrowIso,
@@ -42,6 +43,9 @@ import type {
   OrderTracking,
 } from "@/types";
 import { cn } from "@/lib/utils";
+
+const SINHALA_STARTER =
+  "අම්මාට උපන්දින තෑග්ගක් කොළඹට රු. 10,000 යටතෙන් යවන්න ඕන";
 
 const STARTER_PROMPTS: { label: string; value: string }[] = [
   {
@@ -201,6 +205,8 @@ export default function KiraExperience() {
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
   const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
+  const [occasionHero, setOccasionHero] = useState<ReturnType<typeof getOccasionHero>>(null);
+  const [occasionSubline, setOccasionSubline] = useState<string | null>(null);
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const [requestHealth, setRequestHealth] = useState<"idle" | "loading" | "error">("idle");
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
@@ -217,6 +223,8 @@ export default function KiraExperience() {
       if (session?.recipient) setRecipient(session.recipient);
       if (session?.lastOrder) setLastOrder(session.lastOrder);
       setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
+      setOccasionHero(getOccasionHero());
+      setOccasionSubline(getOccasionHeroSubline());
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -756,6 +764,14 @@ export default function KiraExperience() {
     const timer = window.setTimeout(() => {
       if (seedFiredRef.current) return;
       seedFiredRef.current = true;
+      if (seed.commerce) {
+        const c = seed.commerce;
+        if (c.city) setDeliveryCity(c.city);
+        if (c.budget) setBudget(c.budget);
+        if (c.occasion) setOccasion(c.occasion);
+        if (c.recipient) setRecipient(c.recipient);
+        if (c.deliveryDate) setDeliveryDate(c.deliveryDate);
+      }
       if (seed.product) {
         const product = seed.product;
         setMessages((prev) => [
@@ -783,6 +799,8 @@ export default function KiraExperience() {
   }, [pendingSeedPrompt, sendMessage, clearSeed]);
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
+  const hasCommerceBrief = !!(deliveryCity || budget || occasion || recipient);
+  const showCommerceChrome = !isOnlyOpening || hasCommerceBrief;
   const showProductSkeleton =
     isLoading &&
     !isStreaming &&
@@ -896,7 +914,7 @@ export default function KiraExperience() {
         </div>
       </header>
 
-      {!isOnlyOpening && (
+      {showCommerceChrome && (
         <CommerceRail
           context={commerceContext}
           onChange={handleCommerceContextChange}
@@ -919,14 +937,36 @@ export default function KiraExperience() {
 
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
-          <div className="mb-8 text-center animate-fade-up">
+          <div className="mb-6 flex w-full max-w-2xl flex-col items-center text-center animate-fade-up">
+            {occasionHero && (
+              <button
+                type="button"
+                onClick={() => sendMessage(occasionHero.prompt)}
+                className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-full border border-kap-purple/20 bg-kap-purple/8 px-4 py-2 text-[14px] font-semibold text-kap-purple transition-colors hover:bg-kap-purple/12"
+              >
+                {occasionHero.badge}
+                <span className="text-kap-purple/60">→</span>
+              </button>
+            )}
             <KaprukaSmileMark />
             <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-semibold leading-[1.14] tracking-[-0.02em] text-kira-text sm:text-5xl">
               {heroGreeting ?? "What can I find for you?"}
             </h1>
-            <p className="text-[17px] text-kira-text-2">
-              Live Kapruka catalog · Delivery checked · Checkout in chat
+            <p className="max-w-md text-[17px] text-kira-text-2">
+              {occasionSubline ??
+                "Live Kapruka catalog · Delivery checked · Checkout in chat"}
             </p>
+          </div>
+
+          <div className="mb-4 flex flex-col items-center gap-2 animate-fade-up" style={{ animationDelay: "40ms" }}>
+            <span className="text-[13px] font-medium text-kira-muted">
+              Kira replies in
+            </span>
+            <LanguageSwitcher
+              language={language}
+              onChange={setLanguage}
+              prominent
+            />
           </div>
 
           <div
@@ -939,19 +979,42 @@ export default function KiraExperience() {
               onCancel={cancelActiveResponse}
               language={language}
               onLanguageChange={setLanguage}
+              placeholder={
+                language === "si"
+                  ? "උපන්දින තෑග්ග, නගරය, අයදුම් අංකය…"
+                  : language === "ta"
+                    ? "பரிசு, பட்ஜெட், நகரம்…"
+                    : "Ask for a gift, budget, city, or order number…"
+              }
             />
           </div>
 
-          <p className="mt-5 text-center text-[15px] text-kira-text-2">
-            Try{" "}
+          <div
+            className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-[15px] text-kira-text-2 animate-fade-up"
+            style={{ animationDelay: "80ms" }}
+          >
+            <span>
+              Try{" "}
+              <button
+                type="button"
+                onClick={() => sendMessage(STARTER_PROMPTS[0].value)}
+                className="font-semibold text-kap-purple underline-offset-2 hover:underline"
+              >
+                {STARTER_PROMPTS[0].label.toLowerCase()}
+              </button>
+            </span>
+            <span className="hidden text-kira-muted sm:inline">·</span>
             <button
               type="button"
-              onClick={() => sendMessage(STARTER_PROMPTS[0].value)}
+              onClick={() => {
+                setLanguage("si");
+                sendMessage(SINHALA_STARTER);
+              }}
               className="font-semibold text-kap-purple underline-offset-2 hover:underline"
             >
-              {STARTER_PROMPTS[0].label.toLowerCase()}
+              සිංහලෙන් අම්මාට තෑග්ගක්
             </button>
-          </p>
+          </div>
         </div>
       ) : (
         <>
