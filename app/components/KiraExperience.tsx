@@ -324,6 +324,7 @@ export default function KiraExperience({
     openCart,
     cartCount,
     cartTotal,
+    setCheckoutDefaults,
   } = useCart();
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
@@ -342,6 +343,10 @@ export default function KiraExperience({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    setCheckoutDefaults({ city: deliveryCity, date: deliveryDate });
+  }, [deliveryCity, deliveryDate, setCheckoutDefaults]);
 
   // Persist session after each completed response (not while streaming).
   useEffect(() => {

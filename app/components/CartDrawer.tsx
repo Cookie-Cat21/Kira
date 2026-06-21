@@ -16,7 +16,16 @@ const lkrFormatter = new Intl.NumberFormat("en-LK", {
 });
 
 export default function CartDrawer() {
-  const { cart, cartTotal, cartCount, isOpen, closeCart, removeFromCart, updateQty } = useCart();
+  const {
+    cart,
+    cartTotal,
+    cartCount,
+    isOpen,
+    closeCart,
+    removeFromCart,
+    updateQty,
+    checkoutDefaults,
+  } = useCart();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
@@ -237,7 +246,11 @@ export default function CartDrawer() {
         )}
       </AnimatePresence>
 
-      <CheckoutModal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} />
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        initialDelivery={checkoutDefaults}
+      />
     </>
   );
 }
