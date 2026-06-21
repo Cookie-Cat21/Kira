@@ -2,7 +2,6 @@ import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import TrustBar from "@/app/components/store/TrustBar";
 import GiftFinder from "@/app/components/store/GiftFinder";
-import OccasionStrip from "@/app/components/store/OccasionStrip";
 import CategoryRail from "@/app/components/store/CategoryRail";
 import ProductRail from "@/app/components/store/ProductRail";
 import KiraBand from "@/app/components/store/KiraBand";
@@ -35,12 +34,7 @@ export default async function ShopHomePage() {
         {/* 1. Intent-first — replaces legacy category wall */}
         <GiftFinder />
 
-        {/* 2. Occasion shortcuts → Kira */}
-        <div className="mt-12">
-          <OccasionStrip />
-        </div>
-
-        {/* 3. Editorial picks — merchandising without overload */}
+        {/* 2. Editorial picks — merchandising without overload */}
         <div className="mt-20 space-y-20">
           {rails.map((rail) => (
             <ProductRail
@@ -52,7 +46,7 @@ export default async function ShopHomePage() {
           ))}
         </div>
 
-        {/* 4. Categories — secondary, horizontal scroll (not a wall) */}
+        {/* 3. Categories — secondary, horizontal scroll (not a wall) */}
         <section className="mx-auto mt-24 w-full max-w-[1280px] px-5 sm:px-8">
           <Reveal className="mb-5">
             <h2 className="display-hero text-2xl text-kira-text sm:text-3xl">
@@ -65,7 +59,7 @@ export default async function ShopHomePage() {
         </section>
         <CategoryRail categories={categories} />
 
-        {/* 5. Kira story */}
+        {/* 4. Kira story */}
         <div className="mt-32 pb-8">
           <KiraBand />
         </div>
