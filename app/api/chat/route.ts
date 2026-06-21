@@ -1,7 +1,17 @@
 import Groq from "groq-sdk";
 import { NextRequest } from "next/server";
 import { KIRA_SYSTEM_PROMPT } from "@/lib/kira-prompt";
+import {
+  buildSandboxCheckoutInfo,
+  isSandboxCheckout,
+} from "@/lib/checkout-sandbox";
+import {
+  getColomboTodayIso,
+  getColomboTomorrowIso,
+  parseRelativeDeliveryDate,
+} from "@/lib/colombo-date";
 import { getMcpClient, invalidateMcpClient, listMcpTools, callMcpTool } from "@/lib/mcp-client";
+import { resolveMcpProductId } from "@/lib/product-id";
 import {
   extractCheckoutInfoFromMcp,
   extractDeliveryInfoFromMcp,
@@ -531,6 +541,7 @@ const TOOL_STEPS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const body: ChatRequest = await req.json();
+  const sandboxCheckout = isSandboxCheckout(req);
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -617,9 +628,10 @@ export async function POST(req: NextRequest) {
             language,
             mcpClient,
             controller,
-          budget,
-          occasion,
-          recipient,
+            budget,
+            occasion,
+            recipient,
+            internationalMode: body.internationalMode,
           })
         ) {
           controller.close();
@@ -770,11 +782,11 @@ export async function POST(req: NextRequest) {
         // Authoritative per-request date. KIRA_SYSTEM_PROMPT bakes `new Date()` at
         // module-load time, which goes stale after a cold start; this line is
         // evaluated on every request and overrides it for delivery-date logic.
-        const today = new Date();
-        const tomorrow = new Date(today.getTime() + 86_400_000);
+        const todayIso = getColomboTodayIso();
+        const tomorrowIso = getColomboTomorrowIso();
         const dateContext =
-          `\n\n[CURRENT DATE: ${today.toISOString().slice(0, 10)} — treat this as today for ALL delivery-date logic. ` +
-          `Delivery date must be today or later; if the user gives no date, default to tomorrow (${tomorrow.toISOString().slice(0, 10)}) and confirm.]`;
+          `\n\n[CURRENT DATE: ${todayIso} — treat this as today for ALL delivery-date logic. ` +
+          `Delivery date must be today or later; if the user gives no date, default to tomorrow (${tomorrowIso}) and confirm.]`;
 
         const systemContent =
           KIRA_SYSTEM_PROMPT +
@@ -930,7 +942,40 @@ export async function POST(req: NextRequest) {
             toolsCalledThisRequest.add(toolName);
             let resultContent: unknown;
             try {
-              if (toolName === "kapruka_check_delivery") {
+              if (toolName === "kapruka_create_order" && sandboxCheckout) {
+                checkoutInfo = buildSandboxCheckoutInfo(cart);
+                payLink = checkoutInfo.checkoutUrl;
+                const clean = (v: unknown): string | undefined => {
+                  const s = typeof v === "string" ? v.trim() : "";
+                  return s ? s : undefined;
+                };
+                const rec = asRecord(toolArgs.recipient);
+                const del = asRecord(toolArgs.delivery);
+                const recipientName = clean(rec?.name);
+                const recipientPhone = clean(rec?.phone);
+                const deliveryCityValue = clean(del?.city);
+                const deliveryAddress = clean(del?.address);
+                const giftMessage = clean(toolArgs.gift_message ?? toolArgs.giftMessage);
+                lastOrderArgs = {
+                  recipient: recipientName && recipientPhone
+                    ? { name: recipientName, phone: recipientPhone }
+                    : undefined,
+                  delivery: deliveryCityValue && deliveryAddress
+                    ? { city: deliveryCityValue, address: deliveryAddress }
+                    : undefined,
+                  giftMessage,
+                };
+                resultContent = [
+                  {
+                    type: "text",
+                    text: JSON.stringify({
+                      checkout_url: checkoutInfo.checkoutUrl,
+                      order_ref: checkoutInfo.orderRef,
+                      mode: "sandbox",
+                    }),
+                  },
+                ];
+              } else if (toolName === "kapruka_check_delivery") {
                 const city = String(toolArgs.city ?? "").toLowerCase().trim();
                 const date = String(toolArgs.delivery_date ?? "").trim();
                 const product = String(toolArgs.product_id ?? "").trim();
@@ -949,7 +994,7 @@ export async function POST(req: NextRequest) {
             } catch (mcpErr) {
               const msg = mcpErr instanceof Error ? mcpErr.message : String(mcpErr);
               // Connection errors invalidate the singleton so the next request reconnects.
-              if (/connection|not connected|transport|closed|econnreset|socket/i.test(msg)) {
+              if (/connection|not connected|transport|closed|econnreset|socket|session not found/i.test(msg)) {
                 invalidateMcpClient();
               }
               resultContent = [{ type: "text", text: `Tool error: ${msg}` }];
@@ -979,8 +1024,10 @@ export async function POST(req: NextRequest) {
               collectedProducts.push(...(filteredForLlm.length > 0 ? filteredForLlm : rawForLlm));
             }
             if (toolName === "kapruka_create_order") {
-              checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
-              payLink = checkoutInfo?.checkoutUrl;
+              if (!sandboxCheckout) {
+                checkoutInfo = extractCheckoutInfoFromMcp(resultContent);
+                payLink = checkoutInfo?.checkoutUrl;
+              }
               // Snapshot the recipient/delivery/gift details the model collected so a
               // later "order again" can pre-fill them.
               const clean = (v: unknown): string | undefined => {
@@ -1555,6 +1602,7 @@ async function tryHandleDeterministicPrompt({
   budget,
   occasion,
   recipient,
+  internationalMode,
 }: {
   text: string;
   messages: { role: string; content: string }[];
@@ -1569,6 +1617,7 @@ async function tryHandleDeterministicPrompt({
   budget?: string;
   occasion?: string;
   recipient?: string;
+  internationalMode?: boolean;
 }): Promise<boolean> {
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
@@ -1660,8 +1709,10 @@ async function tryHandleDeterministicPrompt({
   }
 
   const OUT_OF_SCOPE_RE =
-    /\b(weather|flight|restaurant|translate|cover letter|quantum|homework|cricket|time in|what time|world clock|loan|poem|movie|doctor|appointment|call someone|job in|forex|usd|lkr rate|joke|hack|instagram|girlfriend broke|lonely|be my friend|pizza)\b/i;
-  if (OUT_OF_SCOPE_RE.test(lower)) {
+    /\b(weather|flight|restaurant|translate|cover letter|quantum|homework|cricket|time in|what time|world clock|loan|poem|movie|doctor|appointment|call someone|job in|forex|lkr rate|joke|hack|instagram|girlfriend broke|lonely|be my friend|pizza)\b/i;
+  const overseasCurrencyQuery =
+    internationalMode && /\b(usd|dollars?|pounds?|aud|gbp)\b/i.test(lower);
+  if (OUT_OF_SCOPE_RE.test(lower) && !overseasCurrencyQuery) {
     await streamWords(controller, L("outOfScopeRedirect", language));
     controller.enqueue(sse("done"));
     return true;
@@ -1928,11 +1979,12 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  const CHECKOUT_DETAIL_RE = /\b(order|place\s+an\s+order|checkout|send|deliver)\b/i;
   const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
   const ADDRESS_RE =
     /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
-  if (CHECKOUT_DETAIL_RE.test(lower)) {
+  // Only collect partial checkout fields once the tray has items — otherwise
+  // "send flowers to 12 Galle Road" gets misread as checkout field collection.
+  if (cart.length > 0) {
     const hasPhone = PHONE_RE.test(trimmed);
     const hasAddress = ADDRESS_RE.test(trimmed);
     if (hasAddress && !hasPhone) {
@@ -1963,14 +2015,14 @@ async function tryHandleDeterministicPrompt({
       /\bbooks?\s+na\b/i.test(lower));
 
   if (hasSimpleProductIntent) {
-    const productDate = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const productDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
     const productCity = extractCityHint(trimmed) ?? deliveryCity;
     const maxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
 
     if (
       /\b(fresh|perishable)\b/i.test(lower) &&
       /\bcake\b/i.test(lower) &&
-      !extractRelativeDeliveryDate(trimmed) &&
+      !parseRelativeDeliveryDate(trimmed) &&
       !deliveryDate
     ) {
       await streamWords(
@@ -2043,18 +2095,20 @@ async function tryHandleDeterministicPrompt({
       return true;
     }
     const city = extractCityHint(trimmed) ?? deliveryCity;
-    const date = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const date = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
     if (!city) {
       await streamWords(controller, "Tell me the delivery city and I'll check the live Kapruka fee for your tray.");
       controller.enqueue(sse("done"));
       return true;
     }
     const firstItem = cart[0];
+    const idCache = new Map<string, string>();
+    const productId = await resolveMcpProductId(mcpClient, firstItem, idCache);
     controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
     const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
       params: {
         city,
-        product_id: firstItem.product.id,
+        product_id: productId,
         ...(date ? { delivery_date: date } : {}),
         response_format: "json",
       },
@@ -2302,7 +2356,7 @@ async function tryHandleDeterministicPrompt({
   if ((GIFT_INTENT_RE.test(lower) || hasFamilyHint) && (hasBudgetHint || hasOccasionHint || hasCityHint)) {
     const giftMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     const giftCityHint = extractCityHint(trimmed) ?? deliveryCity;
-    const giftDate = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const giftDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
     const giftOccasion = extractOccasionHint(trimmed) ?? occasion;
     const giftRecipient = extractRecipientHint(trimmed) ?? recipient;
 
@@ -2345,61 +2399,32 @@ async function tryHandleDeterministicPrompt({
         params: { query: giftCityHint, limit: 3, response_format: "json" },
       });
       const canonicalGiftCity = extractFirstCity(giftCityResult.content) ?? giftCityHint;
-      for (const product of dedupedGiftProducts.slice(0, 3)) {
+      const primaryProduct = dedupedGiftProducts[0];
+      if (primaryProduct) {
         controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
         const giftDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
           params: {
             city: canonicalGiftCity,
-            product_id: product.id,
+            product_id: primaryProduct.id,
             ...(giftDate ? { delivery_date: giftDate } : {}),
             response_format: "json",
           },
         });
         const giftDelivery = extractDeliveryInfoFromMcp(giftDeliveryResult.content);
         if (giftDelivery) {
-          product.deliveryInfo = giftDelivery;
-          product.badges = buildReasonBadges(product, {
-            budgetAmount: giftMaxPrice,
-            occasion: giftOccasion,
-            recipient: giftRecipient,
-            city: canonicalGiftCity,
-            deliveryDate: giftDate,
-            deliveryInfo: giftDelivery,
-          });
-          if (product === dedupedGiftProducts[0]) controller.enqueue(sse("delivery", giftDelivery));
+          primaryProduct.deliveryInfo = giftDelivery;
+          controller.enqueue(sse("delivery", giftDelivery));
         }
       }
-    }
 
-    // If q:"gift" returned nothing, try common gift categories before giving up.
-    if (dedupedGiftProducts.length === 0) {
-      for (const fallbackQ of ["chocolate", "flowers", "hamper", "cake"]) {
-        const fb = await callMcpTool(mcpClient, "kapruka_search_products", {
-          params: {
-            q: fallbackQ,
-            limit: 6,
-            in_stock_only: true,
-            ...(giftMaxPrice ? { max_price: giftMaxPrice } : {}),
-            response_format: "json",
-          },
-        });
-        const fbProducts = dedupeProducts(extractProductsFromMcp(fb.content));
-        if (fbProducts.length > 0) {
-          dedupedGiftProducts.push(...fbProducts);
-          break;
-        }
-      }
-    }
-
-    for (const product of dedupedGiftProducts) {
-      if (!product.badges?.length) {
+      for (const product of dedupedGiftProducts) {
         product.badges = buildReasonBadges(product, {
           budgetAmount: giftMaxPrice,
           occasion: giftOccasion,
           recipient: giftRecipient,
-          city: giftCityHint,
+          city: canonicalGiftCity,
           deliveryDate: giftDate,
-          deliveryInfo: product.deliveryInfo,
+          deliveryInfo: product.deliveryInfo ?? primaryProduct?.deliveryInfo,
         });
       }
     }
@@ -2884,17 +2909,6 @@ function extractRecipientHint(text: string): string | undefined {
   );
   if (!match) return undefined;
   return match[1].replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function extractRelativeDeliveryDate(text: string): string | undefined {
-  const lower = text.toLowerCase();
-  const d = new Date();
-  if (/\btomorrow\b/.test(lower)) {
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-  }
-  if (/\btoday\b/.test(lower)) return d.toISOString().slice(0, 10);
-  return text.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
 }
 
 function buildReasonBadges(

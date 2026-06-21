@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { MapPin, Calendar, X, Sparkles, User, Wallet, ShoppingBag } from "lucide-react";
 import type { ComponentType } from "react";
+import { getColomboTodayIso } from "@/lib/colombo-date";
 
 export interface CommerceContext {
   city?: string;
@@ -239,7 +240,7 @@ function DateChip({
   onClear: () => void;
 }) {
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const today = new Date().toISOString().split("T")[0];
+  const today = getColomboTodayIso();
 
   const formatted = deliveryDate
     ? new Date(deliveryDate + "T12:00:00").toLocaleDateString("en-GB", {

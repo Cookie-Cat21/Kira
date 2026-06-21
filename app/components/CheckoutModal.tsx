@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
+import { getColomboTodayIso, getColomboTomorrowIso } from "@/lib/colombo-date";
 import { cn } from "@/lib/utils";
 import type { CheckoutInfo } from "@/types";
 
@@ -69,12 +70,13 @@ export default function CheckoutModal({
     phone: "",
     city: initialDelivery?.city ?? "",
     address: "",
-    date: initialDelivery?.date ?? getTomorrowIsoDate(),
+    date: initialDelivery?.date ?? getColomboTomorrowIso(),
   });
   const [giftMessage, setGiftMessage] = useState("");
   const [senderName, setSenderName] = useState("");
   const [placing, setPlacing] = useState(false);
   const [placeError, setPlaceError] = useState("");
+  const [checkoutMode, setCheckoutMode] = useState<"live" | "sandbox">("live");
   const [modalCheckoutInfo, setModalCheckoutInfo] = useState<CheckoutInfo | undefined>();
   const checkoutUrl = modalCheckoutInfo?.checkoutUrl ?? payLink ?? contextPayLink;
   const stepIndex = STEPS.indexOf(step);
@@ -85,7 +87,7 @@ export default function CheckoutModal({
       setDelivery((current) => ({
         ...current,
         city: current.city || initialDelivery?.city || "",
-        date: initialDelivery?.date || current.date || getTomorrowIsoDate(),
+        date: initialDelivery?.date || current.date || getColomboTomorrowIso(),
       }));
     }, 0);
     return () => window.clearTimeout(timer);
@@ -127,13 +129,14 @@ export default function CheckoutModal({
   function handleClose() {
     setStep("review");
     setPlaceError("");
+    setCheckoutMode("live");
     setModalCheckoutInfo(undefined);
     setGiftMessage("");
     setSenderName("");
     setDelivery((current) => ({
       ...current,
       city: initialDelivery?.city ?? "",
-      date: initialDelivery?.date ?? getTomorrowIsoDate(),
+      date: initialDelivery?.date ?? getColomboTomorrowIso(),
     }));
     onClose();
   }
@@ -162,11 +165,16 @@ export default function CheckoutModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cart, delivery, giftMessage, senderName }),
         });
-        const data = (await res.json()) as { checkoutInfo?: CheckoutInfo; error?: string };
+        const data = (await res.json()) as {
+          checkoutInfo?: CheckoutInfo;
+          mode?: "sandbox" | "live";
+          error?: string;
+        };
         if (!res.ok || !data.checkoutInfo) {
           setPlaceError(data.error ?? "Couldn't place the order — try again.");
           return;
         }
+        setCheckoutMode(data.mode === "sandbox" ? "sandbox" : "live");
         setModalCheckoutInfo(data.checkoutInfo);
         setStep("confirm");
       } catch {
@@ -424,10 +432,14 @@ export default function CheckoutModal({
                     </motion.span>
                     <div>
                       <h2 className="font-sans text-2xl text-kira-text">
-                        🎉 Order placed!
+                        {checkoutMode === "sandbox"
+                          ? "Demo checkout ready"
+                          : "🎉 Order placed!"}
                       </h2>
                       <p className="mt-1 text-sm text-kira-muted">
-                        {giftMessage
+                        {checkoutMode === "sandbox"
+                          ? "Sandbox mode — no live Kapruka order was created. Use this flow to validate the UI safely."
+                          : giftMessage
                           ? `Your note — "${giftMessage.slice(0, 60)}${giftMessage.length > 60 ? "…" : ""}" — is attached.`
                           : "Complete your payment securely on Kapruka."}
                       </p>
@@ -447,6 +459,11 @@ export default function CheckoutModal({
                         Secure Kapruka checkout link expires at {formatExpiry(modalCheckoutInfo.expiresAt)}.
                       </p>
                     )}
+                    {checkoutMode === "sandbox" && (
+                      <p className="max-w-sm rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                        Demo sandbox only. The payment link below is not a real Kapruka checkout.
+                      </p>
+                    )}
                     {checkoutUrl ? (
                       <a
                         href={checkoutUrl}
@@ -458,7 +475,9 @@ export default function CheckoutModal({
                         }}
                         className="flex items-center gap-2 rounded-xl bg-kap-yellow px-8 py-4 text-sm font-bold text-gray-950 shadow-md transition-all hover:brightness-95 active:scale-[0.98]"
                       >
-                        Complete payment on Kapruka
+                        {checkoutMode === "sandbox"
+                          ? "Open demo checkout link"
+                          : "Complete payment on Kapruka"}
                         <ExternalLink className="size-4" />
                       </a>
                     ) : (
@@ -631,13 +650,7 @@ function seededUnit(index: number, salt: number) {
 }
 
 function getTodayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getTomorrowIsoDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return getColomboTodayIso();
 }
 
 function formatExpiry(raw: string) {

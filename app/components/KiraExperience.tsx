@@ -37,6 +37,11 @@ import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
+import {
+  getColomboTodayIso,
+  getColomboTomorrowIso,
+  parseRelativeDeliveryDate,
+} from "@/lib/colombo-date";
 import type {
   CheckoutInfo,
   DeliveryQuote,
@@ -174,14 +179,7 @@ function parseRecipientChip(text: string): string | undefined {
 }
 
 function parseDeliveryDateChip(text: string): string | undefined {
-  const lower = text.toLowerCase();
-  const date = new Date();
-  if (/\btomorrow\b/.test(lower)) {
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().slice(0, 10);
-  }
-  if (/\btoday\b/.test(lower)) return date.toISOString().slice(0, 10);
-  return text.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
+  return parseRelativeDeliveryDate(text);
 }
 
 function buildOpeningMessage(): KiraMessage {
@@ -284,12 +282,7 @@ export default function KiraExperience({
   const [budget, setBudget] = useState<string | undefined>(undefined);
   const [occasion, setOccasion] = useState<string | undefined>(undefined);
   const [recipient, setRecipient] = useState<string | undefined>(undefined);
-  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
-    // Default to tomorrow so the delivery API always receives a valid date.
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0]; // YYYY-MM-DD
-  });
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => getColomboTomorrowIso());
   const [lastOrder, setLastOrder] = useState<LastOrder | undefined>(undefined);
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
@@ -894,9 +887,7 @@ export default function KiraExperience({
       setDeliveryDate(updates.deliveryDate);
     }
     if ("deliveryDate" in updates && updates.deliveryDate === undefined) {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      setDeliveryDate(d.toISOString().split("T")[0]);
+      setDeliveryDate(getColomboTomorrowIso());
     }
     if ("budget" in updates) setBudget(updates.budget);
     if ("occasion" in updates) setOccasion(updates.occasion);
@@ -1240,7 +1231,7 @@ function DeliveryDatePicker({
       <span className="sr-only">Delivery date</span>
       <input
         type="date"
-        min={new Date().toISOString().slice(0, 10)}
+        min={getColomboTodayIso()}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="w-[7.6rem] bg-transparent text-xs font-semibold text-white/80 outline-none [color-scheme:dark]"

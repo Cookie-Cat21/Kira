@@ -786,4 +786,40 @@ export const TESTS = [
     checks: [notEmpty, eventHasProducts, noHallucinatedProducts],
     notes: "Primary challenge demo path should return real product cards without unnecessary clarifying questions",
   }),
+  test({
+    id: 67,
+    name: "GIFT: street address searches instead of checkout phone prompt",
+    group: "feature",
+    subgroup: "demo",
+    messages: [
+      {
+        role: "user",
+        content: "send flowers to 12 Galle Road Colombo",
+      },
+    ],
+    checks: [
+      notEmpty,
+      eventHasProducts,
+      { fn: "noPattern", args: [/phone number|recipient phone/i] },
+    ],
+    notes: "Gift intent with a street address must not be misread as partial checkout",
+  }),
+  test({
+    id: 68,
+    name: "INTL: overseas USD budget is not out-of-scope",
+    group: "feature",
+    subgroup: "international",
+    messages: [
+      {
+        role: "user",
+        content: "I am overseas from UK, show me gifts under USD 50",
+      },
+    ],
+    request: { internationalMode: true },
+    checks: [
+      notEmpty,
+      { fn: "noPattern", args: [/outside my shopping lane/i] },
+    ],
+    notes: "International currency questions should not hit the out-of-scope redirect",
+  }),
 ];
