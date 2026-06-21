@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpClient, callMcpTool } from "@/lib/mcp-client";
 import { extractCheckoutInfoFromMcp, extractProductsFromMcp } from "@/lib/mcp-parsing";
-import type { CartItem } from "@/types";
+import type { CartItem, CheckoutInfo } from "@/types";
 
 export interface CheckoutRequest {
   cart: CartItem[];
@@ -14,6 +14,37 @@ export interface CheckoutRequest {
   };
   giftMessage?: string;
   senderName?: string;
+}
+
+function isSandboxCheckout(req: NextRequest): boolean {
+  return (
+    process.env.KIRA_CHECKOUT_MODE === "sandbox" ||
+    (process.env.NODE_ENV !== "production" &&
+      req.headers.get("x-kira-checkout-mode") === "sandbox")
+  );
+}
+
+function buildSandboxCheckoutInfo(
+  cart: CartItem[]
+): CheckoutInfo {
+  const itemsTotal = cart.reduce(
+    (sum, item) => sum + item.product.price * item.quantity,
+    0
+  );
+  const deliveryFee = 450;
+  const ref = `KIRA-SANDBOX-${Date.now().toString(36).toUpperCase()}`;
+  return {
+    checkoutUrl: `https://www.kapruka.com/checkout/${ref.toLowerCase()}`,
+    orderRef: ref,
+    summary: {
+      itemsTotal,
+      deliveryFee,
+      addonsTotal: 0,
+      grandTotal: itemsTotal + deliveryFee,
+      currency: cart[0]?.product.currency ?? "LKR",
+    },
+    expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+  };
 }
 
 function normalizeName(value: string): string {
@@ -111,6 +142,16 @@ export async function POST(req: NextRequest) {
         { error: "Delivery date cannot be in the past" },
         { status: 400 }
       );
+    }
+
+    // Demo-safe order mode. This exercises the full checkout UI and validation
+    // without creating a real Kapruka order. Production still uses live MCP
+    // unless KIRA_CHECKOUT_MODE=sandbox is explicitly set.
+    if (isSandboxCheckout(req)) {
+      return NextResponse.json({
+        checkoutInfo: buildSandboxCheckoutInfo(cart),
+        mode: "sandbox",
+      });
     }
 
     const mcpClient = await getMcpClient();
