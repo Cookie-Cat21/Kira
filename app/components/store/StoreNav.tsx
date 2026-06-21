@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, ShoppingBag, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Search, ShoppingBag, Sparkles, X } from "lucide-react";
 import type { KiraProduct } from "@/types";
 import type { StoreCategory } from "@/types/store";
 import { useCart } from "@/app/context/CartContext";
@@ -12,23 +13,19 @@ import { Button } from "@/components/ui/button";
 import { formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
+const navLink =
+  "min-h-11 rounded-full px-3 py-2 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kap-purple/30";
+
 export default function StoreNav({ categories }: { categories: StoreCategory[] }) {
+  const pathname = usePathname();
   const { cartCount, openCart } = useCart();
   const { open: openKira } = useKiraDock();
 
-  const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<KiraProduct[]>([]);
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
@@ -58,66 +55,95 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
     return () => clearTimeout(t);
   }, [q]);
 
-  const topCategories = categories.slice(0, 6);
+  const topCategories = categories.slice(0, 4);
+
+  function isActive(href: string) {
+    if (href === "/shop") return pathname === "/shop";
+    return pathname === href || pathname?.startsWith(`${href}/`);
+  }
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-[80] transition-all duration-300",
-        scrolled ? "store-nav" : "bg-[#f5f5f7]/80"
-      )}
-    >
-      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-4 px-5 sm:px-8">
-        <Link href="/shop" className="flex shrink-0 items-center">
+    <header className="store-nav sticky top-0 z-[80]">
+      <div className="mx-auto flex h-[52px] w-full max-w-[1280px] items-center gap-3 px-5 sm:h-14 sm:gap-4 sm:px-8">
+        <Link
+          href="/shop"
+          className="flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kap-purple/30"
+        >
           <Image
             src="/kapruka-logo.svg"
             alt="Kapruka"
-            width={120}
-            height={28}
-            className="h-7 w-auto object-contain"
+            width={108}
+            height={24}
+            className="kapruka-logo-dark h-6 w-auto object-contain sm:h-7"
             priority
           />
         </Link>
 
-        <nav className="ml-2 hidden items-center gap-1 lg:flex">
+        <nav
+          className="ml-1 hidden min-w-0 flex-1 items-center gap-0.5 lg:flex"
+          aria-label="Store"
+        >
           <Link
             href="/shop"
-            className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
+            className={cn(
+              navLink,
+              isActive("/shop")
+                ? "bg-kap-purple/8 text-kap-purple"
+                : "text-kira-text hover:bg-black/[0.04]"
+            )}
           >
             Gifts
           </Link>
           <Link
             href="/track"
-            className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
+            className={cn(
+              navLink,
+              isActive("/track")
+                ? "bg-kap-purple/8 text-kap-purple"
+                : "text-kira-text hover:bg-black/[0.04]"
+            )}
           >
             Track
           </Link>
-          {topCategories.slice(0, 4).map((c) => (
-            <Link
-              key={c.slug}
-              href={`/shop/${c.slug}`}
-              className="min-h-11 rounded-full px-3 py-2 text-[15px] font-medium text-kira-text-2 transition-colors hover:bg-black/5 hover:text-kira-text"
-            >
-              {c.name}
-            </Link>
-          ))}
+          {topCategories.map((c) => {
+            const href = `/shop/${c.slug}`;
+            return (
+              <Link
+                key={c.slug}
+                href={href}
+                className={cn(
+                  navLink,
+                  "max-w-[9.5rem] truncate",
+                  isActive(href)
+                    ? "bg-kap-purple/8 text-kap-purple"
+                    : "text-kira-text hover:bg-black/[0.04]"
+                )}
+                title={c.name}
+              >
+                {c.name}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <Button
             type="button"
-            variant="default"
-            className="hidden h-11 rounded-full bg-kap-purple px-5 text-[15px] font-semibold hover:bg-kap-purple/90 sm:inline-flex"
+            variant="outline"
+            className="h-10 rounded-full border-kap-purple/25 bg-white px-3.5 text-[14px] font-semibold text-kap-purple shadow-none hover:border-kap-purple/40 hover:bg-kap-purple/5 sm:h-11 sm:px-5 sm:text-[15px]"
             onClick={() => openKira()}
           >
-            Ask Kira
+            <Sparkles className="size-3.5 text-kap-yellow sm:hidden" aria-hidden />
+            <span className="sm:hidden">Kira</span>
+            <span className="hidden sm:inline">Ask Kira</span>
           </Button>
 
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
-            aria-label="Search"
-            className="flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text-2 transition-colors hover:bg-[#f5f5f7]"
+            aria-label={searchOpen ? "Close search" : "Search"}
+            aria-expanded={searchOpen}
+            className="flex size-10 items-center justify-center rounded-full text-kira-text transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kap-purple/30 sm:size-11"
           >
             {searchOpen ? <X className="size-5" /> : <Search className="size-5" />}
           </button>
@@ -126,7 +152,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
             type="button"
             onClick={openCart}
             aria-label={`Open bag, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-            className="relative flex size-11 items-center justify-center rounded-full border border-kira-border bg-white text-kira-text transition-colors hover:bg-[#f5f5f7]"
+            className="relative flex size-10 items-center justify-center rounded-full text-kira-text transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kap-purple/30 sm:size-11"
           >
             <ShoppingBag className="size-5" />
             {cartCount > 0 && (
@@ -139,7 +165,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
       </div>
 
       {searchOpen && (
-        <div className="store-nav border-t border-kira-border">
+        <div className="border-t border-kira-border bg-white/95 backdrop-blur-xl">
           <div className="mx-auto w-full max-w-[1280px] px-5 py-4 sm:px-8">
             <div className="glass-input flex items-center gap-3 rounded-xl px-4 py-3">
               <Search className="size-4 shrink-0 text-kira-muted" />
@@ -148,7 +174,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search cakes, flowers, gifts…"
-                className="w-full bg-transparent text-[17px] text-kira-text outline-none placeholder:text-kira-muted"
+                className="w-full bg-transparent text-[17px] text-kira-text outline-none placeholder:text-kira-muted focus-visible:ring-0"
               />
               {searching && <span className="text-[13px] text-kira-muted">…</span>}
             </div>
@@ -160,7 +186,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
                     key={p.id}
                     href={`/product/${p.id}`}
                     onClick={() => setSearchOpen(false)}
-                    className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-black/5"
+                    className="flex min-h-11 items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-black/[0.04]"
                   >
                     <span className="truncate text-[15px] text-kira-text">{p.name}</span>
                     <span className="ml-3 shrink-0 text-[13px] font-semibold text-kira-text-2">

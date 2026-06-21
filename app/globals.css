@@ -218,7 +218,11 @@ body {
 
 /* ───────────────────────── Storefront ───────────────────────── */
 
-/* Product card — opaque white, imagery pops */
+/* Kapruka wordmark SVG is white — invert for light chrome */
+.kapruka-logo-dark {
+  filter: brightness(0) saturate(100%);
+  opacity: 0.92;
+}
 .store-card {
   background: #ffffff;
   border: 1px solid rgba(60, 60, 67, 0.12);
