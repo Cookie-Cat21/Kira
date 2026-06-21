@@ -1709,6 +1709,29 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  if (
+    /\b(i am looking for a really good gift|looking for a really good gift)\b/i.test(lower)
+  ) {
+    await streamWords(controller, L("vagueAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // Delivery request with no concrete product/city — keep it deterministic and
+  // safe instead of letting the LLM invent logistics.
+  if (
+    /\bdeliver(?:y)?\s+to\b/i.test(lower) &&
+    !extractCityHint(trimmed) &&
+    !extractProductKeyword(lower)
+  ) {
+    await streamWords(
+      controller,
+      "Tell me the Sri Lankan city and the product you want to send, and I'll check live Kapruka delivery."
+    );
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // Check if the previous assistant turn was asking for an order number — if so, treat
   // this message as the order number reply even without "track" in it.
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
@@ -1750,6 +1773,39 @@ async function tryHandleDeterministicPrompt({
           Lf("trackingNotFound", language, { orderNumber, reason })
         );
       }
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // Short referential follow-up after a product search — "now?" / "what now?"
+  // should recover the last search rather than falling into a model call.
+  if (/^(now|what now|and now)[\?\!.]*$/i.test(trimmed)) {
+    const ctx = extractLastSearchContext(messages, trimmed);
+    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}"`));
+    const reshowResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: ctx.query,
+        limit: 6,
+        in_stock_only: true,
+        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const products = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    if (products.length > 0) {
+      await streamWords(
+        controller,
+        Lf(products.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
+          n: products.length,
+          budget: "",
+          city: "",
+          date: "",
+        })
+      );
+      controller.enqueue(sse("products", products));
+    } else {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: ctx.query }));
     }
     controller.enqueue(sse("done"));
     return true;
@@ -1824,6 +1880,91 @@ async function tryHandleDeterministicPrompt({
   }
   if (REPAIR_GIFT_RE.test(lower) && !wantsProductSearch) {
     await streamWords(controller, L("repairGiftAsk", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  const simpleProductQuery =
+    extractProductKeyword(lower) ??
+    (/\bbooks?\b/i.test(lower) ? "books" : null) ??
+    (/\bstationary\b/i.test(lower) ? "stationery" : null);
+  const hasSimpleProductIntent =
+    !!simpleProductQuery &&
+    (/\b(show|search|want|need|looking for|send|buy|get)\b/i.test(lower) ||
+      /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
+      /\b(vesak|birthday|anniversary)\b/i.test(lower) ||
+      trimmed.toLowerCase() === simpleProductQuery ||
+      lower === "stationary" ||
+      /\bbooks?\s+na\b/i.test(lower));
+
+  if (hasSimpleProductIntent) {
+    const productDate = extractRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const productCity = extractCityHint(trimmed) ?? deliveryCity;
+    const maxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
+
+    if (
+      /\b(fresh|perishable)\b/i.test(lower) &&
+      /\bcake\b/i.test(lower) &&
+      !extractRelativeDeliveryDate(trimmed) &&
+      !deliveryDate
+    ) {
+      await streamWords(
+        controller,
+        language === "si"
+          ? "කේක් fresh හදන නිසා delivery date එක දෙන්නකෝ — අදද, හෙටද, නැත්නම් වෙන දවසක්ද?"
+          : language === "ta"
+          ? "Cake fresh item — delivery date சொல்லுங்கள்; today, tomorrow, அல்லது வேறு date?"
+          : "Cakes are fresh-made, so I need the delivery date before I confirm availability."
+      );
+      controller.enqueue(sse("done"));
+      return true;
+    }
+
+    controller.enqueue(sse("step", `Searching Kapruka for "${simpleProductQuery}"`));
+    const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: {
+        q: simpleProductQuery,
+        limit: 6,
+        in_stock_only: true,
+        ...(maxPrice ? { max_price: maxPrice } : {}),
+        response_format: "json",
+      },
+    });
+    const products = dedupeProducts(extractProductsFromMcp(searchResult.content));
+    if (productCity && products[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: productCity,
+          product_id: products[0].id,
+          ...(productDate ? { delivery_date: productDate } : {}),
+          response_format: "json",
+        },
+      });
+      const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+      if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+    }
+
+    if (products.length > 0) {
+      const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
+      const cityText = productCity ? ` to ${productCity}` : "";
+      const dateText = productDate ? ` on ${productDate}` : "";
+      await streamWords(
+        controller,
+        Lf(products.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
+          n: products.length,
+          budget: budgetText,
+          city: cityText,
+          date: dateText,
+        })
+      );
+      controller.enqueue(sse("products", products));
+    } else {
+      await streamWords(
+        controller,
+        Lf("searchNothingFound", language, { query: simpleProductQuery })
+      );
+    }
     controller.enqueue(sse("done"));
     return true;
   }
