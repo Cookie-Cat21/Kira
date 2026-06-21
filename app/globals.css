@@ -143,7 +143,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(60, 60, 67, 0.2);
   border-radius: 2px;
 }
 

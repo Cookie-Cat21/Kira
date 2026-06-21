@@ -101,7 +101,7 @@ export default function ProductDetailClient({
         {/* Info */}
         <div className="flex flex-col">
           {product.category && (
-            <p className="text-sm font-medium text-kap-yellow/80">
+            <p className="text-sm font-medium text-kap-purple">
               {product.category}
             </p>
           )}
@@ -132,28 +132,28 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={handleAdd}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.03] active:scale-95"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-kap-purple px-7 py-3.5 text-sm font-semibold text-white transition-transform hover:bg-kap-purple/90 active:scale-95"
               >
                 <Plus className="size-4" /> Add to bag
               </button>
             ) : (
-              <div className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-2">
+              <div className="flex items-center gap-3 rounded-full border border-kira-border bg-kira-bg px-2 py-2">
                 <button
                   type="button"
                   onClick={() => updateQty(product.id, qty - 1)}
                   aria-label="Decrease quantity"
-                  className="flex size-9 items-center justify-center rounded-full text-white/85 hover:bg-white/15 active:scale-90"
+                  className="flex size-11 items-center justify-center rounded-full text-kira-text hover:bg-white active:scale-90"
                 >
                   <Minus className="size-4" />
                 </button>
-                <span className="min-w-6 text-center text-sm font-semibold text-white">
+                <span className="min-w-6 text-center text-sm font-semibold text-kira-text">
                   {qty}
                 </span>
                 <button
                   type="button"
                   onClick={() => updateQty(product.id, qty + 1)}
                   aria-label="Increase quantity"
-                  className="flex size-9 items-center justify-center rounded-full text-white/85 hover:bg-white/15 active:scale-90"
+                  className="flex size-11 items-center justify-center rounded-full text-kira-text hover:bg-white active:scale-90"
                 >
                   <Plus className="size-4" />
                 </button>
@@ -164,7 +164,7 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={openCart}
-                className="inline-flex items-center gap-1.5 rounded-full bg-kira-leaf/15 px-5 py-3.5 text-sm font-semibold text-kira-leaf transition-transform hover:scale-[1.03] active:scale-95"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-sm font-semibold text-emerald-800 transition-transform hover:bg-emerald-100 active:scale-95"
               >
                 <Check className="size-4" /> View bag
               </button>
@@ -173,28 +173,28 @@ export default function ProductDetailClient({
             <button
               type="button"
               onClick={handleAskKira}
-              className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-kap-purple px-5 py-3.5 text-sm font-semibold text-kap-purple transition-colors hover:bg-kap-purple/5 active:scale-95"
             >
-              <Sparkles className="size-4 text-kap-yellow" /> Ask Kira about this
+              <Sparkles className="size-4" /> Ask Kira about this
             </button>
           </div>
 
           {/* Reassurance */}
           <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-              <Truck className="size-5 text-kira-leaf" />
+            <div className="flex items-center gap-3 rounded-2xl border border-kira-border bg-white p-4">
+              <Truck className="size-5 text-emerald-700" />
               <div>
-                <p className="text-[13px] font-semibold text-white">Islandwide delivery</p>
-                <p className="text-[12px] text-white/45">Kira checks dates & fees live</p>
+                <p className="text-[13px] font-semibold text-kira-text">Islandwide delivery</p>
+                <p className="text-[12px] text-kira-text-2">Kira checks dates & fees live</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-              <ShieldCheck className="size-5 text-kira-leaf" />
+            <div className="flex items-center gap-3 rounded-2xl border border-kira-border bg-white p-4">
+              <ShieldCheck className="size-5 text-emerald-700" />
               <div>
-                <p className="text-[13px] font-semibold text-white">
+                <p className="text-[13px] font-semibold text-kira-text">
                   {product.inStock === false ? "Currently unavailable" : "In stock"}
                 </p>
-                <p className="text-[12px] text-white/45">
+                <p className="text-[12px] text-kira-text-2">
                   {product.stockLevel ?? "Ready to order"}
                 </p>
               </div>

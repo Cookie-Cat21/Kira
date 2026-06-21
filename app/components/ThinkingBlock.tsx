@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { ProductCardSkeleton } from "./ProductCard";
 import { ShiningText } from "./ui/shining-text";
 
-/* ── Live indicator — shown while API is streaming ── */
 interface ThinkingLiveProps {
   steps: string[];
   showProductSkeleton?: boolean;
@@ -26,38 +25,28 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
   }, []);
 
   return (
-    <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
-      {/* Avatar */}
-      <div
-        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs text-kap-yellow"
-        style={{
-          background: "rgba(64,41,112,0.5)",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(248,218,8,0.2)",
-        }}
-      >
+    <div className="mb-4 flex items-start gap-2.5 animate-fade-up">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-kap-purple/15 bg-kap-purple/10 text-kap-purple">
         <Sparkles className="size-4" />
       </div>
 
-      <div className="flex-1 max-w-[88%] pt-1.5">
-        {/* Shining "Kira is thinking…" label */}
-        <div className="flex items-center gap-2 mb-2">
+      <div className="max-w-[88%] flex-1 pt-1.5">
+        <div className="mb-2 flex items-center gap-2">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-50" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-400" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-kap-purple/40 opacity-50" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-kap-purple" />
           </span>
-          <ShiningText text="Kira is thinking…" className="bg-[linear-gradient(110deg,rgba(255,255,255,0.2),35%,rgba(200,180,255,0.95),50%,rgba(255,255,255,0.2),75%,rgba(255,255,255,0.2))] bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent" />
+          <ShiningText
+            text="Kira is thinking…"
+            className="bg-[linear-gradient(110deg,rgba(64,41,112,0.25),35%,rgba(64,41,112,0.95),50%,rgba(64,41,112,0.25),75%,rgba(64,41,112,0.25))] bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent"
+          />
           {elapsed > 0 && (
-            <span className="text-[10px] tabular-nums text-white/25">{elapsed}s</span>
+            <span className="text-[10px] tabular-nums text-kira-muted">{elapsed}s</span>
           )}
         </div>
 
-        {/* Steps — left-bordered, no box */}
         {steps.length > 0 && (
-          <div
-            className="pl-3 space-y-1.5"
-            style={{ borderLeft: "2px solid rgba(156,132,198,0.3)" }}
-          >
+          <div className="space-y-1.5 border-l-2 border-kap-purple/20 pl-3">
             <AnimatePresence initial={false}>
               {steps.map((label, i) => {
                 const isDone = i < steps.length - 1;
@@ -71,15 +60,15 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
                     transition={{ duration: 0.2 }}
                   >
                     {isDone ? (
-                      <Check className="size-2.5 shrink-0 text-emerald-500/70" />
+                      <Check className="size-2.5 shrink-0 text-emerald-600" />
                     ) : isActive ? (
-                      <span className="size-1 rounded-full bg-purple-300/60 shrink-0 animate-pulse" />
+                      <span className="size-1 shrink-0 animate-pulse rounded-full bg-kap-purple/60" />
                     ) : null}
                     <span
                       className={`text-[11px] leading-snug ${
                         isDone
-                          ? "text-white/25 line-through decoration-white/15"
-                          : "text-white/55"
+                          ? "text-kira-muted line-through decoration-kira-border"
+                          : "text-kira-text-2"
                       }`}
                     >
                       {label}
@@ -105,7 +94,6 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
   );
 }
 
-/* ── Collapsed summary — attached to a completed message ── */
 interface ThinkingDoneProps {
   thinkingMs: number;
   steps?: string[];
@@ -122,17 +110,17 @@ export function ThinkingDone({ thinkingMs, steps, summary }: ThinkingDoneProps) 
     <div className="mb-2 ml-10">
       <button
         onClick={() => hasSteps && setOpen((o) => !o)}
-        className={`flex items-center gap-1 text-[11px] text-white/30 transition-colors group ${
-          hasSteps ? "hover:text-white/50 cursor-pointer" : "cursor-default"
+        className={`group flex items-center gap-1 text-[11px] text-kira-muted transition-colors ${
+          hasSteps ? "cursor-pointer hover:text-kira-text-2" : "cursor-default"
         }`}
       >
         {hasSteps &&
           (open ? (
-            <ChevronDown className="w-3 h-3" />
+            <ChevronDown className="h-3 w-3" />
           ) : (
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="h-3 w-3" />
           ))}
-        <span className={hasSteps ? "group-hover:text-white/50" : ""}>
+        <span className={hasSteps ? "group-hover:text-kira-text-2" : ""}>
           Thought for {seconds}s
           {summary
             ? ` · ${summary}`
@@ -152,14 +140,11 @@ export function ThinkingDone({ thinkingMs, steps, summary }: ThinkingDoneProps) 
               transition={{ duration: 0.18, ease: [0.2, 0.65, 0.3, 0.9] }}
               className="overflow-hidden"
             >
-              <div
-                className="pt-2 pb-0.5 pl-3 space-y-1.5"
-                style={{ borderLeft: "2px solid rgba(156,132,198,0.2)" }}
-              >
+              <div className="space-y-1.5 border-l-2 border-kira-border py-0.5 pl-3 pt-2">
                 {steps!.map((label, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <Check className="size-2.5 shrink-0 text-emerald-500/50" />
-                    <span className="text-[11px] text-white/25 line-through decoration-white/10 leading-snug">
+                    <Check className="size-2.5 shrink-0 text-emerald-600/70" />
+                    <span className="text-[11px] leading-snug text-kira-muted line-through decoration-kira-border">
                       {label}
                     </span>
                   </div>

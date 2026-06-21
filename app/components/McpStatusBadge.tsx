@@ -23,14 +23,14 @@ const TEXT: Record<string, string> = {
   up: "text-emerald-400",
   degraded: "text-amber-400",
   down: "text-red-400",
-  checking: "text-white/30",
+  checking: "text-kira-muted",
 };
 
 const BANNER_BG: Record<string, string> = {
   up: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20",
   degraded: "from-amber-500/10 to-amber-500/5 border-amber-500/20",
   down: "from-red-500/10 to-red-500/5 border-red-500/20",
-  checking: "from-white/5 to-white/5 border-white/10",
+  checking: "from-kira-bg to-kira-bg border-kira-border",
 };
 
 const STATUS_COPY: Record<string, { title: string; sub: string }> = {
@@ -126,13 +126,12 @@ export default function McpStatusBadge() {
         onClick={() => open ? setOpen(false) : openPopover()}
         aria-expanded={open}
         aria-haspopup="true"
-        className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all duration-150 hover:bg-white/6"
-        style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}
+        className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all duration-150 hover:bg-black/5"
       >
         <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full shrink-0 ${DOT[key]}`} />
         <span className={`text-[11px] font-medium ${TEXT[key]}`}>{LABEL[key]}</span>
         {data?.latencyMs != null && !checking && (
-          <span className="text-[11px] text-white/25 font-mono">{data.latencyMs}ms</span>
+          <span className="text-[11px] font-mono text-kira-muted">{data.latencyMs}ms</span>
         )}
       </button>
 
@@ -141,15 +140,12 @@ export default function McpStatusBadge() {
           ref={popoverRef}
           role="dialog"
           aria-label="MCP status details"
-          className="w-72 rounded-2xl p-4 shadow-xl"
+          className="w-72 rounded-2xl border border-kira-border bg-white p-4 shadow-xl"
           style={{
             position: "fixed",
             top: popoverPos.top,
             left: popoverPos.left,
             zIndex: 9999,
-            background: "rgba(18, 10, 35, 0.95)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
           <div className={`rounded-xl border bg-gradient-to-br p-3 mb-4 ${BANNER_BG[key]}`}>
@@ -157,7 +153,7 @@ export default function McpStatusBadge() {
               <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${DOT[key]}`} aria-hidden="true" />
               <span className={`text-sm font-semibold ${TEXT[key]}`}>{copy.title}</span>
             </div>
-            <p className="text-xs text-white/50 pl-4">{copy.sub}</p>
+            <p className="pl-4 text-xs text-kira-text-2">{copy.sub}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-4">
@@ -187,8 +183,7 @@ export default function McpStatusBadge() {
             type="button"
             onClick={check}
             disabled={checking}
-            className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold text-white/60 transition-colors hover:text-white/90 hover:bg-white/5 disabled:opacity-40"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+            className="mb-4 w-full flex items-center justify-center gap-2 rounded-xl border border-kira-border py-2 text-xs font-semibold text-kira-text transition-colors hover:bg-kira-bg disabled:opacity-40"
           >
             <RefreshCw className={`h-3 w-3 ${checking ? "animate-spin" : ""}`} />
             {checking ? "Checking…" : "Recheck now"}
@@ -202,9 +197,9 @@ export default function McpStatusBadge() {
 
 function StatTile({ label, value, mono, dim }: { label: string; value: string; mono?: boolean; dim?: boolean }) {
   return (
-    <div className="rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">{label}</div>
-      <div className={`text-xs font-semibold truncate ${mono ? "font-mono" : ""} ${dim ? "text-amber-400" : "text-white/80"}`}>{value}</div>
+    <div className="rounded-lg border border-kira-border bg-kira-bg px-3 py-2">
+      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-kira-muted">{label}</div>
+      <div className={`truncate text-xs font-semibold ${mono ? "font-mono" : ""} ${dim ? "text-amber-700" : "text-kira-text"}`}>{value}</div>
     </div>
   );
 }

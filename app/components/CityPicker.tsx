@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MapPin, ChevronDown, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const SRI_LANKA_CITIES = [
   "Colombo", "Kandy", "Galle", "Negombo", "Jaffna",
@@ -42,7 +43,6 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
     [onChange]
   );
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
@@ -55,7 +55,6 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  // Focus input when dropdown opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 50);
   }, [open]);
@@ -93,16 +92,12 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors"
-        style={{
-          background: value
-            ? "rgba(64,41,112,0.5)"
-            : "rgba(255,255,255,0.07)",
-          border: value
-            ? "1px solid rgba(148,100,255,0.4)"
-            : "1px solid rgba(255,255,255,0.12)",
-          color: value ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.5)",
-        }}
+        className={cn(
+          "flex min-h-11 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+          value
+            ? "border-kap-purple/30 bg-kap-purple/5 text-kap-purple"
+            : "border-kira-border bg-white text-kira-muted hover:text-kira-text"
+        )}
         aria-label={value ? `Delivery city: ${value}` : "Set delivery city"}
       >
         <MapPin className="size-3 shrink-0" />
@@ -129,35 +124,27 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 z-50 mb-2 w-48 overflow-hidden rounded-xl"
-            style={{
-              background: "rgba(18,10,36,0.95)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(148,100,255,0.25)",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-            }}
+            className="absolute bottom-full left-0 z-50 mb-2 w-48 overflow-hidden rounded-xl border border-kira-border bg-white shadow-lg"
           >
-            {/* Search */}
-            <div className="border-b border-white/10 px-3 py-2">
+            <div className="border-b border-kira-border px-3 py-2">
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search city…"
-                  className="min-w-0 flex-1 bg-transparent text-xs text-white/90 placeholder-white/30 outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-kira-text outline-none placeholder:text-kira-muted focus-visible:ring-0"
                 />
-                {loading && <Loader2 className="size-3 shrink-0 animate-spin text-white/35" />}
+                {loading && <Loader2 className="size-3 shrink-0 animate-spin text-kira-muted" />}
               </div>
             </div>
 
-            {/* City list */}
             <ul
               className="max-h-48 overflow-y-auto py-1 scrollbar-hide"
               role="listbox"
             >
               {filtered.length === 0 ? (
-                <li className="px-3 py-2 text-xs text-white/35">No match</li>
+                <li className="px-3 py-2 text-xs text-kira-muted">No match</li>
               ) : (
                 filtered.map((city) => (
                   <li key={city}>
@@ -166,11 +153,10 @@ export default function CityPicker({ value, onChange }: CityPickerProps) {
                       role="option"
                       aria-selected={city === value}
                       onClick={() => select(city)}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-white/10"
-                      style={{
-                        color: city === value ? "#f8da08" : "rgba(255,255,255,0.8)",
-                        fontWeight: city === value ? 700 : 400,
-                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-kira-bg",
+                        city === value ? "font-bold text-kap-purple" : "text-kira-text"
+                      )}
                     >
                       {city === value && <MapPin className="size-3 shrink-0" />}
                       {city}

@@ -232,8 +232,8 @@ export default function ProductQuickView({
                     className={cn(
                       "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold",
                       display.inStock
-                        ? "bg-emerald-900/40 text-emerald-400"
-                        : "bg-red-900/40 text-red-400"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-red-50 text-red-700"
                     )}
                   >
                     {display.inStock ? (
@@ -248,7 +248,7 @@ export default function ProductQuickView({
 
               {state === "loading" && <QuickViewSkeleton />}
               {state === "error" && (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-900/40 px-3 py-2 text-sm text-amber-300">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                   {error}
                 </div>
               )}

@@ -908,12 +908,12 @@ export default function KiraExperience() {
 
       {groqConfigured === false && (
         <div
-          className="relative z-10 mx-4 mt-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-100 sm:mx-6"
+          className="relative z-10 mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 sm:mx-6"
           role="status"
         >
           <strong className="font-semibold">Demo mode limited:</strong> Set{" "}
-          <code className="rounded bg-black/20 px-1">GROQ_API_KEY</code> in{" "}
-          <code className="rounded bg-black/20 px-1">.env.local</code> for live AI responses.
+          <code className="rounded bg-amber-100 px-1">GROQ_API_KEY</code> in{" "}
+          <code className="rounded bg-amber-100 px-1">.env.local</code> for live AI responses.
         </div>
       )}
 
@@ -1107,7 +1107,7 @@ function DeliveryDatePicker({
         min={getColomboTodayIso()}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-[8rem] bg-transparent text-[13px] font-medium text-kira-text outline-none"
+        className="w-[8rem] bg-transparent text-[13px] font-medium text-kira-text outline-none focus-visible:ring-2 focus-visible:ring-kap-purple/30"
         aria-label="Delivery date"
       />
     </label>
@@ -1159,7 +1159,7 @@ function ResponseStatusBanner({
                 "rounded-full px-3 py-1 text-[11px] font-semibold",
                 canRetry
                   ? "bg-kap-yellow text-gray-950 hover:brightness-95"
-                  : "bg-white/10 text-white/35"
+                  : "bg-kira-bg text-kira-muted"
               )}
             >
               Retry
@@ -1217,23 +1217,23 @@ function StickyOrderSummary({
           <p className="text-[15px] font-semibold text-kira-text">
             Order summary ({cartCount} item{cartCount > 1 ? "s" : ""})
           </p>
-          <p className="text-[11px] text-white/58">
+          <p className="text-[11px] text-kira-muted">
             {city ? `Deliver to ${city}` : "Select a city"} · {date}
           </p>
-          <div className="mt-1 space-y-0.5 text-[11px] text-white/75">
+          <div className="mt-1 space-y-0.5 text-[11px] text-kira-text-2">
             <p>Items: {formatMoney(subtotal, currency)}</p>
             {deliveryFee !== undefined ? (
               <p>Delivery: {formatMoney(deliveryFee, currency)}</p>
             ) : (
-              <p className="text-white/55">Delivery: quote pending</p>
+              <p className="text-kira-muted">Delivery: quote pending</p>
             )}
             {estimatedTotal !== undefined && (
-              <p className="font-semibold text-kap-yellow">
+              <p className="font-semibold text-kap-purple">
                 Est. total: {formatMoney(estimatedTotal, currency)}
               </p>
             )}
             {budgetAmount !== undefined && subtotal > budgetAmount && (
-              <p className="font-semibold text-amber-300">
+              <p className="font-semibold text-amber-700">
                 Over budget by {formatMoney(subtotal - budgetAmount, currency)}
               </p>
             )}
@@ -1254,8 +1254,8 @@ function StickyOrderSummary({
             className={cn(
               "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
               isBusy
-                ? "border-white/10 text-white/35"
-                : "border-white/20 text-white/85 hover:bg-white/10"
+                ? "border-kira-border text-kira-muted"
+                : "border-kira-border text-kira-text hover:bg-kira-bg"
             )}
           >
             Refresh delivery

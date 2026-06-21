@@ -50,11 +50,7 @@ export default function KiraLoader({ onDone }: KiraLoaderProps) {
           initial={{ opacity: 1, y: 0 }}
           exit={{ y: "-100%", opacity: 1 }}
           transition={{ duration: 0.65, ease: [0.76, 0, 0.24, 1] }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
-          style={{
-            background:
-              "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)",
-          }}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-kira-bg"
         >
           {/* Grain overlay */}
           <div
@@ -137,13 +133,9 @@ export default function KiraLoader({ onDone }: KiraLoaderProps) {
 
             {/* ── Loading bar ── */}
             <div className="relative w-[280px] sm:w-[340px]">
-              <div
-                className="h-[2px] w-full rounded-full overflow-hidden"
-                style={{ background: "rgba(255,255,255,0.1)" }}
-              >
+              <div className="h-[2px] w-full overflow-hidden rounded-full bg-kira-border">
                 <motion.div
-                  className="h-full rounded-full relative overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.9)" }}
+                  className="relative h-full overflow-hidden rounded-full bg-kap-purple"
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
                   transition={{
@@ -178,9 +170,9 @@ export default function KiraLoader({ onDone }: KiraLoaderProps) {
           {/* Footer wordmark */}
           <motion.p
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.25 }}
+            animate={{ opacity: 1 }}
             transition={{ delay: 1.2, duration: 0.5 }}
-            className="absolute bottom-10 text-white text-xs tracking-[0.35em] uppercase font-sans"
+            className="absolute bottom-10 text-xs font-sans uppercase tracking-[0.35em] text-kira-muted"
           >
             powered by Kira
           </motion.p>

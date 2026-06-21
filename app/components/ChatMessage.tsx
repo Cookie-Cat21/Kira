@@ -55,18 +55,14 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
   }
 
   return (
-    <article
-      className="animate-fade-up flex w-full max-w-sm overflow-hidden rounded-2xl transition-shadow hover:shadow-[0_8px_40px_rgba(64,41,112,0.5)]"
-      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
-    >
+    <article className="store-card animate-fade-up flex w-full max-w-sm overflow-hidden rounded-2xl transition-shadow hover:shadow-md">
       {/* Image */}
       <button
         ref={imgRef}
         type="button"
         onClick={() => onOpenProduct?.(product)}
         aria-label={`View details for ${product.name}`}
-        className="group relative size-36 shrink-0 overflow-hidden sm:size-48 min-h-36 sm:min-h-48"
-        style={{ background: "rgba(255,255,255,0.05)" }}
+        className="group relative size-36 shrink-0 overflow-hidden bg-kira-bg sm:size-48 min-h-36 sm:min-h-48"
       >
         {product.image && !imgError ? (
           <Image
@@ -78,7 +74,7 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/25">
+          <div className="flex h-full w-full items-center justify-center text-kira-muted">
             <Gift className="size-10" />
           </div>
         )}
@@ -88,11 +84,8 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
           </span>
         )}
         {onOpenProduct && (
-          <span
-            className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ background: "rgba(64,41,112,0.35)", backdropFilter: "blur(4px)" }}
-          >
-            <Eye className="size-6 text-white/90" />
+          <span className="absolute inset-0 flex items-center justify-center bg-kap-purple/20 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <Eye className="size-6 text-kap-purple" />
           </span>
         )}
       </button>
@@ -107,11 +100,11 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
         <button
           type="button"
           onClick={() => onOpenProduct?.(product)}
-          className="text-left text-sm font-semibold leading-snug text-white/90 transition-colors hover:text-white line-clamp-3"
+          className="line-clamp-3 text-left text-sm font-semibold leading-snug text-kira-text transition-colors hover:text-kap-purple"
         >
           {product.name}
         </button>
-        <p className="text-base font-bold text-kap-yellow">{formattedPrice}</p>
+        <p className="text-base font-bold text-kap-purple">{formattedPrice}</p>
 
         {product.badges && product.badges.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -128,15 +121,15 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
 
         {city && (
           <div className="flex flex-col gap-0.5">
-            <p className={cn("flex items-center gap-1 text-[11px] font-medium", deliveryUnavailable ? "text-amber-600" : "text-emerald-500")}>
+            <p className={cn("flex items-center gap-1 text-[11px] font-medium", deliveryUnavailable ? "text-amber-700" : "text-emerald-700")}>
               {deliveryUnavailable ? <AlertCircle className="size-3" /> : <Check className="size-3" />}
               {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
             {effectiveDeliveryInfo?.nextAvailableDate && (
-              <p className="pl-4 text-[10px] text-white/40">{effectiveDeliveryInfo.nextAvailableDate}</p>
+              <p className="pl-4 text-[10px] text-kira-muted">{effectiveDeliveryInfo.nextAvailableDate}</p>
             )}
             {fee !== undefined && (
-              <p className="pl-4 text-[10px] text-white/40">+ LKR {fee.toLocaleString()} delivery</p>
+              <p className="pl-4 text-[10px] text-kira-muted">+ LKR {fee.toLocaleString()} delivery</p>
             )}
           </div>
         )}
@@ -225,8 +218,7 @@ function ProductCarousel({
         <button
           onClick={() => scroll("left")}
           aria-label="Scroll left"
-          className="absolute left-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
-          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.15)" }}
+          className="absolute left-0 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-md border border-kira-border bg-white text-kira-text shadow-sm transition-colors hover:bg-kira-bg"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -264,8 +256,7 @@ function ProductCarousel({
         <button
           onClick={() => scroll("right")}
           aria-label="Scroll right"
-          className="absolute right-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-white/70 transition-colors hover:text-white"
-          style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.15)" }}
+          className="absolute right-0 top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-md border border-kira-border bg-white text-kira-text shadow-sm transition-colors hover:bg-kira-bg"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -377,32 +368,29 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
   }
 
   return (
-    <div
-      className="max-w-xs rounded-2xl px-4 py-3"
-      style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}
-    >
-      <div className="flex items-center gap-2 mb-3">
+    <div className="max-w-xs rounded-2xl border border-kira-border bg-white px-4 py-3 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
         <span className="flex size-8 items-center justify-center rounded-lg bg-kap-yellow text-gray-950">
           <CreditCard className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-bold text-white/90">Checkout ready</p>
+          <p className="text-xs font-bold text-kira-text">Checkout ready</p>
           {orderRef && (
             <div className="flex items-center gap-2">
-              <p className="text-[10px] font-mono text-white/40 truncate">
+              <p className="truncate font-mono text-[10px] text-kira-muted">
                 Ref: {orderRef}
               </p>
               <button
                 type="button"
                 onClick={copyOrderRef}
-                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-kap-yellow/80 hover:text-kap-yellow"
+                className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-kap-purple hover:text-kap-purple/80"
               >
                 {copied ? "Copied!" : "Copy"}
               </button>
             </div>
           )}
           {!orderRef && (
-            <p className="text-[10px] text-white/40">Save your ref to reorder anytime</p>
+            <p className="text-[10px] text-kira-muted">Save your ref to reorder anytime</p>
           )}
         </div>
       </div>
@@ -426,7 +414,7 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
       )}
 
       {message.checkout?.expiresAt && (
-        <p className="flex items-center gap-1.5 text-[10px] text-white/40 mb-3">
+        <p className="mb-3 flex items-center gap-1.5 text-[10px] text-kira-muted">
           <Clock className="h-3 w-3" />
           Link expires {formatExpiry(message.checkout.expiresAt)}
         </p>
@@ -458,7 +446,7 @@ function SummaryRow({
     <div
       className={cn(
         "flex items-center justify-between gap-3",
-        strong ? "font-bold text-white/90 pt-1 border-t border-white/10" : "text-white/45"
+        strong ? "border-t border-kira-border pt-1 font-bold text-kira-text" : "text-kira-text-2"
       )}
     >
       <span>{label}</span>

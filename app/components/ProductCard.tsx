@@ -127,7 +127,7 @@ export default function ProductCard({
             <p
               className={cn(
                 "text-[10px] font-medium flex items-center gap-0.5",
-                deliveryUnavailable ? "text-amber-400" : "text-emerald-400"
+                deliveryUnavailable ? "text-amber-700" : "text-emerald-700"
               )}
             >
               {deliveryUnavailable ? (
@@ -148,7 +148,7 @@ export default function ProductCard({
               </p>
             )}
             {effectiveDeliveryInfo?.perishableWarning && (
-              <p className="text-[10px] text-amber-400 pl-3.5 line-clamp-2">
+              <p className="text-[10px] text-amber-700 pl-3.5 line-clamp-2">
                 {effectiveDeliveryInfo.perishableWarning}
               </p>
             )}
@@ -181,7 +181,7 @@ export default function ProductCard({
           <button
             type="button"
             onClick={handleAddToCart}
-            className="mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg bg-kap-yellow py-2 text-xs font-bold text-gray-950 shadow-sm transition-all hover:brightness-95 active:scale-95"
+            className="mt-auto flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-kap-yellow py-2.5 text-xs font-bold text-gray-950 shadow-sm transition-all hover:brightness-95 active:scale-95"
           >
             <ShoppingCart className="size-3" /> Add to tray
           </button>
@@ -193,16 +193,13 @@ export default function ProductCard({
 
 export function ProductCardSkeleton() {
   return (
-    <div
-      className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl"
-      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
-    >
-      <div className="shimmer aspect-square" />
+    <div className="store-card flex w-56 shrink-0 flex-col overflow-hidden rounded-xl">
+      <div className="shimmer aspect-square bg-kira-bg" />
       <div className="flex flex-col gap-2 p-3">
-        <div className="shimmer h-3 rounded-full w-11/12" />
-        <div className="shimmer h-3 rounded-full w-8/12" style={{ animationDelay: "0.1s" }} />
-        <div className="shimmer h-4 rounded-full w-5/12" style={{ animationDelay: "0.2s" }} />
-        <div className="shimmer mt-1 h-8 rounded-lg" style={{ animationDelay: "0.15s" }} />
+        <div className="shimmer h-3 w-11/12 rounded-full bg-kira-bg" />
+        <div className="shimmer h-3 w-8/12 rounded-full bg-kira-bg" style={{ animationDelay: "0.1s" }} />
+        <div className="shimmer h-4 w-5/12 rounded-full bg-kira-bg" style={{ animationDelay: "0.2s" }} />
+        <div className="shimmer mt-1 h-11 rounded-lg bg-kira-bg" style={{ animationDelay: "0.15s" }} />
       </div>
     </div>
   );

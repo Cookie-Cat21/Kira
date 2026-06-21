@@ -71,7 +71,7 @@ export default function StoreProductCard({
           )}
 
           {product.stockLevel === "Low stock" && (
-            <span className="absolute left-2.5 top-2.5 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-medium text-amber-200 backdrop-blur">
+            <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-medium text-amber-800 shadow-sm">
               Low stock
             </span>
           )}

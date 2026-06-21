@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { MapPin, Calendar, X, Sparkles, User, Wallet, ShoppingBag } from "lucide-react";
 import type { ComponentType } from "react";
 import { getColomboTodayIso } from "@/lib/colombo-date";
+import { cn } from "@/lib/utils";
 
 export interface CommerceContext {
   city?: string;
@@ -15,7 +16,8 @@ export interface CommerceContext {
 
 type ChipIcon = ComponentType<{ className?: string }>;
 
-// ── City chip ─────────────────────────────────────────────────────────────────
+const ghostChip =
+  "flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-kira-border px-2.5 text-[11px] font-medium text-kira-muted transition-colors hover:text-kira-text-2";
 
 function CityChip({
   city,
@@ -52,8 +54,8 @@ function CityChip({
 
   if (editing) {
     return (
-      <div className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1" style={{ background: "rgba(64,41,112,0.4)", border: "1px solid rgba(148,100,255,0.5)" }}>
-        <MapPin className="size-3 shrink-0 text-purple-300" />
+      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-kap-purple/30 bg-kap-purple/5 px-2.5 py-1">
+        <MapPin className="size-3 shrink-0 text-kap-purple" />
         <input
           ref={inputRef}
           value={draft}
@@ -63,7 +65,7 @@ function CityChip({
             if (e.key === "Escape") setEditing(false);
           }}
           onBlur={commit}
-          className="w-20 bg-transparent text-[11px] font-medium text-white/90 outline-none placeholder:text-white/30"
+          className="w-20 bg-transparent text-[11px] font-medium text-kira-text outline-none placeholder:text-kira-muted focus-visible:ring-0"
           placeholder="e.g. Colombo"
         />
       </div>
@@ -93,19 +95,33 @@ function CityChip({
   }
 
   return (
-    <button
-      onClick={startEditing}
-      title="Set your delivery city"
-      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
-      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
-    >
+    <button onClick={startEditing} title="Set your delivery city" className={ghostChip}>
       <MapPin className="size-3 shrink-0" />
       <span>Your city</span>
     </button>
   );
 }
 
-// ── Generic editable text chip ────────────────────────────────────────────────
+const toneClasses = {
+  purple: {
+    filled: "border-kap-purple/20 bg-kap-purple/5 text-kap-purple",
+    editing: "border-kap-purple/30 bg-kap-purple/5 text-kira-text",
+    icon: "text-kap-purple",
+    clearBorder: "border-kap-purple/20",
+  },
+  yellow: {
+    filled: "border-kap-yellow/30 bg-kap-yellow/10 text-amber-900",
+    editing: "border-kap-yellow/40 bg-kap-yellow/10 text-kira-text",
+    icon: "text-amber-700",
+    clearBorder: "border-kap-yellow/30",
+  },
+  neutral: {
+    filled: "border-kira-border bg-kira-bg text-kira-text",
+    editing: "border-kira-border bg-kira-bg text-kira-text",
+    icon: "text-kira-muted",
+    clearBorder: "border-kira-border",
+  },
+} as const;
 
 function TextChip({
   icon: Icon,
@@ -122,11 +138,12 @@ function TextChip({
   title: string;
   onSet: (v: string) => void;
   onClear: () => void;
-  tone?: "purple" | "yellow" | "white";
+  tone?: keyof typeof toneClasses;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const styles = toneClasses[tone];
 
   useEffect(() => {
     if (editing) {
@@ -136,25 +153,6 @@ function TextChip({
       }, 0);
     }
   }, [editing]);
-
-  const styles =
-    tone === "yellow"
-      ? {
-          full: "rgba(248,218,8,0.12)",
-          text: "rgba(248,218,8,0.85)",
-          border: "rgba(248,218,8,0.2)",
-        }
-      : tone === "white"
-      ? {
-          full: "rgba(255,255,255,0.07)",
-          text: "rgba(255,255,255,0.65)",
-          border: "rgba(255,255,255,0.1)",
-        }
-      : {
-          full: "rgba(167,139,250,0.12)",
-          text: "rgba(196,181,253,0.9)",
-          border: "rgba(167,139,250,0.2)",
-        };
 
   function startEditing() {
     setDraft(value ?? "");
@@ -169,11 +167,8 @@ function TextChip({
 
   if (editing) {
     return (
-      <div
-        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1"
-        style={{ background: styles.full, border: `1px solid ${styles.border}` }}
-      >
-        <Icon className="size-3 shrink-0" />
+      <div className={cn("flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1", styles.editing)}>
+        <Icon className={cn("size-3 shrink-0", styles.icon)} />
         <input
           ref={inputRef}
           value={draft}
@@ -183,7 +178,7 @@ function TextChip({
             if (e.key === "Escape") setEditing(false);
           }}
           onBlur={commit}
-          className="w-28 bg-transparent text-[11px] font-medium text-white/90 outline-none placeholder:text-white/30"
+          className="w-28 bg-transparent text-[11px] font-medium text-kira-text outline-none placeholder:text-kira-muted"
           placeholder={placeholder}
         />
       </div>
@@ -192,14 +187,11 @@ function TextChip({
 
   if (value) {
     return (
-      <div
-        className="flex shrink-0 items-center rounded-lg text-[11px] font-semibold"
-        style={{ background: styles.full, color: styles.text, border: `1px solid ${styles.border}` }}
-      >
+      <div className={cn("flex shrink-0 items-center rounded-lg border text-[11px] font-semibold", styles.filled)}>
         <button
           onClick={startEditing}
           title={title}
-          className="flex max-w-[11rem] items-center gap-1.5 truncate px-2.5 py-1 hover:bg-white/5"
+          className="flex max-w-[11rem] min-h-11 items-center gap-1.5 truncate px-2.5 hover:bg-black/[0.03]"
         >
           <Icon className="size-3 shrink-0" />
           <span className="truncate">{value}</span>
@@ -207,7 +199,7 @@ function TextChip({
         <button
           onClick={onClear}
           aria-label={`Clear ${placeholder}`}
-          className="flex size-6 items-center justify-center border-l border-white/10 hover:bg-white/5"
+          className={cn("flex size-11 items-center justify-center border-l hover:bg-black/[0.03]", styles.clearBorder)}
         >
           <X className="size-3" />
         </button>
@@ -216,19 +208,12 @@ function TextChip({
   }
 
   return (
-    <button
-      onClick={startEditing}
-      title={title}
-      className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
-      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
-    >
+    <button onClick={startEditing} title={title} className={ghostChip}>
       <Icon className="size-3 shrink-0" />
       <span>{placeholder}</span>
     </button>
   );
 }
-
-// ── Date chip ─────────────────────────────────────────────────────────────────
 
 function DateChip({
   deliveryDate,
@@ -265,26 +250,27 @@ function DateChip({
       <div
         onClick={openPicker}
         title="Change delivery date"
-        className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors"
-        style={{ background: "rgba(64,41,112,0.35)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(148,100,255,0.3)" }}
+        className="relative flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-kap-purple/20 bg-kap-purple/5 px-2.5 text-[11px] font-semibold text-kap-purple transition-colors hover:bg-kap-purple/10"
       >
         <Calendar className="size-3 shrink-0 pointer-events-none" />
         <span className="pointer-events-none">{formatted}</span>
         <button
-          onClick={(e) => { e.stopPropagation(); onClear(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+          }}
           aria-label="Clear delivery date"
-          className="ml-0.5 hover:opacity-60"
+          className="ml-0.5 flex size-8 items-center justify-center rounded-md hover:bg-kap-purple/10"
         >
           <X className="size-3" />
         </button>
-        {/* Hidden input — showPicker() target */}
         <input
           ref={hiddenInputRef}
           type="date"
           min={today}
           value={deliveryDate}
           onChange={(e) => e.target.value && onSet(e.target.value)}
-          className="absolute opacity-0 w-0 h-0 pointer-events-none"
+          className="pointer-events-none absolute h-0 w-0 opacity-0"
           tabIndex={-1}
           aria-hidden="true"
           readOnly={false}
@@ -293,13 +279,8 @@ function DateChip({
     );
   }
 
-  // Ghost chip — overlay input so any click on the chip opens the date picker
   return (
-    <label
-      title="Set delivery date"
-      className="relative flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors hover:text-white/70"
-      style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}
-    >
+    <label title="Set delivery date" className={cn(ghostChip, "relative cursor-pointer")}>
       <Calendar className="size-3 shrink-0 pointer-events-none" />
       <span className="pointer-events-none">Delivery date</span>
       <input
@@ -312,8 +293,6 @@ function DateChip({
     </label>
   );
 }
-
-// ── CommerceRail ──────────────────────────────────────────────────────────────
 
 interface CommerceRailProps {
   context: CommerceContext;
@@ -377,7 +356,7 @@ export default function CommerceRail({
           value={recipient}
           placeholder="Recipient"
           title="Set recipient"
-          tone="white"
+          tone="neutral"
           onSet={(v) => onChange({ recipient: v })}
           onClear={() => onChange({ recipient: undefined })}
         />
@@ -386,7 +365,7 @@ export default function CommerceRail({
             type="button"
             onClick={onOpenCart}
             title="Open gift tray"
-            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-kira-border bg-[#f5f5f7] px-3 text-[13px] font-semibold text-kira-text transition-colors hover:bg-white"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-kira-border bg-kira-bg px-3 text-[13px] font-semibold text-kira-text transition-colors hover:bg-white"
           >
             <ShoppingBag className="size-3 shrink-0" />
             {cartCount > 0

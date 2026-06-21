@@ -11,7 +11,8 @@ export default function KiraDock() {
   if (
     pathname === "/" ||
     pathname?.startsWith("/kira") ||
-    pathname?.startsWith("/liquid-glass")
+    pathname?.startsWith("/liquid-glass") ||
+    pathname?.startsWith("/product")
   ) {
     return null;
   }
