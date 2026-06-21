@@ -7,6 +7,10 @@ export async function GET() {
     app: "kira",
     status: "ok",
     version: pkg.version,
-    groqConfigured: Boolean(process.env.GROQ_API_KEY?.trim()),
+    groqConfigured: Boolean(
+      process.env.GROQ_API_KEY?.trim() &&
+        process.env.GROQ_API_KEY !== "gsk_..." &&
+        !process.env.GROQ_API_KEY.endsWith("...")
+    ),
   });
 }

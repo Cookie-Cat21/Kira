@@ -404,7 +404,8 @@ export async function POST(req: NextRequest) {
       const deliveryCacheStore = new Map<string, unknown>();
 
       try {
-        const { messages, cart, deliveryCity, deliveryDate, lastProducts, lastOrder } = body;
+        const { messages, deliveryCity, deliveryDate, lastProducts, lastOrder } = body;
+        const cart = body.cart ?? [];
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
