@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -45,6 +46,20 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
+
+const CART_STORAGE_KEY = "kira_cart_v1";
+
+function loadCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as CartItem[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export function useCart() {
   const context = useContext(CartContext);
@@ -101,12 +116,36 @@ function FlyingItem({
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [payLink, setPayLink] = useState<string | undefined>();
   const [flyItems, setFlyItems] = useState<FlyItemData[]>([]);
   const flyCounter = useRef(0);
   const cartButtonRef = useRef<HTMLButtonElement | null>(null);
   const bagControls = useAnimation();
+
+  useEffect(() => {
+    const stored = loadCart();
+    if (stored.length > 0) {
+      // Hydrate cart from localStorage after mount (client-only).
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional hydration
+      setCart(stored);
+    }
+    setCartHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+    try {
+      if (cart.length === 0) {
+        localStorage.removeItem(CART_STORAGE_KEY);
+      } else {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+      }
+    } catch {
+      /* quota exceeded or private browsing */
+    }
+  }, [cart, cartHydrated]);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce(

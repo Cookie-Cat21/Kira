@@ -5,6 +5,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   type ComponentType,
 } from "react";
 import Image from "next/image";
@@ -23,6 +24,7 @@ import {
   ShoppingBasket,
   Baby,
   Home,
+  ShoppingBag,
 } from "lucide-react";
 import KiraLoader from "./KiraLoader";
 import McpStatusBadge from "./McpStatusBadge";
@@ -33,7 +35,9 @@ import { ThinkingLive, ThinkingDone } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
+import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
+import { extractCommerceContext } from "@/lib/commerce-context";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import type {
@@ -240,6 +244,15 @@ export default function KiraExperience({
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((data: { groqConfigured?: boolean }) =>
+        setGroqConfigured(data.groqConfigured ?? true)
+      )
+      .catch(() => setGroqConfigured(true));
+  }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   const [deliveryDate, setDeliveryDate] = useState<string>(() => {
     // Default to tomorrow so the delivery API always receives a valid date.
@@ -250,10 +263,13 @@ export default function KiraExperience({
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [groqConfigured, setGroqConfigured] = useState<boolean | null>(null);
   const {
     cart,
     addToCart,
     setPayLink,
+    cartCount,
+    openCart,
   } = useCart();
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
@@ -727,6 +743,40 @@ export default function KiraExperience({
     latestDeliveryInfo?.fee !== undefined ? cartSubtotal + latestDeliveryInfo.fee : undefined;
   const canRetryLastPrompt = !!lastUserPrompt && !isLoading;
 
+  const userMessageTexts = useMemo(
+    () =>
+      messages
+        .filter((m) => m.role === "user")
+        .map((m) => m.content)
+        .filter(Boolean),
+    [messages]
+  );
+
+  const commerceContext = useMemo(
+    () =>
+      extractCommerceContext(userMessageTexts, {
+        city: deliveryCity,
+        deliveryDate,
+      }),
+    [userMessageTexts, deliveryCity, deliveryDate]
+  );
+
+  const showCommerceRail =
+    !isOnlyOpening &&
+    (commerceContext.city ||
+      commerceContext.deliveryDate ||
+      commerceContext.budget ||
+      commerceContext.occasion ||
+      commerceContext.recipient);
+
+  const handleCommerceContextChange = useCallback(
+    (updates: Partial<CommerceContext>) => {
+      if (updates.city !== undefined) setDeliveryCity(updates.city);
+      if (updates.deliveryDate !== undefined) setDeliveryDate(updates.deliveryDate);
+    },
+    []
+  );
+
   return (
     <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
@@ -788,7 +838,20 @@ export default function KiraExperience({
         </div>
 
         {/* Right — Free delivery + store bridge */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {cartCount > 0 && (
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label={`Open gift tray with ${cartCount} item${cartCount === 1 ? "" : "s"}`}
+              className="relative flex size-9 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white/85 transition-colors hover:bg-white/12"
+            >
+              <ShoppingBag className="size-4" />
+              <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-kap-yellow text-[9px] font-bold text-gray-950">
+                {cartCount}
+              </span>
+            </button>
+          )}
           <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
             <Truck className="size-3 text-kira-leaf/70" />
             <span>Free delivery</span>
@@ -805,12 +868,30 @@ export default function KiraExperience({
         </div>
       </header>
 
+      {showCommerceRail && (
+        <CommerceRail
+          context={commerceContext}
+          onChange={handleCommerceContextChange}
+        />
+      )}
+
+      {groqConfigured === false && (
+        <div
+          className="relative z-10 mx-4 mt-2 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs text-amber-100 sm:mx-6"
+          role="status"
+        >
+          <strong className="font-semibold">Demo mode limited:</strong> Set{" "}
+          <code className="rounded bg-black/20 px-1">GROQ_API_KEY</code> in{" "}
+          <code className="rounded bg-black/20 px-1">.env.local</code> for live AI responses.
+        </div>
+      )}
+
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
           <div className="mb-8 text-center animate-fade-up">
             <KaprukaSmileMark />
             <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
-              {heroGreeting ?? "Hello! 👋"}
+              {heroGreeting ?? "What can I find for you?"}
             </h1>
             <p className="text-white/40 text-sm">
               Live Kapruka catalog · Real delivery · Checkout

@@ -117,7 +117,7 @@ export default function ProductCard({
             <p
               className={cn(
                 "text-[10px] font-medium flex items-center gap-0.5",
-                deliveryUnavailable ? "text-amber-700" : "text-emerald-600"
+                deliveryUnavailable ? "text-amber-400" : "text-emerald-400"
               )}
             >
               {deliveryUnavailable ? (
@@ -138,7 +138,7 @@ export default function ProductCard({
               </p>
             )}
             {deliveryInfo?.perishableWarning && (
-              <p className="text-[10px] text-amber-700 pl-3.5 line-clamp-2">
+              <p className="text-[10px] text-amber-400 pl-3.5 line-clamp-2">
                 {deliveryInfo.perishableWarning}
               </p>
             )}
