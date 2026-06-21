@@ -1886,6 +1886,8 @@ async function tryHandleDeterministicPrompt({
 
   const simpleProductQuery =
     extractProductKeyword(lower) ??
+    (/කේක්|கேக்/i.test(trimmed) ? "cake" : null) ??
+    (/මල්|பூ|மலர்/i.test(trimmed) ? "flowers" : null) ??
     (/\bbooks?\b/i.test(lower) ? "books" : null) ??
     (/\bstationary\b/i.test(lower) ? "stationery" : null);
   const hasSimpleProductIntent =
