@@ -59,7 +59,7 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     if (maxPrice > 3000) {
       chips.push({ label: "Under LKR 3,000", value: "Show me options under LKR 3,000" });
     }
-    chips.push({ label: "More options", value: "Show me more options like these" });
+    chips.push({ label: "More options", value: "Show me more options" });
     return chips;
   }
 

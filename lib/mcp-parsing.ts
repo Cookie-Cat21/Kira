@@ -70,7 +70,7 @@ export function formatMcpContentForModel(content: unknown): string {
   return parsed.ok ? JSON.stringify(parsed.data) : parsed.text || parsed.error;
 }
 
-export function extractProductsFromMcp(content: unknown): KiraProduct[] {
+export function extractProductsFromMcp(content: unknown, max = 6): KiraProduct[] {
   const parsed = parseMcpPayload(content);
   if (!parsed.ok) return [];
 
@@ -85,7 +85,7 @@ export function extractProductsFromMcp(content: unknown): KiraProduct[] {
     : [];
 
   return candidates
-    .slice(0, 6)
+    .slice(0, max)
     .map((item) => toKiraProduct(item))
     .filter((product): product is KiraProduct => Boolean(product));
 }

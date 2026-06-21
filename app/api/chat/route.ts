@@ -1588,6 +1588,22 @@ const RESHOW_AS_CARDS_RE =
 const RESHOW_THOSE_RE =
   /\b(show\s+me|show\s+us|can\s+(?:you|u)\s+show(?:\s+(?:me|them|those|it))?\b|let\s+me\s+see)\b.{0,30}\b(those|them|the[ms]e|the\s+(?:two|three|four|\d))\b/i;
 
+const MORE_PRODUCT_KW =
+  /\b(cake|cakes|flower|flowers|chocolate|chocolates|hamper|toy|toys|fashion|electronics|phone|gift|roses|bouquet|dress|shirt|gadget)\b/i;
+const MORE_RE_PATTERN =
+  /\b(more|other options?|different|something else|other picks?|another option|alternatives?|see more|show more|cheaper)\b/i;
+
+/** "more options" must win over re-show handlers that match "these/them". */
+function isMoreOptionsRequest(text: string): boolean {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+  return (
+    MORE_RE_PATTERN.test(lower) &&
+    trimmed.split(/\s+/).length <= 8 &&
+    !MORE_PRODUCT_KW.test(trimmed)
+  );
+}
+
 async function tryHandleDeterministicPrompt({
   text,
   messages,
@@ -2174,6 +2190,62 @@ async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // "More options" — must run before re-show handlers that also match "these/them".
+  if (isMoreOptionsRequest(trimmed)) {
+    const ctx = extractLastSearchContext(messages, trimmed);
+    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
+    const sorts = ["price_asc", "price_desc", "bestseller"] as const;
+    let moreProducts: KiraProduct[] = [];
+
+    for (const sort of sorts) {
+      const sortLabel =
+        sort === "price_asc" ? "price ↑" : sort === "price_desc" ? "price ↓" : "popular";
+      controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (${sortLabel})`));
+      const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q: ctx.query,
+          limit: 12,
+          in_stock_only: true,
+          sort,
+          ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      let batch = extractProductsFromMcp(moreResult.content, 9);
+      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[ctx.query];
+      const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[ctx.query];
+      if (relevanceFilter) {
+        batch = batch.filter((p) => {
+          const txt = `${p.name} ${p.category ?? ""}`;
+          return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
+        });
+      }
+      moreProducts = dedupeProducts(batch.filter((p) => !seenIds.has(p.id)));
+      if (moreProducts.length > 0) break;
+    }
+
+    if (moreProducts.length === 0) {
+      await streamWords(controller, L("moreOptionsSamePicks", language));
+    } else if (moreProducts.length <= 3) {
+      await streamWords(
+        controller,
+        Lf("moreOptionsAboutAll", language, { query: ctx.query })
+      );
+      controller.enqueue(sse("products", moreProducts));
+    } else {
+      const budgetText = ctx.maxPrice
+        ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
+        : "";
+      await streamWords(
+        controller,
+        Lf("moreOptionsHere", language, { budget: budgetText })
+      );
+      controller.enqueue(sse("products", moreProducts));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // "Show me those as pictures / can u show me those two items as cards / show them as listings" —
   // re-emit the last known products without a new MCP search.
   if (RESHOW_AS_CARDS_RE.test(trimmed) || RESHOW_THOSE_RE.test(trimmed)) {
@@ -2256,68 +2328,6 @@ async function tryHandleDeterministicPrompt({
         Lf(reshowKey, language, { budget: budgetText, n: reshowProducts.length })
       );
       controller.enqueue(sse("products", reshowProducts));
-    }
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // "More options" handler — re-search with a different sort or broader query.
-  // Only fires when the message is short and has no specific product keyword.
-  const MORE_PRODUCT_KW =
-    /\b(cake|cakes|flower|flowers|chocolate|chocolates|hamper|toy|toys|fashion|electronics|phone|gift|roses|bouquet|dress|shirt|gadget)\b/i;
-  const MORE_RE_PATTERN =
-    /\b(more|other options?|different|something else|other picks?|another option|alternatives?|see more|show more)\b/i;
-  const isPureMoreRequest =
-    MORE_RE_PATTERN.test(lower) &&
-    trimmed.split(/\s+/).length <= 7 &&
-    !MORE_PRODUCT_KW.test(trimmed);
-
-  if (isPureMoreRequest) {
-    const ctx = extractLastSearchContext(messages, trimmed);
-    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (price ↑)`));
-    const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-      params: {
-        q: ctx.query,
-        limit: 9,
-        in_stock_only: true,
-        sort: "price_asc", // different angle from the default bestseller ordering
-        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
-        response_format: "json",
-      },
-    });
-    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
-    let moreProducts = extractProductsFromMcp(moreResult.content);
-    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[ctx.query];
-    const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[ctx.query];
-    if (relevanceFilter) {
-      moreProducts = moreProducts.filter((p) => {
-        const txt = `${p.name} ${p.category ?? ""}`;
-        return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
-      });
-    }
-    moreProducts = dedupeProducts(moreProducts.filter((p) => !seenIds.has(p.id)));
-    // If still empty after dedup, fall back to the full set without seen-ID filter
-    if (moreProducts.length === 0) {
-      moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
-    }
-
-    if (moreProducts.length === 0) {
-      await streamWords(controller, L("moreOptionsSamePicks", language));
-    } else if (moreProducts.length <= 3) {
-      await streamWords(
-        controller,
-        Lf("moreOptionsAboutAll", language, { query: ctx.query })
-      );
-      controller.enqueue(sse("products", moreProducts));
-    } else {
-      const budgetText = ctx.maxPrice
-        ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
-        : "";
-      await streamWords(
-        controller,
-        Lf("moreOptionsHere", language, { budget: budgetText })
-      );
-      controller.enqueue(sse("products", moreProducts));
     }
     controller.enqueue(sse("done"));
     return true;
