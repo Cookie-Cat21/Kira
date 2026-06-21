@@ -223,11 +223,19 @@ body {
   background: #402970;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  color: rgba(255, 255, 255, 0.92);
 }
 
-/* Kapruka wordmark SVG is white — use on purple/dark chrome only */
-.kapruka-logo-light {
-  filter: none;
+/* Force light links — visited state was rendering dark on purple */
+.store-nav-purple nav a:link,
+.store-nav-purple nav a:visited,
+.store-nav-purple nav a:active {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.store-nav-purple nav a:hover,
+.store-nav-purple nav a[aria-current="page"] {
+  color: #ffffff;
 }
 .store-card {
   background: #ffffff;
