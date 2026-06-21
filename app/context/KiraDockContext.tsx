@@ -7,22 +7,19 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import type { KiraProduct } from "@/types";
 
-// Optional opening context for the dock — e.g. "Ask Kira about this" on a
-// product page seeds the chat with a prompt (and the product, so Kira's
-// lastProducts follow-ups like "add it to my cart" work).
+/** Opening context when launching Kira from the store (prompt + optional product). */
 export interface KiraDockSeed {
   prompt: string;
   product?: KiraProduct;
 }
 
 interface KiraDockValue {
-  isOpen: boolean;
   seed: KiraDockSeed | null;
   open: (seed?: KiraDockSeed) => void;
-  close: () => void;
-  toggle: () => void;
+  clearSeed: () => void;
 }
 
 const KiraDockContext = createContext<KiraDockValue | null>(null);
@@ -34,26 +31,25 @@ export function useKiraDock(): KiraDockValue {
 }
 
 export function KiraDockProvider({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
   const [seed, setSeed] = useState<KiraDockSeed | null>(null);
-  const open = useCallback((nextSeed?: KiraDockSeed) => {
-    setSeed(nextSeed ?? null);
-    setIsOpen(true);
-  }, []);
-  const close = useCallback(() => {
-    setIsOpen(false);
-    setSeed(null);
-  }, []);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
+
+  const open = useCallback(
+    (nextSeed?: KiraDockSeed) => {
+      setSeed(nextSeed ?? null);
+      router.push("/");
+    },
+    [router]
+  );
+
+  const clearSeed = useCallback(() => setSeed(null), []);
 
   const value = useMemo(
-    () => ({ isOpen, seed, open, close, toggle }),
-    [isOpen, seed, open, close, toggle]
+    () => ({ seed, open, clearSeed }),
+    [seed, open, clearSeed]
   );
 
   return (
-    <KiraDockContext.Provider value={value}>
-      {children}
-    </KiraDockContext.Provider>
+    <KiraDockContext.Provider value={value}>{children}</KiraDockContext.Provider>
   );
 }

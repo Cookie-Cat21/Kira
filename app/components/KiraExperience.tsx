@@ -26,7 +26,7 @@ import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
-import type { KiraDockSeed } from "../context/KiraDockContext";
+import { useKiraDock } from "../context/KiraDockContext";
 import { getContextualGreeting } from "@/lib/kira-client";
 import {
   getColomboTodayIso,
@@ -184,15 +184,9 @@ function saveSession(
   } catch { /* quota exceeded or private browsing */ }
 }
 
-export default function KiraExperience({
-  embedded = false,
-  seed = null,
-}: {
-  embedded?: boolean;
-  seed?: KiraDockSeed | null;
-}) {
-  // When docked inside the storefront we skip the full-screen loader splash.
-  const [appReady, setAppReady] = useState(embedded);
+export default function KiraExperience() {
+  const { seed, clearSeed } = useKiraDock();
+  const [appReady, setAppReady] = useState(false);
 
   const [messages, setMessages] = useState<KiraMessage[]>(() => [buildOpeningMessage()]);
   const [isLoading, setIsLoading] = useState(false);
@@ -754,7 +748,11 @@ export default function KiraExperience({
   const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!seed?.prompt) return;
+    if (!seed?.prompt) {
+      seedFiredRef.current = false;
+      seedSentRef.current = false;
+      return;
+    }
     const timer = window.setTimeout(() => {
       if (seedFiredRef.current) return;
       seedFiredRef.current = true;
@@ -780,7 +778,9 @@ export default function KiraExperience({
     if (!pendingSeedPrompt || seedSentRef.current) return;
     seedSentRef.current = true;
     sendMessage(pendingSeedPrompt);
-  }, [pendingSeedPrompt, sendMessage]);
+    setPendingSeedPrompt(null);
+    clearSeed();
+  }, [pendingSeedPrompt, sendMessage, clearSeed]);
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
   const showProductSkeleton =
@@ -825,7 +825,7 @@ export default function KiraExperience({
   };
 
   return (
-    <div className={cn("relative flex flex-col overflow-hidden bg-[#f5f5f7] text-kira-text", embedded ? "h-full" : "h-dvh min-h-dvh")}>
+    <div className="relative flex h-dvh min-h-dvh flex-col overflow-hidden bg-[#f5f5f7] text-kira-text">
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
@@ -886,15 +886,13 @@ export default function KiraExperience({
               </span>
             </button>
           )}
-          {!embedded && (
-            <Link
-              href="/shop"
-              className="hidden min-h-11 items-center gap-1.5 rounded-full border border-kira-border bg-white px-4 py-2 text-[15px] font-medium text-kira-text transition-colors hover:bg-[#f5f5f7] sm:flex"
-            >
-              <Store className="size-4 text-kap-purple" />
-              <span>Browse store</span>
-            </Link>
-          )}
+          <Link
+            href="/shop"
+            className="hidden min-h-11 items-center gap-1.5 rounded-full border border-kira-border bg-white px-4 py-2 text-[15px] font-medium text-kira-text transition-colors hover:bg-[#f5f5f7] sm:flex"
+          >
+            <Store className="size-4 text-kap-purple" />
+            <span>Browse store</span>
+          </Link>
         </div>
       </header>
 
