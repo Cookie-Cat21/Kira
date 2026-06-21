@@ -36,11 +36,14 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
   useEffect(() => {
     const term = q.trim();
     if (!term) {
-      setResults([]);
-      return;
+      const t = setTimeout(() => {
+        setResults([]);
+        setSearching(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
-    setSearching(true);
     const t = setTimeout(async () => {
+      setSearching(true);
       try {
         const res = await fetch(`/api/store/search?q=${encodeURIComponent(term)}`);
         const data = await res.json();

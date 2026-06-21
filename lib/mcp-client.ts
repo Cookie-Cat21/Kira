@@ -23,7 +23,8 @@ function isConnectionError(err: unknown): boolean {
     msg.includes("transport") ||
     msg.includes("closed") ||
     msg.includes("econnreset") ||
-    msg.includes("socket")
+    msg.includes("socket") ||
+    msg.includes("session not found")
   );
 }
 
@@ -86,7 +87,15 @@ export async function callMcpTool(
       `tool ${name}`
     );
   } catch (err) {
-    if (isConnectionError(err)) invalidateMcpClient();
+    if (isConnectionError(err)) {
+      invalidateMcpClient();
+      const fresh = await getMcpClient();
+      return await withTimeout(
+        fresh.callTool({ name, arguments: args }),
+        TOOL_TIMEOUT_MS,
+        `tool ${name} retry`
+      );
+    }
     throw err;
   }
 }

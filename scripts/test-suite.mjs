@@ -742,4 +742,84 @@ export const TESTS = [
     ],
     notes: "Global shop coming-soon message",
   }),
+  test({
+    id: 63,
+    name: "TRACK: package noun asks for order number",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "track my package" }],
+    checks: [
+      notEmpty,
+      { fn: "textMatches", args: [/order number|confirmation email/i] },
+    ],
+    notes: "Tracking intent includes package",
+  }),
+  test({
+    id: 64,
+    name: "TRACK: parcel with reference",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "track parcel KP12345" }],
+    checks: [notEmpty],
+    notes: "Tracking intent includes parcel",
+  }),
+  test({
+    id: 65,
+    name: "TRACK: shipment with numeric reference",
+    group: "feature",
+    subgroup: "tracking",
+    messages: [{ role: "user", content: "where is my shipment 10234567" }],
+    checks: [notEmpty],
+    notes: "Tracking intent includes shipment and numeric-only references",
+  }),
+  test({
+    id: 66,
+    name: "DEMO: birthday gift girlfriend Colombo tomorrow under budget",
+    group: "feature",
+    subgroup: "demo",
+    messages: [
+      {
+        role: "user",
+        content: "I need a birthday gift for my girlfriend in Colombo tomorrow under Rs. 12,000.",
+      },
+    ],
+    checks: [notEmpty, eventHasProducts, noHallucinatedProducts],
+    notes: "Primary challenge demo path should return real product cards without unnecessary clarifying questions",
+  }),
+  test({
+    id: 67,
+    name: "GIFT: street address searches instead of checkout phone prompt",
+    group: "feature",
+    subgroup: "demo",
+    messages: [
+      {
+        role: "user",
+        content: "send flowers to 12 Galle Road Colombo",
+      },
+    ],
+    checks: [
+      notEmpty,
+      eventHasProducts,
+      { fn: "noPattern", args: [/phone number|recipient phone/i] },
+    ],
+    notes: "Gift intent with a street address must not be misread as partial checkout",
+  }),
+  test({
+    id: 68,
+    name: "INTL: overseas USD budget is not out-of-scope",
+    group: "feature",
+    subgroup: "international",
+    messages: [
+      {
+        role: "user",
+        content: "I am overseas from UK, show me gifts under USD 50",
+      },
+    ],
+    request: { internationalMode: true },
+    checks: [
+      notEmpty,
+      { fn: "noPattern", args: [/outside my shopping lane/i] },
+    ],
+    notes: "International currency questions should not hit the out-of-scope redirect",
+  }),
 ];

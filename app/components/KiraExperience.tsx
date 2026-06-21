@@ -33,9 +33,15 @@ import { ThinkingLive, ThinkingDone } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
+import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
+import {
+  getColomboTodayIso,
+  getColomboTomorrowIso,
+  parseRelativeDeliveryDate,
+} from "@/lib/colombo-date";
 import type {
   CheckoutInfo,
   DeliveryQuote,
@@ -140,6 +146,42 @@ function stripDecorativeGlyphs(text: string) {
   return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function parseBudgetChip(text: string): string | undefined {
+  const match =
+    text.match(/\b(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+)/i) ??
+    text.match(/\b(?:lkr|rs\.?)\s*([\d,]+)/i);
+  if (!match) return undefined;
+  const amount = Number(match[1].replace(/,/g, ""));
+  if (!Number.isFinite(amount) || amount <= 0) return undefined;
+  return `Under LKR ${amount.toLocaleString("en-LK")}`;
+}
+
+function parseBudgetAmountFromChip(text?: string): number | undefined {
+  if (!text) return undefined;
+  const match = text.match(/\b([\d,]{3,})\b/);
+  if (!match) return undefined;
+  const amount = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
+function parseOccasionChip(text: string): string | undefined {
+  const match = text.match(
+    /\b(birthday|anniversary|wedding|christmas|vesak|avurudu|father'?s\s+day|mother'?s\s+day|get well|congratulations)\b/i
+  );
+  return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function parseRecipientChip(text: string): string | undefined {
+  const match = text.match(
+    /\bfor\s+(?:my\s+)?(girlfriend|boyfriend|wife|husband|mum|mom|mother|amma|dad|father|thaththa|friend|sister|brother|daughter|son|boss|colleague|partner)\b/i
+  );
+  return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function parseDeliveryDateChip(text: string): string | undefined {
+  return parseRelativeDeliveryDate(text);
+}
+
 function buildOpeningMessage(): KiraMessage {
   // loadSession() is called before localStorage.removeItem in the "New chat"
   // handler, so isReturning is true when the user explicitly starts a new chat.
@@ -178,6 +220,10 @@ const SESSION_KEY = "kira_session_v2";
 interface PersistedSession {
   messages: KiraMessage[];
   deliveryCity?: string;
+  deliveryDate?: string;
+  budget?: string;
+  occasion?: string;
+  recipient?: string;
   lastOrder?: LastOrder;
 }
 
@@ -195,13 +241,25 @@ function loadSession(): PersistedSession | null {
 function saveSession(
   messages: KiraMessage[],
   deliveryCity: string | undefined,
+  deliveryDate: string | undefined,
+  budget: string | undefined,
+  occasion: string | undefined,
+  recipient: string | undefined,
   lastOrder: LastOrder | undefined
 ) {
   if (typeof window === "undefined") return;
   try {
     const toSave = messages.filter((m) => m.id !== "opening");
     if (toSave.length === 0 && !lastOrder) return;
-    const payload: PersistedSession = { messages: toSave, deliveryCity, lastOrder };
+    const payload: PersistedSession = {
+      messages: toSave,
+      deliveryCity,
+      deliveryDate,
+      budget,
+      occasion,
+      recipient,
+      lastOrder,
+    };
     localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
   } catch { /* quota exceeded or private browsing */ }
 }
@@ -221,6 +279,10 @@ export default function KiraExperience({
   const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<"en" | "si" | "ta">("en");
   const [deliveryCity, setDeliveryCity] = useState<string | undefined>(undefined);
+  const [budget, setBudget] = useState<string | undefined>(undefined);
+  const [occasion, setOccasion] = useState<string | undefined>(undefined);
+  const [recipient, setRecipient] = useState<string | undefined>(undefined);
+  const [deliveryDate, setDeliveryDate] = useState<string>(() => getColomboTomorrowIso());
   const [lastOrder, setLastOrder] = useState<LastOrder | undefined>(undefined);
   // Contextual greeting for the splash hero. Computed client-only (uses Date +
   // Math.random) to avoid a hydration mismatch — null until mount.
@@ -235,18 +297,16 @@ export default function KiraExperience({
       const session = loadSession();
       if (session?.messages?.length) setMessages(session.messages);
       if (session?.deliveryCity) setDeliveryCity(session.deliveryCity);
+      if (session?.deliveryDate) setDeliveryDate(session.deliveryDate);
+      if (session?.budget) setBudget(session.budget);
+      if (session?.occasion) setOccasion(session.occasion);
+      if (session?.recipient) setRecipient(session.recipient);
       if (session?.lastOrder) setLastOrder(session.lastOrder);
       setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
-  const [deliveryDate, setDeliveryDate] = useState<string>(() => {
-    // Default to tomorrow so the delivery API always receives a valid date.
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0]; // YYYY-MM-DD
-  });
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -254,6 +314,10 @@ export default function KiraExperience({
     cart,
     addToCart,
     setPayLink,
+    openCart,
+    cartCount,
+    cartTotal,
+    setCheckoutDefaults,
   } = useCart();
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
@@ -264,6 +328,7 @@ export default function KiraExperience({
   const pendingTrackingRef = useRef<OrderTracking | null>(null);
   const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
   const pendingProductsRef = useRef<KiraProduct[] | null>(null);
+  const pendingPayLinkRef = useRef<string | null>(null);
   const pendingStepSummaryRef = useRef<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -272,10 +337,16 @@ export default function KiraExperience({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    setCheckoutDefaults({ city: deliveryCity, date: deliveryDate });
+  }, [deliveryCity, deliveryDate, setCheckoutDefaults]);
+
   // Persist session after each completed response (not while streaming).
   useEffect(() => {
-    if (!isLoading) saveSession(messages, deliveryCity, lastOrder);
-  }, [messages, deliveryCity, lastOrder, isLoading]);
+    if (!isLoading) {
+      saveSession(messages, deliveryCity, deliveryDate, budget, occasion, recipient, lastOrder);
+    }
+  }, [messages, deliveryCity, deliveryDate, budget, occasion, recipient, lastOrder, isLoading]);
 
   const handleAddToCart = useCallback(
     (product: KiraProduct) => {
@@ -320,6 +391,7 @@ export default function KiraExperience({
     pendingTrackingRef.current = null;
     pendingCheckoutRef.current = null;
     pendingProductsRef.current = null;
+    pendingPayLinkRef.current = null;
     setLiveSteps([]);
     setIsLoading(false);
     setIsStreaming(false);
@@ -351,6 +423,7 @@ export default function KiraExperience({
         pendingTrackingRef.current = null;
         pendingCheckoutRef.current = null;
         pendingProductsRef.current = null;
+        pendingPayLinkRef.current = null;
         setLiveSteps([]);
         setIsLoading(false);
         setIsStreaming(false);
@@ -375,17 +448,32 @@ export default function KiraExperience({
       pendingTrackingRef.current = null;
       pendingCheckoutRef.current = null;
       pendingProductsRef.current = null;
+      pendingPayLinkRef.current = null;
       thinkingStartRef.current = Date.now();
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
+      let requestDeliveryCity = deliveryCity;
       if (!deliveryCity) {
         const m = trimmed.match(CITY_REGEX);
         if (m) {
           const city = m[1].replace(/\b\w/g, (c) => c.toUpperCase());
+          requestDeliveryCity = city;
           setDeliveryCity(city);
         }
       }
+      const parsedBudget = parseBudgetChip(trimmed);
+      const parsedOccasion = parseOccasionChip(trimmed);
+      const parsedRecipient = parseRecipientChip(trimmed);
+      const parsedDeliveryDate = parseDeliveryDateChip(trimmed);
+      const requestBudget = parsedBudget ?? budget;
+      const requestOccasion = parsedOccasion ?? occasion;
+      const requestRecipient = parsedRecipient ?? recipient;
+      const requestDeliveryDate = parsedDeliveryDate ?? deliveryDate;
+      if (parsedBudget) setBudget(parsedBudget);
+      if (parsedOccasion) setOccasion(parsedOccasion);
+      if (parsedRecipient) setRecipient(parsedRecipient);
+      if (parsedDeliveryDate) setDeliveryDate(parsedDeliveryDate);
 
       try {
         const history = [...messages, userMsg]
@@ -404,8 +492,11 @@ export default function KiraExperience({
           body: JSON.stringify({
             messages: history,
             cart,
-            deliveryCity,
-            deliveryDate,
+            deliveryCity: requestDeliveryCity,
+            deliveryDate: requestDeliveryDate,
+            budget: requestBudget,
+            occasion: requestOccasion,
+            recipient: requestRecipient,
             lastProducts: lastWithProducts?.products,
             lastOrder,
             language,
@@ -487,8 +578,12 @@ export default function KiraExperience({
                   pendingProductsRef.current = payload.v as KiraProduct[];
                 }
               } else if (payload.t === "context") {
-                const ctx = payload.v as { city?: string };
+                const ctx = payload.v as CommerceContext;
                 if (ctx?.city) setDeliveryCity(ctx.city);
+                if (ctx?.deliveryDate) setDeliveryDate(ctx.deliveryDate);
+                if (ctx?.budget) setBudget(ctx.budget);
+                if (ctx?.occasion) setOccasion(ctx.occasion);
+                if (ctx?.recipient) setRecipient(ctx.recipient);
               } else if (payload.t === "delivery") {
                 const info = payload.v as DeliveryQuote;
                 if (info?.city) setDeliveryCity(info.city);
@@ -553,6 +648,9 @@ export default function KiraExperience({
                         : m
                     )
                   );
+                else {
+                  pendingPayLinkRef.current = payload.v as string;
+                }
               } else if (payload.t === "addToCart") {
                 addToCart(payload.v as KiraProduct);
               } else if (payload.t === "stepSummary") {
@@ -572,18 +670,53 @@ export default function KiraExperience({
                       )
                     );
                   } else {
+                    const pendingDelivery = pendingDeliveryRef.current;
+                    const pendingTracking = pendingTrackingRef.current;
+                    const pendingCheckout = pendingCheckoutRef.current;
+                    const pendingProducts = pendingProductsRef.current;
+                    const pendingPayLink = pendingPayLinkRef.current;
+                    const hasStructuredPayload =
+                      !!pendingDelivery ||
+                      !!pendingTracking ||
+                      !!pendingCheckout ||
+                      !!pendingProducts?.length ||
+                      !!pendingPayLink;
+                    const content = pendingCheckout || pendingPayLink
+                      ? "Checkout is ready."
+                      : pendingTracking
+                      ? "I found the tracking details."
+                      : pendingProducts?.length
+                      ? "Here are the live Kapruka results."
+                      : pendingDelivery
+                      ? "Delivery checked."
+                      : "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?";
                     setMessages((prev) => [
                       ...prev,
                       {
                         id: `kira-${Date.now()}`,
                         role: "assistant",
-                        content: "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?",
+                        content,
                         timestamp: Date.now(),
+                        ...(pendingProducts ? { products: pendingProducts } : {}),
+                        ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
+                        ...(pendingTracking ? { tracking: pendingTracking } : {}),
+                        ...(pendingCheckout
+                          ? {
+                              checkout: pendingCheckout,
+                              payLink: pendingCheckout.checkoutUrl,
+                            }
+                          : pendingPayLink
+                          ? { payLink: pendingPayLink }
+                          : {}),
                         thinkingMs: elapsed,
                         steps: completedSteps,
                         thinkingSummary: stepSummary,
                       },
                     ]);
+                    if (!hasStructuredPayload) {
+                      setRequestHealth("error");
+                      setLastErrorMessage(content);
+                    }
                   }
                   return completedSteps;
                 });
@@ -655,6 +788,7 @@ export default function KiraExperience({
         pendingTrackingRef.current = null;
         pendingCheckoutRef.current = null;
         pendingProductsRef.current = null;
+        pendingPayLinkRef.current = null;
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
         }
@@ -664,7 +798,20 @@ export default function KiraExperience({
         }
       }
     },
-    [messages, cart, deliveryCity, deliveryDate, isLoading, setPayLink, language, lastOrder, addToCart]
+    [
+      messages,
+      cart,
+      deliveryCity,
+      deliveryDate,
+      budget,
+      occasion,
+      recipient,
+      isLoading,
+      setPayLink,
+      language,
+      lastOrder,
+      addToCart,
+    ]
   );
 
   // Seeded opening from a storefront surface (e.g. "Ask Kira about this" on a
@@ -726,6 +873,26 @@ export default function KiraExperience({
   const estimatedTotal =
     latestDeliveryInfo?.fee !== undefined ? cartSubtotal + latestDeliveryInfo.fee : undefined;
   const canRetryLastPrompt = !!lastUserPrompt && !isLoading;
+  const budgetAmount = parseBudgetAmountFromChip(budget);
+  const commerceContext: CommerceContext = {
+    city: deliveryCity,
+    deliveryDate,
+    budget,
+    occasion,
+    recipient,
+  };
+  const handleCommerceContextChange = (updates: Partial<CommerceContext>) => {
+    if ("city" in updates) setDeliveryCity(updates.city);
+    if ("deliveryDate" in updates && updates.deliveryDate) {
+      setDeliveryDate(updates.deliveryDate);
+    }
+    if ("deliveryDate" in updates && updates.deliveryDate === undefined) {
+      setDeliveryDate(getColomboTomorrowIso());
+    }
+    if ("budget" in updates) setBudget(updates.budget);
+    if ("occasion" in updates) setOccasion(updates.occasion);
+    if ("recipient" in updates) setRecipient(updates.recipient);
+  };
 
   return (
     <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
@@ -748,7 +915,7 @@ export default function KiraExperience({
                 const preservedOrder = lastOrder;
                 setMessages([buildOpeningMessage()]);
                 if (preservedOrder) {
-                  saveSession([], deliveryCity, preservedOrder);
+                  saveSession([], deliveryCity, deliveryDate, budget, occasion, recipient, preservedOrder);
                 } else {
                   localStorage.removeItem(SESSION_KEY);
                 }
@@ -804,6 +971,14 @@ export default function KiraExperience({
           )}
         </div>
       </header>
+
+      <CommerceRail
+        context={commerceContext}
+        onChange={handleCommerceContextChange}
+        cartCount={cartCount}
+        cartTotal={cartTotal}
+        onOpenCart={openCart}
+      />
 
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
@@ -958,6 +1133,7 @@ export default function KiraExperience({
                   currency={cartCurrency}
                   deliveryFee={latestDeliveryInfo?.fee}
                   estimatedTotal={estimatedTotal}
+                  budgetAmount={budgetAmount}
                   onCheckout={() => setCheckoutOpen(true)}
                   onCheckDelivery={() =>
                     sendMessage(
@@ -1030,6 +1206,7 @@ export default function KiraExperience({
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
+        initialDelivery={{ city: deliveryCity, date: deliveryDate }}
       />
     </div>
   );
@@ -1054,7 +1231,7 @@ function DeliveryDatePicker({
       <span className="sr-only">Delivery date</span>
       <input
         type="date"
-        min={new Date().toISOString().slice(0, 10)}
+        min={getColomboTodayIso()}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="w-[7.6rem] bg-transparent text-xs font-semibold text-white/80 outline-none [color-scheme:dark]"
@@ -1148,6 +1325,7 @@ function StickyOrderSummary({
   subtotal,
   deliveryFee,
   estimatedTotal,
+  budgetAmount,
   currency,
   onCheckout,
   onCheckDelivery,
@@ -1159,6 +1337,7 @@ function StickyOrderSummary({
   subtotal: number;
   deliveryFee?: number;
   estimatedTotal?: number;
+  budgetAmount?: number;
   currency: string;
   onCheckout: () => void;
   onCheckDelivery: () => void;
@@ -1190,6 +1369,11 @@ function StickyOrderSummary({
             {estimatedTotal !== undefined && (
               <p className="font-semibold text-kap-yellow">
                 Est. total: {formatMoney(estimatedTotal, currency)}
+              </p>
+            )}
+            {budgetAmount !== undefined && subtotal > budgetAmount && (
+              <p className="font-semibold text-amber-300">
+                Over budget by {formatMoney(subtotal - budgetAmount, currency)}
               </p>
             )}
           </div>
