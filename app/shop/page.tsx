@@ -1,9 +1,11 @@
 import StoreNav from "@/app/components/store/StoreNav";
-import StoreHero from "@/app/components/store/StoreHero";
+import StoreFooter from "@/app/components/store/StoreFooter";
+import TrustBar from "@/app/components/store/TrustBar";
+import GiftFinder from "@/app/components/store/GiftFinder";
+import OccasionStrip from "@/app/components/store/OccasionStrip";
 import CategoryRail from "@/app/components/store/CategoryRail";
 import ProductRail from "@/app/components/store/ProductRail";
 import KiraBand from "@/app/components/store/KiraBand";
-import StoreFooter from "@/app/components/store/StoreFooter";
 import Reveal from "@/app/components/store/Reveal";
 import { getCategories, getRails } from "@/lib/catalog";
 
@@ -12,11 +14,11 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Shop — Kapruka, reimagined",
   description:
-    "Browse Sri Lanka's favourites — cakes, flowers, hampers and more, delivered islandwide. Or just ask Kira.",
+    "Find and send gifts across Sri Lanka — Kira searches live catalog, checks delivery, and checks you out.",
   openGraph: {
     title: "Shop — Kapruka, reimagined",
     description:
-      "Browse Sri Lanka's favourites — cakes, flowers, hampers and more, delivered islandwide.",
+      "Intent-first gifting with Kira — cakes, flowers, hampers, delivered islandwide.",
     type: "website",
   },
 };
@@ -27,25 +29,19 @@ export default async function ShopHomePage() {
   return (
     <div className="min-h-dvh">
       <StoreNav categories={categories} />
+      <TrustBar />
 
       <main>
-        <StoreHero />
+        {/* 1. Intent-first — replaces legacy category wall */}
+        <GiftFinder />
 
-        {/* Categories */}
-        <section className="mx-auto mt-2 w-full max-w-[1280px] px-5 sm:px-8">
-          <Reveal className="mb-5">
-            <h2 className="display-hero text-2xl text-white sm:text-3xl">
-              Shop by category
-            </h2>
-            <p className="mt-1 text-sm text-white/45">
-              Everything Kapruka, reimagined dark.
-            </p>
-          </Reveal>
-        </section>
-        <CategoryRail categories={categories} />
+        {/* 2. Occasion shortcuts → Kira */}
+        <div className="mt-12">
+          <OccasionStrip />
+        </div>
 
-        {/* Editorial product rails */}
-        <div className="mt-28 space-y-28">
+        {/* 3. Editorial picks — merchandising without overload */}
+        <div className="mt-20 space-y-20">
           {rails.map((rail) => (
             <ProductRail
               key={rail.title}
@@ -56,8 +52,21 @@ export default async function ShopHomePage() {
           ))}
         </div>
 
-        {/* Meet Kira */}
-        <div className="mt-32">
+        {/* 4. Categories — secondary, horizontal scroll (not a wall) */}
+        <section className="mx-auto mt-24 w-full max-w-[1280px] px-5 sm:px-8">
+          <Reveal className="mb-5">
+            <h2 className="display-hero text-2xl text-white sm:text-3xl">
+              Or browse by department
+            </h2>
+            <p className="mt-1 text-sm text-white/45">
+              Kapruka&apos;s full catalog — when you know what you want.
+            </p>
+          </Reveal>
+        </section>
+        <CategoryRail categories={categories} />
+
+        {/* 5. Kira story */}
+        <div className="mt-32 pb-8">
           <KiraBand />
         </div>
       </main>

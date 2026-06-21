@@ -87,7 +87,25 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
 
         {/* Categories */}
         <nav className="ml-2 hidden items-center gap-1 lg:flex">
-          {topCategories.map((c) => (
+          <Link
+            href="/shop"
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
+              scrolled ? "text-white/70" : "text-white/45"
+            )}
+          >
+            Gifts
+          </Link>
+          <Link
+            href="/track"
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
+              scrolled ? "text-white/70" : "text-white/45"
+            )}
+          >
+            Track
+          </Link>
+          {topCategories.slice(0, 4).map((c) => (
             <Link
               key={c.slug}
               href={`/shop/${c.slug}`}

@@ -42,8 +42,16 @@ export default function StoreFooter({ categories }: { categories: StoreCategory[
                   Open Kira
                 </Link>
               </li>
-              <li className="text-[13px] text-white/60">Delivery &amp; tracking</li>
-              <li className="text-[13px] text-white/60">Gift hampers</li>
+              <li>
+                <Link href="/track" className="text-[13px] text-white/60 transition-colors hover:text-white">
+                  Track order
+                </Link>
+              </li>
+              <li>
+                <Link href="/shop" className="text-[13px] text-white/60 transition-colors hover:text-white">
+                  Gift finder
+                </Link>
+              </li>
             </ul>
           </div>
 

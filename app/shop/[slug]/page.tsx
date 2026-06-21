@@ -2,7 +2,9 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
+import TrustBar from "@/app/components/store/TrustBar";
 import ShopGrid from "@/app/components/store/ShopGrid";
+import CategoryKiraBanner from "@/app/components/store/CategoryKiraBanner";
 import { getCategories, getProductsByCategory } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +46,7 @@ export default async function CategoryPage({
   return (
     <div className="min-h-dvh">
       <StoreNav categories={categories} />
+      <TrustBar />
       <main className="mx-auto w-full max-w-[1280px] px-5 pb-12 pt-12 sm:px-8">
         <div className="spotlight pointer-events-none absolute inset-x-0 top-14 h-64" />
         <header className="relative mb-10">
@@ -55,6 +58,8 @@ export default async function CategoryPage({
             <p className="mt-3 max-w-lg text-[15px] text-white/50">{category.blurb}</p>
           )}
         </header>
+
+        <CategoryKiraBanner categoryName={category.name} slug={slug} />
 
         <ShopGrid slug={slug} initialItems={first.items} total={first.total} />
       </main>
