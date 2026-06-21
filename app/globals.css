@@ -218,10 +218,16 @@ body {
 
 /* ───────────────────────── Storefront ───────────────────────── */
 
-/* Kapruka wordmark SVG is white — invert for light chrome */
-.kapruka-logo-dark {
-  filter: brightness(0) saturate(100%);
-  opacity: 0.92;
+/* Store chrome — Kapruka purple bar (white logo SVG) */
+.store-nav-purple {
+  background: #402970;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Kapruka wordmark SVG is white — use on purple/dark chrome only */
+.kapruka-logo-light {
+  filter: none;
 }
 .store-card {
   background: #ffffff;
