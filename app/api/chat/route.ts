@@ -36,6 +36,14 @@ function getGroq(): Groq {
   if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
   return _groq;
 }
+
+function isGroqConfigured(): boolean {
+  const key = process.env.GROQ_API_KEY?.trim();
+  return Boolean(key && key !== "gsk_..." && !key.endsWith("..."));
+}
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 // Free-tier model cascade: most capable first, fall back on 429.
 //   1. Llama 3.3 70B  — best personality, 100k tokens/day free budget
 //   2. Llama 4 Scout  — generous 30k TPM headroom
@@ -249,6 +257,11 @@ const LS: Record<string, Record<string, string>> = {
     en: "I'm having a bit of trouble reaching Kapruka right now — please try again in a moment and I'll find real options for you.",
     si: "Kapruka connect කරන්නේ ටිකක් problem — ටිකක් ඉස්සෙල්ලා try කරන්නකෝ.",
     ta: "Kapruka இணைப்பில் சிறு பிரச்சனை — கொஞ்சம் நேரம் கழித்து மீண்டும் try செய்யுங்கள்.",
+  },
+  groqNotConfigured: {
+    en: "Kira's AI isn't connected on this server — GROQ_API_KEY is missing or invalid. Add your Groq key to .env.local (local) or Vercel env vars (deployed), then restart.",
+    si: "AI connect වෙලා නෑ — GROQ_API_KEY missing හෝ invalid. .env.local හෝ Vercel env vars එකට key එක add කරලා restart කරන්න.",
+    ta: "AI connect ஆகவில்லை — GROQ_API_KEY missing அல்லது invalid. .env.local அல்லது Vercel env vars-இல் key add செய்து restart செய்யுங்கள்.",
   },
   emptyGreeting: {
     en: "Hey! I'm Kira — your Kapruka shopping helper 🎁 Tell me what you're looking for: a gift, cakes, flowers, or something else?",
@@ -634,6 +647,13 @@ export async function POST(req: NextRequest) {
             internationalMode: body.internationalMode,
           })
         ) {
+          controller.close();
+          return;
+        }
+
+        if (!isGroqConfigured()) {
+          await streamWords(controller, L("groqNotConfigured", language));
+          controller.enqueue(sse("done"));
           controller.close();
           return;
         }
@@ -1263,6 +1283,11 @@ export async function POST(req: NextRequest) {
                   currentMessages = [currentMessages[0], ...currentMessages.slice(-4)];
                   continue callLoop;
                 }
+              }
+
+              if (apiErr?.status === 401) {
+                finalText = L("groqNotConfigured", language);
+                break callLoop;
               }
 
               if (apiErr?.status === 429 || apiErr?.status === 413) {
