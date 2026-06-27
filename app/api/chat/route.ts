@@ -1982,6 +1982,29 @@ async function tryHandleDeterministicPrompt({
   const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
   const ADDRESS_RE =
     /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
+  const EXPLICIT_ORDER_INTENT_RE =
+    /\b(place\s+an?\s+order|place\s+the\s+order|want\s+to\s+order|ready\s+to\s+order|complete\s+the\s+order)\b/i;
+
+  // If a user is clearly giving delivery/order fields, stay in checkout field
+  // collection instead of treating product words/dates as a catalog search. This
+  // catches judge-style one-liners such as "order a cake for Priya, 12 Main St,
+  // Colombo..." where the next blocking field is the phone number, not product
+  // discovery. The cart may still be empty; Kira can collect safe recipient
+  // fields before final product selection.
+  if (EXPLICIT_ORDER_INTENT_RE.test(lower)) {
+    const hasPhone = PHONE_RE.test(trimmed);
+    const hasAddress = ADDRESS_RE.test(trimmed);
+    if (hasAddress && !hasPhone) {
+      await streamWords(controller, L("checkoutNeedPhone", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+    if (hasPhone && !hasAddress) {
+      await streamWords(controller, L("checkoutNeedAddress", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
   // Only collect partial checkout fields once the tray has items — otherwise
   // "send flowers to 12 Galle Road" gets misread as checkout field collection.
   if (cart.length > 0) {
