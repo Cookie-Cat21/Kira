@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "apple-ultra-skills": {
+      "source": "Cookie-Cat21/apple-ultra-skills",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "f1be52ada6ce5313f8cb92061a455f5669f27af8b0693efa67cdfa29672bebd0"
+    }
+  }
+}
