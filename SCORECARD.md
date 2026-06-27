@@ -100,6 +100,7 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 | Cross-surface parity | PASS local | Same canvas/tokens/type/motion/cart/Kira voice across `/` and `/shop`. |
 | Deployment | PREVIEW DEPLOYED, LIVE ACCESS BLOCKED | PR #74 links the stable Vercel preview `https://kira-git-cursor-bc-fda237a4-f4bb-2f1bf1-cookie-cat21s-projects.vercel.app`, but preview and production URLs currently return HTTP 302 to Vercel SSO from `/api/health`, so public judge/live web-quality gates cannot run. Vercel CLI is unauthenticated and opened device login, then was stopped. Need unprotected preview, production promotion, or Vercel auth. |
 | Pull request | Draft opened | https://github.com/Cookie-Cat21/Kira/pull/74 |
+| Public homepage URL | PARTIAL / NOT CURRENT SHOP | Repository homepage `https://kira-peach.vercel.app` is public and `/api/health` returns 200. Agent judge dry-run against it passes 10/10, but `/shop` and `/product/CAKE00KA001990` return HTTP 500, so it is not a valid public URL for this branch's shop. Lighthouse on `/` is Perf 75 / A11y 100 / BP 96 / SEO 100. |
 
 ### Automated evidence
 
@@ -115,12 +116,16 @@ npx playwright test tests/e2e/shop.spec.ts 4/4 PASS
 local production Lighthouse /      Perf 89 / A11y 100 / BP 100 / SEO 100
 local production Lighthouse /shop  Perf 86 / A11y 100 / BP 100 / SEO 100
 local production Lighthouse /product/CAKE00KA001990 Perf 87 / A11y 100 / BP 100 / SEO 100
+public homepage judge-dry-run      10/10 PASS on https://kira-peach.vercel.app
+public homepage Lighthouse /       Perf 75 / A11y 100 / BP 96 / SEO 100
+public homepage /shop              HTTP 500 (not valid for final shop gate)
 npm audit --audit-level=moderate   BLOCKED: 2 moderate advisories in Next's nested postcss; non-breaking audit fix already applied.
 ```
 
 ### Blockers for next loop
 
 1. Current Vercel preview for HEAD is SSO-protected (`/api/health` redirects to `https://vercel.com/sso-api?...`), so public judge dry-run and Lighthouse gates remain blocked.
-2. Run live `KIRA_API_URL=https://<live>/api/chat node scripts/judge-dry-run.mjs` once deploy is available.
-3. Run live `/`, `/shop`, and `/product/[id]` web-quality/Lighthouse checks once deploy is available.
-4. Native-speaker Sinhala/Tamil copy review still recommended before final submission.
+2. Repository homepage `https://kira-peach.vercel.app` is public but not a valid final shop URL because `/shop` and product pages return HTTP 500.
+3. Run live `KIRA_API_URL=https://<current-unprotected-live>/api/chat node scripts/judge-dry-run.mjs` once current branch is available publicly.
+4. Run live `/`, `/shop`, and `/product/[id]` web-quality/Lighthouse checks once current branch is publicly available.
+5. Native-speaker Sinhala/Tamil copy review still recommended before final submission.

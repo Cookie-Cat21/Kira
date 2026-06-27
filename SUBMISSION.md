@@ -8,6 +8,7 @@
 |---|---|---|
 | Agent | `https://kira-git-cursor-bc-fda237a4-f4bb-2f1bf1-cookie-cat21s-projects.vercel.app/` | Preview deployed but SSO-protected |
 | Shop | `https://kira-git-cursor-bc-fda237a4-f4bb-2f1bf1-cookie-cat21s-projects.vercel.app/shop` | Preview deployed but SSO-protected |
+| Public homepage | `https://kira-peach.vercel.app/` | Public, agent dry-run passes, but `/shop` and product routes return HTTP 500 |
 | Local agent | `http://localhost:3107/` | Verified |
 | Local shop | `http://localhost:3107/shop` | Verified |
 
@@ -51,6 +52,9 @@ Local production Lighthouse /                     Perf 89 / A11y 100 / BP 100 / 
 Local production Lighthouse /shop                 Perf 86 / A11y 100 / BP 100 / SEO 100
 Local production Lighthouse /product/CAKE00KA001990
                                                    Perf 87 / A11y 100 / BP 100 / SEO 100
+Public homepage judge-dry-run                      10/10 PASS on https://kira-peach.vercel.app
+Public homepage Lighthouse /                       Perf 75 / A11y 100 / BP 96 / SEO 100
+Public homepage /shop                              HTTP 500, not a valid final shop URL
 ```
 
 ## CEO-style reaction
@@ -91,3 +95,5 @@ https://kira-git-cursor-bc-fda237a4-f4bb-2f1bf1-cookie-cat21s-projects.vercel.ap
 ```
 
 `/api/health` redirects to Vercel SSO, so public-live judge dry-run and Lighthouse checks cannot run until Vercel deployment protection is disabled, production is promoted to an unprotected domain, or Vercel authentication/bypass is provided.
+
+Repository homepage `https://kira-peach.vercel.app` is public, but it is not a valid final submission target for both surfaces because `/shop` and product routes currently return HTTP 500 there.
