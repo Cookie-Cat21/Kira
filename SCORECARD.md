@@ -98,7 +98,7 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 | Dulith path 1 — Agent | 9.2 / 10 local | Would impress: real MCP, checkout, tracking, local language, repair-gift personality. Needs live URL proof for final 9+/10 validation. |
 | Dulith path 2 — Shop | 9.1 / 10 local | Would impress: website tabs reimagined, real imagery, product detail depth, Kira handoff, shared bag. Needs live URL proof and Lighthouse for final 9+/10 validation. |
 | Cross-surface parity | PASS local | Same canvas/tokens/type/motion/cart/Kira voice across `/` and `/shop`. |
-| Deployment | PREVIEW DEPLOYED, LIVE ACCESS BLOCKED | GitHub deployments show Vercel preview for latest commit `9f9aa2e`: `https://kira-389x3z2zw-cookie-cat21s-projects.vercel.app`. `/api/health` returns HTTP 302 to Vercel SSO, so public judge/live web-quality gates cannot run against it. Latest production deployment is also SSO-protected. Vercel CLI is unauthenticated and opened device login, then was stopped. Need unprotected preview, production promotion, or Vercel auth. |
+| Deployment | PREVIEW DEPLOYED, LIVE ACCESS BLOCKED | GitHub deployments show Vercel preview for Loop 2 scorecard commit `b2eb281`: `https://kira-ofd5ev1sh-cookie-cat21s-projects.vercel.app`. `/api/health` returns HTTP 302 to Vercel SSO, so public judge/live web-quality gates cannot run against it. Latest production deployment is also SSO-protected. Vercel CLI is unauthenticated and opened device login, then was stopped. Need unprotected preview, production promotion, or Vercel auth. |
 | Pull request | Draft opened | https://github.com/Cookie-Cat21/Kira/pull/74 |
 
 ### Automated evidence
