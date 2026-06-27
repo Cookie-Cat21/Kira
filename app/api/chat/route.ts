@@ -2521,7 +2521,7 @@ async function tryHandleDeterministicPrompt({
   if (RUSH_RE.test(lower)) {
     const rushQuery = extractProductKeyword(lower) ?? "flowers";
     const rushCity = extractCityHint(trimmed) ?? deliveryCity ?? "Colombo";
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = getColomboTodayIso();
     controller.enqueue(sse("step", `Searching Kapruka for same-day ${rushQuery}`));
     const rushResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: rushQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
