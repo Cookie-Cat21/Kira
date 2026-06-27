@@ -80,7 +80,8 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
             alt="Kapruka"
             width={120}
             height={28}
-            className="h-7 w-auto object-contain"
+            className="object-contain"
+            style={{ width: "120px", height: "auto" }}
             priority
           />
         </Link>

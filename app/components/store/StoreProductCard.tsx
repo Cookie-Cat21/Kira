@@ -45,7 +45,11 @@ export default function StoreProductCard({
 
   return (
     <article className="store-card group flex h-full flex-col overflow-hidden rounded-2xl">
-      <Link href={`/product/${product.id}`} className="flex h-full flex-col">
+      <Link
+        href={`/product/${product.id}`}
+        aria-label={`View ${product.name}`}
+        className="flex h-full flex-col"
+      >
         {/* Image */}
         <div
           ref={imgRef}
