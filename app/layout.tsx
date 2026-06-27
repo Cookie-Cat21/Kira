@@ -11,12 +11,14 @@ const dmSerif = DM_Serif_Display({
   variable: "--font-dm-serif",
   subsets: ["latin"],
   weight: "400",
+  display: "swap",
 });
 
 const notoSinhala = Noto_Sans_Sinhala({
   variable: "--font-noto-sinhala",
   subsets: ["sinhala"],
   weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

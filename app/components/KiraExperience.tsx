@@ -7,7 +7,6 @@ import {
   useCallback,
   type ComponentType,
 } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   CakeSlice,
@@ -24,7 +23,6 @@ import {
   Baby,
   Home,
 } from "lucide-react";
-import KiraLoader from "./KiraLoader";
 import McpStatusBadge from "./McpStatusBadge";
 import ChatMessage from "./ChatMessage";
 import CheckoutModal from "./CheckoutModal";
@@ -271,9 +269,6 @@ export default function KiraExperience({
   embedded?: boolean;
   seed?: KiraDockSeed | null;
 }) {
-  // When docked inside the storefront we skip the full-screen loader splash.
-  const [appReady, setAppReady] = useState(embedded);
-
   const [messages, setMessages] = useState<KiraMessage[]>(() => [buildOpeningMessage()]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -284,9 +279,11 @@ export default function KiraExperience({
   const [recipient, setRecipient] = useState<string | undefined>(undefined);
   const [deliveryDate, setDeliveryDate] = useState<string>(() => getColomboTomorrowIso());
   const [lastOrder, setLastOrder] = useState<LastOrder | undefined>(undefined);
-  // Contextual greeting for the splash hero. Computed client-only (uses Date +
-  // Math.random) to avoid a hydration mismatch — null until mount.
-  const [heroGreeting, setHeroGreeting] = useState<string | null>(null);
+  // Keep the visible hero greeting stable so the first paint is also the final
+  // LCP element. Kira still uses contextual greetings inside the persisted chat
+  // opening message, but swapping the hero headline after hydration made
+  // Lighthouse wait for late client JS before counting LCP.
+  const heroGreeting = "Hello! 👋";
   const [lastUserPrompt, setLastUserPrompt] = useState<string | null>(null);
   const [requestHealth, setRequestHealth] = useState<"idle" | "loading" | "error">("idle");
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
@@ -302,7 +299,6 @@ export default function KiraExperience({
       if (session?.occasion) setOccasion(session.occasion);
       if (session?.recipient) setRecipient(session.recipient);
       if (session?.lastOrder) setLastOrder(session.lastOrder);
-      setHeroGreeting(getContextualGreeting(!!session?.messages?.length));
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -896,7 +892,6 @@ export default function KiraExperience({
 
   return (
     <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
-      {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
       {/* Ambient blobs */}
@@ -925,15 +920,17 @@ export default function KiraExperience({
               <SquarePen className="size-3.5" />
             </button>
           )}
-          <Image
-            src="/kira-logo.svg"
-            alt="Kira"
-            width={120}
-            height={56}
-            className="object-contain"
-            style={{ width: "auto", height: "2.75rem" }}
-            priority
-          />
+          <div
+            aria-label="Kira"
+            className="flex h-11 items-center gap-2 rounded-full px-1"
+          >
+            <span className="grid size-8 place-items-center rounded-full border border-kap-yellow/25 bg-kap-purple/45 text-sm font-black text-kap-yellow shadow-[0_0_24px_rgba(248,218,8,0.08)]">
+              K
+            </span>
+            <span className="font-display text-2xl leading-none tracking-[-0.03em] text-white">
+              Kira
+            </span>
+          </div>
           {/* Status strip — hidden on mobile */}
           <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
             <span className="text-[11px] font-medium tracking-[0.02em] text-white/28" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif", letterSpacing: "0.01em" }}>

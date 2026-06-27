@@ -1,56 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
-import gsap from "gsap";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 
 export default function StoreHero() {
-  const root = useRef<HTMLDivElement | null>(null);
   const { open: openKira } = useKiraDock();
 
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || !root.current) return;
-
-    // Inside gsap.context, plain string selectors are auto-scoped to `root`.
-    const ctx = gsap.context(() => {
-      gsap.set([".hero-line", ".hero-sub", ".hero-cta"], { opacity: 0, y: 22 });
-      gsap.set(".hero-tile", { opacity: 0, scale: 0.9 });
-
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".hero-eyebrow", { opacity: 0, y: 12, duration: 0.6 })
-        .to(".hero-line", { opacity: 1, y: 0, duration: 0.9, stagger: 0.12 }, "-=0.2")
-        .to(".hero-sub", { opacity: 1, y: 0, duration: 0.7 }, "-=0.55")
-        .to(".hero-cta", { opacity: 1, y: 0, duration: 0.6, stagger: 0.1 }, "-=0.4")
-        .to(".hero-tile", { opacity: 1, scale: 1, duration: 0.85, stagger: 0.12 }, "-=0.85");
-
-      // gentle parallax on pointer move
-      const onMove = (e: PointerEvent) => {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
-        const dx = (e.clientX - cx) / cx;
-        const dy = (e.clientY - cy) / cy;
-        gsap.to(".hero-tile", {
-          x: (i: number) => dx * (10 + i * 6),
-          y: (i: number) => dy * (10 + i * 6),
-          duration: 0.8,
-          ease: "power2.out",
-        });
-      };
-      window.addEventListener("pointermove", onMove);
-      return () => window.removeEventListener("pointermove", onMove);
-    }, root);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
-    <div
-      ref={root}
-      className="relative overflow-hidden"
-    >
+    <div className="relative overflow-hidden">
       {/* spotlight + ambient blobs */}
       <div className="spotlight pointer-events-none absolute inset-x-0 top-0 h-[520px]" />
       <div

@@ -109,7 +109,7 @@ export function KiraChatInput({
   onSendMessage,
   isLoading = false,
   onCancel,
-  placeholder = "Ask for a gift, budget, city, or order number...",
+  placeholder = "Ask Kira...",
   className,
   language = "en" as "en" | "si" | "ta",
   onLanguageChange,
