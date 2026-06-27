@@ -98,7 +98,7 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 | Dulith path 1 — Agent | 9.2 / 10 local | Would impress: real MCP, checkout, tracking, local language, repair-gift personality. Needs live URL proof for final 9+/10 validation. |
 | Dulith path 2 — Shop | 9.1 / 10 local | Would impress: website tabs reimagined, real imagery, product detail depth, Kira handoff, shared bag. Needs live URL proof and Lighthouse for final 9+/10 validation. |
 | Cross-surface parity | PASS local | Same canvas/tokens/type/motion/cart/Kira voice across `/` and `/shop`. |
-| Deployment | BLOCKED | No GitHub Actions found; Vercel CLI is unauthenticated and opened device login, then was stopped. Need authenticated Vercel/project URL for production retest. |
+| Deployment | PREVIEW DEPLOYED, LIVE ACCESS BLOCKED | GitHub deployments show Vercel preview for HEAD `85d6540`: `https://kira-ngsbbfzf5-cookie-cat21s-projects.vercel.app`. `/api/health` returns HTTP 302 to Vercel SSO, so public judge/live web-quality gates cannot run against it. Vercel CLI is unauthenticated and opened device login, then was stopped. Need unprotected preview, production promotion, or Vercel auth. |
 
 ### Automated evidence
 
@@ -116,7 +116,7 @@ npm audit --audit-level=moderate   BLOCKED: 2 moderate advisories in Next's nest
 
 ### Blockers for next loop
 
-1. Production deploy/live URL remains unavailable in this VM. Need Vercel authentication or a provided live URL before production judge dry-run and Lighthouse gates can pass.
+1. Current Vercel preview for HEAD is SSO-protected (`/api/health` redirects to `https://vercel.com/sso-api?...`), so public judge dry-run and Lighthouse gates remain blocked.
 2. Run live `KIRA_API_URL=https://<live>/api/chat node scripts/judge-dry-run.mjs` once deploy is available.
 3. Run live `/`, `/shop`, and `/product/[id]` web-quality/Lighthouse checks once deploy is available.
 4. Native-speaker Sinhala/Tamil copy review still recommended before final submission.
