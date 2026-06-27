@@ -56,7 +56,7 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 |---|---:|---|---|
 | Official rubric | 95 / 100 local | PASS locally, live blocked | Experience 29/30, Visual 19/20, Personality 15/15, Usefulness 15/15, Completeness 14/15, Creativity 4/5. Blocker: production URL not available from this VM. |
 | Design review | 96 / 100 local | PASS | Manual `/` review confirms same dark gradient, typography, yellow/purple accents, product cards, and Browse store bridge as shop. 0 Critical, 0 High. |
-| Web quality | Local functional only | BLOCKED for live metrics | Need live Lighthouse/Web Vitals. Local app renders and Playwright smoke passes. |
+| Web quality | 89 Perf / 100 A11y / 100 SEO local prod | PASS local, live blocked | Local production Lighthouse on `http://localhost:3108/`: Performance 89, Accessibility 100, Best Practices 100, SEO 100, LCP 3.8s. Live preview remains SSO-protected. |
 | Brand voice | 95 / 100 local | PASS | Prompt remains lean; deterministic repair/trust/jailbreak/local-language flows pass. Sinhala/Tamil fast paths pass. |
 | CTO/security | 94 / 100 local | PASS with non-P0 notes | MCP probe green. Checkout state-machine persona regressions fixed. `npm audit fix` cleared high `hono` advisory; 2 moderate `postcss` advisories remain inside Next dependency with only `--force` breaking suggestion. |
 | TDD/automated | 100% local | PASS | `judge-dry-run`: 10/10. Core: 68/68. Persona: 120/120. Playwright: 35/35. |
@@ -74,7 +74,7 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 | Design review | 96 / 100 local | PASS | New fast lanes, real catalog imagery, product trust/payment/cross-sell, Kira dock handoff. 0 Critical, 0 High locally. |
 | Visual system | 95 / 100 | PASS | Agent/shop share dark canvas, Kapruka purple/yellow, display type, glass cards/chips, rounded buttons, shared cart. |
 | Component discovery | 95 / 100 | PASS | Store cards now use real MCP images where available; category/product/detail/cross-sell cards match agent quality. |
-| Web quality | Local functional only | BLOCKED for live metrics | Need live Lighthouse/Web Vitals. Local Playwright covers desktop + mobile viewport. |
+| Web quality | Shop 86 Perf / Product 87 Perf local prod | PASS local, live blocked | Local production Lighthouse: `/shop` Performance 86, A11y 100, BP 100, SEO 100, LCP 4.2s; `/product/CAKE00KA001990` Performance 87, A11y 100, BP 100, SEO 100, LCP 4.1s. Live preview remains SSO-protected. |
 | Brand voice | 94 / 100 | PASS | Fast lanes/KiraBand copy uses Kira-style Sri Lankan shopping language, not generic ecommerce. |
 | CTO | 95 / 100 | PASS | `lib/catalog.ts` adds rush/sale/related rails with DB+seed fallback; `scripts/sync-catalog.mjs` refreshes and filters seed relevance; store APIs remain green. |
 | Automated | 4/4 shop + 35/35 full | PASS | Added `tests/e2e/shop.spec.ts`; full Playwright suite now covers agent + shop. |
@@ -112,6 +112,9 @@ node scripts/run-tests.mjs         68/68 PASS
 node scripts/test-personas.mjs --concurrency 1 120/120 PASS
 npx playwright test                35/35 PASS
 npx playwright test tests/e2e/shop.spec.ts 4/4 PASS
+local production Lighthouse /      Perf 89 / A11y 100 / BP 100 / SEO 100
+local production Lighthouse /shop  Perf 86 / A11y 100 / BP 100 / SEO 100
+local production Lighthouse /product/CAKE00KA001990 Perf 87 / A11y 100 / BP 100 / SEO 100
 npm audit --audit-level=moderate   BLOCKED: 2 moderate advisories in Next's nested postcss; non-breaking audit fix already applied.
 ```
 
