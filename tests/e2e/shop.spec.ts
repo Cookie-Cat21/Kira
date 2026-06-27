@@ -127,7 +127,7 @@ test.describe("Shop storefront", () => {
     await expect(categoryRail).toBeVisible();
     await categoryRail.click();
     await expect(page).toHaveURL(/\/shop\/flowers/);
-    await expect(page.getByRole("heading", { name: /Flowers/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Flowers", exact: true })).toBeVisible();
 
     await (await firstStoreProduct(page)).click();
     await page.getByRole("button", { name: /Add to bag/i }).click();

@@ -28,6 +28,41 @@ const SEARCH_VARIATIONS = [
   { sort: "newest" },
 ];
 
+const CATEGORY_FILTERS = {
+  cakes: {
+    include: /\b(cake|gateau|cheesecake|bento|cupcake|brownie)\b/i,
+    exclude: /\b(greeting\s*card|birthday\s*card|candle|biscuit|cookie|munchee|maliban|key\s*tag|puzzle)\b/i,
+  },
+  flowers: {
+    include: /\b(flowers?|roses?|bouquet|blossom|arrangement|floral|orchid|lily)\b/i,
+    exclude: /\b(greeting\s*card|birthday\s*card|key\s*tag|puzzle|candle|handmade\s*card|chocolate\s*box)\b/i,
+  },
+  chocolates: {
+    include: /\b(choc|chocolate|kitkat|kandos|ritzbury|java|sweet|candy|toffee|nuts\s*mix)\b/i,
+    exclude: /\b(condom|pharmacy|sexual|wellness)\b/i,
+  },
+  hampers: {
+    include: /\b(hamper|basket|gift\s*box|combo|fruit|loaded\s*box|box)\b/i,
+    exclude: /\b(condom|pharmacy|greeting\s*card)\b/i,
+  },
+  electronics: {
+    include: /\b(phone|mobile|charger|adapter|speaker|watch|electronic|cable|headset|earbud|power|usb)\b/i,
+    exclude: /\b(greeting\s*card|cake|flower|chocolate|condom)\b/i,
+  },
+  grocery: {
+    include: /\b(grocery|rice|tea|coffee|milk|biscuit|munchee|maliban|oil|sugar|soap|noodle|cereal|pantry)\b/i,
+    exclude: /\b(greeting\s*card|condom|flower|cake)\b/i,
+  },
+  kids: {
+    include: /\b(kids?|children|baby|toy|puzzle|doll|game|school|soft\s*toy|plush|activity)\b/i,
+    exclude: /\b(condom|pharmacy|greeting\s*card)\b/i,
+  },
+  home: {
+    include: /\b(home|household|decor|kitchen|candle|linen|mug|vase|glass|bath|lamp)\b/i,
+    exclude: /\b(condom|pharmacy|greeting\s*card)\b/i,
+  },
+};
+
 let transpileDirPromise;
 
 async function getTranspileDir() {
@@ -151,6 +186,22 @@ function normalizeProduct(inputProduct, category, rank, raw) {
   };
 }
 
+function isRelevantProduct(product, category) {
+  const filter = CATEGORY_FILTERS[category.slug];
+  if (!filter) return true;
+  const haystack = [
+    product.id,
+    product.name,
+    product.summary,
+    product.description,
+    product.category,
+    product.categorySlug,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return filter.include.test(haystack) && !filter.exclude.test(haystack);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -252,7 +303,9 @@ async function main() {
           ? extractProductDetailsFromMcp(JSON.stringify(raw), base)
           : undefined;
         const normalizedProduct = normalizeProduct(detail ?? base, category, idx, raw);
-        if (normalizedProduct) normalized.push(normalizedProduct);
+        if (normalizedProduct && isRelevantProduct(normalizedProduct, category)) {
+          normalized.push(normalizedProduct);
+        }
       }
 
       seedCategories.push({
