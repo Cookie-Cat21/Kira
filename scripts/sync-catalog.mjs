@@ -263,7 +263,13 @@ async function main() {
         productCount: normalized.length,
         rank: category.rank,
       });
-      seedProducts.push(...normalized.map(({ raw, ...product }) => product));
+      seedProducts.push(
+        ...normalized.map((product) =>
+          Object.fromEntries(
+            Object.entries(product).filter(([key]) => key !== "raw")
+          )
+        )
+      );
       counts.push({ slug: category.slug, name: category.name, count: normalized.length });
 
       if (dbConfigured) {

@@ -62,6 +62,7 @@ const promoBanners = await getAll(page, '.banner, .promo, .hero, [class*="banner
 
 findings.pages.homepage = {
   topNavItems: topNav.slice(0, 40),
+  categoryLinks: categories.slice(0, 30),
   heroText,
   promoBanners: promoBanners.slice(0, 10),
 };
@@ -80,7 +81,11 @@ const categoryItems = await page.$$eval('a', anchors =>
     .filter(i => i.text.length > 0 && i.text.length < 60)
     .slice(0, 60)
 );
-findings.pages.categories = { categoryItems, allCatLinks: allCatLinks.slice(0, 30) };
+findings.pages.categories = {
+  categoryItems,
+  allCatLinks: allCatLinks.slice(0, 30),
+  departmentLinks: deptLinks.slice(0, 30),
+};
 console.log(`  Found ${categoryItems.length} category links`);
 
 // ── 3. SEARCH ────────────────────────────────────────────────────────────────
