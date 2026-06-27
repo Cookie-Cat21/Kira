@@ -13,7 +13,7 @@
       "name": "Flowers",
       "icon": "Flower2",
       "blurb": "Hand-tied bouquets & arrangements",
-      "productCount": 6,
+      "productCount": 5,
       "rank": 2
     },
     {
@@ -296,27 +296,6 @@
       "attributes": {},
       "isFeatured": false,
       "rank": 5
-    },
-    {
-      "id": "CHILDRENP01314",
-      "name": "Baby Puzzles Flowers",
-      "summary": "specialGifts - Childrens, Educationalactivitytools, Puzzleandproblemsolvingsets Childrens Introduce Your Little Ones To The Fun Of Puzzles With The Baby Puzzles Flowers Set From Panther, Available ...",
-      "price": 380,
-      "currency": "LKR",
-      "image": "https://static2.kapruka.com/product-image/width=330,quality=93,f=auto/shops/specialGifts/productImages/1760091177012_af55.jpg",
-      "images": [
-        "https://static2.kapruka.com/product-image/width=330,quality=93,f=auto/shops/specialGifts/productImages/1760091177012_af55.jpg"
-      ],
-      "category": "Flowers",
-      "categorySlug": "flowers",
-      "url": "https://www.kapruka.com/buyonline/baby-puzzles-flowers/kid/childrenp01314",
-      "inStock": true,
-      "stockLevel": "low",
-      "variants": [],
-      "addons": [],
-      "attributes": {},
-      "isFeatured": false,
-      "rank": 10
     },
     {
       "id": "EF_PC_CHOC0V571POD00076",

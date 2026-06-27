@@ -35,7 +35,7 @@ const CATEGORY_FILTERS = {
   },
   flowers: {
     include: /\b(flowers?|roses?|bouquet|blossom|arrangement|floral|orchid|lily)\b/i,
-    exclude: /\b(greeting\s*card|birthday\s*card|key\s*tag|puzzle|candle|handmade\s*card|chocolate\s*box)\b/i,
+    exclude: /\b(greeting\s*card|birthday\s*card|key\s*tag|puzzles?|candle|handmade\s*card|chocolate\s*box)\b/i,
   },
   chocolates: {
     include: /\b(choc|chocolate|kitkat|kandos|ritzbury|java|sweet|candy|toffee|nuts\s*mix)\b/i,
