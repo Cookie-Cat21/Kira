@@ -34,7 +34,7 @@ export default async function CategoryPage({
 }) {
   const { slug } = await params;
   const [categories, first] = await Promise.all([
-    getCategoriesCached(),
+    getCategoriesCached().catch(() => getCategories()),
     getProductsByCategory(slug, { limit: 12, sort: "featured" }),
   ]);
 

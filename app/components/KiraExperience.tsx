@@ -825,6 +825,8 @@ export default function KiraExperience({
 
   useEffect(() => {
     if (!seed?.prompt) return;
+    seedFiredRef.current = false;
+    seedSentRef.current = false;
     const timer = window.setTimeout(() => {
       if (seedFiredRef.current) return;
       seedFiredRef.current = true;
@@ -842,14 +844,19 @@ export default function KiraExperience({
         ]);
       }
       setPendingSeedPrompt(seed.prompt);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    }, 50);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [seed]);
 
   useEffect(() => {
     if (!pendingSeedPrompt || seedSentRef.current) return;
     seedSentRef.current = true;
     sendMessage(pendingSeedPrompt);
+    return () => {
+      seedSentRef.current = false;
+    };
   }, [pendingSeedPrompt, sendMessage]);
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";

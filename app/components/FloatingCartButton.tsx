@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ShoppingBag } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
@@ -11,8 +12,11 @@ const lkrFormatter = new Intl.NumberFormat("en-LK", {
 });
 
 export default function FloatingCartButton() {
+  const pathname = usePathname();
   const { cartCount, cartTotal, isOpen, openCart, cartButtonRef, bagControls } =
     useCart();
+
+  if (pathname === "/") return null;
 
   return (
     <AnimatePresence>

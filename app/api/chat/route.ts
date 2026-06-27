@@ -36,6 +36,11 @@ function getGroq(): Groq {
   if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
   return _groq;
 }
+
+function sanitizeField(s: unknown, maxLen: number): string {
+  if (typeof s !== "string") return "";
+  return s.replace(/[\r\n]+/g, " ").trim().slice(0, maxLen);
+}
 // Free-tier model cascade: most capable first, fall back on 429.
 //   1. Llama 3.3 70B  — best personality, 100k tokens/day free budget
 //   2. Llama 4 Scout  — generous 30k TPM headroom
@@ -529,6 +534,8 @@ function stripKnownProductNames(text: string, products: KiraProduct[]): string {
   return stripped;
 }
 
+export const maxDuration = 60;
+
 const TOOL_STEPS: Record<string, string> = {
   kapruka_search_products: "Searching Kapruka catalog",
   kapruka_list_categories: "Browsing categories",
@@ -562,6 +569,15 @@ export async function POST(req: NextRequest) {
           lastProducts,
           lastOrder,
         } = body;
+        const safeLastProducts = Array.isArray(lastProducts)
+          ? lastProducts.filter(
+              (p): p is typeof p =>
+                p != null &&
+                typeof p === "object" &&
+                typeof p.name === "string" &&
+                typeof p.price === "number"
+            )
+          : [];
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -576,26 +592,28 @@ export async function POST(req: NextRequest) {
         // so it can answer instead of reporting "not found". Only added when
         // lastProducts is non-empty, so the prompt-length cost is conditional.
         const lastProductsContext =
-          lastProducts && lastProducts.length > 0
+          safeLastProducts.length > 0
             ? `\n\nProducts currently shown to the user as cards:\n` +
-              lastProducts
+              safeLastProducts
                 .slice(0, 6)
                 .map(
                   (p) =>
-                    `- ${p.name} — LKR ${p.price.toLocaleString("en-LK")}${
-                      p.category ? ` (${p.category})` : ""
-                    }${p.inStock === false ? " — OUT OF STOCK" : ""}${
-                      p.summary ? `: ${p.summary.replace(/\s+/g, " ").slice(0, 100)}` : ""
+                    `- ${sanitizeField(p.name, 120)} — LKR ${(p.price ?? 0).toLocaleString("en-LK")}${
+                      p.category ? ` (${sanitizeField(p.category, 60)})` : ""
+                    }${p.inStock === false ? " — OUT OF STOCK" : p.inStock === true ? "" : " — (availability unknown)"}${
+                      p.summary ? `: ${sanitizeField(p.summary, 100)}` : ""
                     }`
                 )
                 .join("\n") +
               `\nIf the user asks about one of these, answer from this data. Some are storefront items missing from kapruka_search_products/kapruka_get_product — if a tool lookup finds nothing for one of them, describe it from the data above instead of saying it can't be found.`
             : "";
-        const deliveryContext = deliveryCity
-          ? `\nDelivery city: ${deliveryCity} (already confirmed — do not call check_delivery again for this city unless a product or date is now available)`
+        const safeDeliveryCity = sanitizeField(deliveryCity, 80);
+        const safeDeliveryDate = sanitizeField(deliveryDate, 20);
+        const deliveryContext = safeDeliveryCity
+          ? `\nDelivery city: ${safeDeliveryCity} (already confirmed — do not call check_delivery again for this city unless a product or date is now available)`
           : "";
-        const deliveryDateContext = deliveryDate
-          ? `\nRequested delivery date: ${deliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
+        const deliveryDateContext = safeDeliveryDate
+          ? `\nRequested delivery date: ${safeDeliveryDate} — always pass this date as delivery_date when calling kapruka_check_delivery and kapruka_create_order.`
           : "";
         const budgetContext = budget
           ? `\nBudget context: ${budget}${
@@ -615,6 +633,12 @@ export async function POST(req: NextRequest) {
           ? "\n\nSender is overseas — quote LKR prices and approximate USD (LKR 300 ≈ USD 1). Reassure: Kapruka delivers islandwide; need recipient's Sri Lanka address."
           : "";
 
+        if (!process.env.GROQ_API_KEY) {
+          controller.enqueue(sse("error", "Demo mode limited: Set GROQ_API_KEY in .env.local"));
+          controller.close();
+          return;
+        }
+
         mcpClient = await getMcpClient();
         if (
           await tryHandleDeterministicPrompt({
@@ -623,7 +647,7 @@ export async function POST(req: NextRequest) {
             cart,
             deliveryCity,
             deliveryDate,
-            lastProducts,
+            lastProducts: safeLastProducts,
             lastOrder,
             language,
             mcpClient,
@@ -799,8 +823,8 @@ export async function POST(req: NextRequest) {
           recipientContext +
           dateContext +
           internationalContext +
-          langInstruction +
-          (compactSummary ? `\n\n${compactSummary}` : "");
+          (compactSummary ? `\n\n${compactSummary}` : "") +
+          langInstruction;
 
         const mappedRecent = recentMessages.map((m) => ({
           role: m.role as "user" | "assistant",
@@ -1102,7 +1126,10 @@ export async function POST(req: NextRequest) {
         // Tool-call deltas are buffered and reconstructed into the same ChatCompletion
         // shape so all post-loop logic (failed_generation recovery, hallucination hook,
         // context trim, etc.) works unchanged.
+        const START_MS = Date.now();
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+          if (Date.now() - START_MS > 8000 && round >= 1) break;
+
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
           // Emit "Thinking…" on the first call so the user sees immediate feedback.
@@ -1683,7 +1710,7 @@ async function tryHandleDeterministicPrompt({
           language,
           {
             name: target.name,
-            price: `LKR ${target.price.toLocaleString("en-LK")}`,
+            price: `LKR ${(target.price ?? 0).toLocaleString("en-LK")}`,
             category: target.category ? ` (${target.category})` : "",
             summary: summary ? ` ${summary}` : "",
           }
