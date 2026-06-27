@@ -6,8 +6,8 @@
 
 | Surface | URL | Status |
 |---|---|---|
-| Agent | `https://kira-oqo618ns4-cookie-cat21s-projects.vercel.app/` | Preview deployed but SSO-protected |
-| Shop | `https://kira-oqo618ns4-cookie-cat21s-projects.vercel.app/shop` | Preview deployed but SSO-protected |
+| Agent | Latest Vercel preview linked from PR #74 | Preview deployed but SSO-protected |
+| Shop | Latest Vercel preview `/shop` linked from PR #74 | Preview deployed but SSO-protected |
 | Local agent | `http://localhost:3107/` | Verified |
 | Local shop | `http://localhost:3107/shop` | Verified |
 
@@ -84,10 +84,4 @@ Local production Lighthouse /product/CAKE00KA001990
 
 ## Remaining blocker
 
-The latest Vercel preview for HEAD is:
-
-```text
-https://kira-oqo618ns4-cookie-cat21s-projects.vercel.app
-```
-
-`/api/health` redirects to Vercel SSO, so public-live judge dry-run and Lighthouse checks cannot run until Vercel deployment protection is disabled, production is promoted to an unprotected domain, or Vercel authentication/bypass is provided.
+The latest Vercel preview is linked from PR #74, but `/api/health` redirects to Vercel SSO, so public-live judge dry-run and Lighthouse checks cannot run until Vercel deployment protection is disabled, production is promoted to an unprotected domain, or Vercel authentication/bypass is provided.
