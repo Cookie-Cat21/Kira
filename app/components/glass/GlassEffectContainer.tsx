@@ -17,8 +17,10 @@ export const concentric = (outerRadius: number, gap: number) =>
  * expanding) instead of hard cross-fading. Pair with a layout animation
  * (Framer Motion `layoutId`) on the children for the stretch between states.
  *
- * Experimental: the merge reads best on near-opaque glass clusters on a calm
- * backdrop. Off by default everywhere else — opt in per cluster.
+ * Experimental: the original whole-subtree SVG filter made text/icons blurry.
+ * Until individual glass primitives expose a separate decorative shell layer,
+ * this container is layout-only and marks merge intent with a data attribute.
+ * That keeps content crisp and avoids teaching an unsafe production pattern.
  */
 export default function GlassEffectContainer({
   children,
@@ -31,10 +33,7 @@ export default function GlassEffectContainer({
   merge?: boolean;
 }) {
   return (
-    <div
-      className={className}
-      style={merge ? { filter: "url(#lg-goo)" } : undefined}
-    >
+    <div className={className} data-lg-merge={merge ? "pending-shell-layer" : undefined}>
       {children}
     </div>
   );

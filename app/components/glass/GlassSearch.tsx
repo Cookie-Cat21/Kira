@@ -99,7 +99,9 @@ export default function GlassSearch({
         setOpen(false);
         setActive(-1);
       } else {
-        commit("");
+        setQuery("");
+        setActive(-1);
+        inputRef.current?.blur();
       }
     }
   };
@@ -120,6 +122,7 @@ export default function GlassSearch({
           type="search"
           role="combobox"
           aria-expanded={showPanel}
+          aria-haspopup="listbox"
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={
@@ -178,7 +181,7 @@ export default function GlassSearch({
                 role="option"
                 aria-selected={i === active}
                 onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => e.preventDefault()}
+                onPointerDown={(e) => e.preventDefault()}
                 onClick={() => commit(s.label)}
                 className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-[14px] transition ${
                   i === active ? "bg-white/10 text-white" : "text-white/70"

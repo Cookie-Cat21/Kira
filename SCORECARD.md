@@ -47,3 +47,76 @@ Living scorecard for the Agent `/` and Shop `/shop` loop. Scores are evidence-ba
 3. Add dedicated shop E2E coverage.
 4. Build shop browse gaps: rush/sale/brand/event surfaces, richer product detail, stronger mobile/Kira handoff.
 5. Triage npm audit high vulnerability.
+
+## Loop 1 — Local gates green, shop parity lifted
+
+### Agent scores
+
+| Gate | Score / status | Verdict | Evidence / P0 list |
+|---|---:|---|---|
+| Official rubric | 95 / 100 local | PASS locally, live blocked | Experience 29/30, Visual 19/20, Personality 15/15, Usefulness 15/15, Completeness 14/15, Creativity 4/5. Blocker: production URL not available from this VM. |
+| Design review | 96 / 100 local | PASS | Manual `/` review confirms same dark gradient, typography, yellow/purple accents, product cards, and Browse store bridge as shop. 0 Critical, 0 High. |
+| Web quality | Local functional only | BLOCKED for live metrics | Need live Lighthouse/Web Vitals. Local app renders and Playwright smoke passes. |
+| Brand voice | 95 / 100 local | PASS | Prompt remains lean; deterministic repair/trust/jailbreak/local-language flows pass. Sinhala/Tamil fast paths pass. |
+| CTO/security | 94 / 100 local | PASS with non-P0 notes | MCP probe green. Checkout state-machine persona regressions fixed. `npm audit fix` cleared high `hono` advisory; 2 moderate `postcss` advisories remain inside Next dependency with only `--force` breaking suggestion. |
+| TDD/automated | 100% local | PASS | `judge-dry-run`: 10/10. Core: 68/68. Persona: 120/120. Playwright: 35/35. |
+
+### Agent blockers / fixes from this loop
+
+- Fixed checkout field-collection ordering in `app/api/chat/route.ts`: explicit order/delivery one-liners now ask for missing phone/address instead of misreading dates as budgets and searching.
+- Fixed rush/same-day date in `app/api/chat/route.ts`: uses Colombo-local `getColomboTodayIso()` instead of UTC `new Date().toISOString()`.
+
+### Shop scores
+
+| Gate | Score / status | Verdict | Evidence / P0 list |
+|---|---:|---|---|
+| Internal rubric | 95 / 100 local | PASS locally, live blocked | Visual craft 24/25, Browse UX 24/25, Product pages 19/20, Mobile polish 14/15, Agent integration 14/15. |
+| Design review | 96 / 100 local | PASS | New fast lanes, real catalog imagery, product trust/payment/cross-sell, Kira dock handoff. 0 Critical, 0 High locally. |
+| Visual system | 95 / 100 | PASS | Agent/shop share dark canvas, Kapruka purple/yellow, display type, glass cards/chips, rounded buttons, shared cart. |
+| Component discovery | 95 / 100 | PASS | Store cards now use real MCP images where available; category/product/detail/cross-sell cards match agent quality. |
+| Web quality | Local functional only | BLOCKED for live metrics | Need live Lighthouse/Web Vitals. Local Playwright covers desktop + mobile viewport. |
+| Brand voice | 94 / 100 | PASS | Fast lanes/KiraBand copy uses Kira-style Sri Lankan shopping language, not generic ecommerce. |
+| CTO | 95 / 100 | PASS | `lib/catalog.ts` adds rush/sale/related rails with DB+seed fallback; `scripts/sync-catalog.mjs` refreshes and filters seed relevance; store APIs remain green. |
+| Automated | 4/4 shop + 35/35 full | PASS | Added `tests/e2e/shop.spec.ts`; full Playwright suite now covers agent + shop. |
+
+### Shop blockers / fixes from this loop
+
+- Added `StoreFastLanes` for Rush delivery, On sale, Bakery brands, and Events & occasions.
+- Added rush/sale rails and refreshed `data/seed-catalog.json` from Kapruka MCP with real images.
+- Added relevance filters in `scripts/sync-catalog.mjs`; removed observed flower category noise such as toy/puzzle results.
+- Added product detail variants/add-ons rendering, secure payment trust card, and related cross-sell carousel.
+- Added shop Playwright E2E coverage for `/shop`, category, product detail, checkout handoff, Kira handoff, and mobile.
+
+### Shared / CEO
+
+| Gate | Status | Evidence / blockers |
+|---|---|---|
+| Lint/build | PASS | `npm run lint && npm run build` passes with 0 warnings after generated Playwright artifacts were excluded from ESLint. |
+| MCP | PASS | `node scripts/test-mcp.mjs` connected and verified all 7 tools, product search, city alias, delivery, perishable warning. |
+| Full Playwright | PASS | 35/35 after installing Playwright Chromium. |
+| Manual GUI review | PASS local | Computer-use review passed `/shop`, `/shop/cakes`, `/product`, checkout fields, Ask Kira dock, mobile viewport, and `/` consistency. Screenshots captured in `/tmp/computer-use/*.webp`. Follow-up confirmed real images; one flower noise item was fixed by catalog filtering. |
+| Dulith path 1 — Agent | 9.2 / 10 local | Would impress: real MCP, checkout, tracking, local language, repair-gift personality. Needs live URL proof for final 9+/10 validation. |
+| Dulith path 2 — Shop | 9.1 / 10 local | Would impress: website tabs reimagined, real imagery, product detail depth, Kira handoff, shared bag. Needs live URL proof and Lighthouse for final 9+/10 validation. |
+| Cross-surface parity | PASS local | Same canvas/tokens/type/motion/cart/Kira voice across `/` and `/shop`. |
+| Deployment | BLOCKED | No GitHub Actions found; Vercel CLI is unauthenticated and opened device login, then was stopped. Need authenticated Vercel/project URL for production retest. |
+
+### Automated evidence
+
+```text
+npm run lint                       PASS
+npm run build                      PASS
+node scripts/test-mcp.mjs          PASS
+judge-dry-run                      10/10 PASS
+node scripts/run-tests.mjs         68/68 PASS
+node scripts/test-personas.mjs --concurrency 1 120/120 PASS
+npx playwright test                35/35 PASS
+npx playwright test tests/e2e/shop.spec.ts 4/4 PASS
+npm audit --audit-level=moderate   BLOCKED: 2 moderate advisories in Next's nested postcss; non-breaking audit fix already applied.
+```
+
+### Blockers for next loop
+
+1. Production deploy/live URL remains unavailable in this VM. Need Vercel authentication or a provided live URL before production judge dry-run and Lighthouse gates can pass.
+2. Run live `KIRA_API_URL=https://<live>/api/chat node scripts/judge-dry-run.mjs` once deploy is available.
+3. Run live `/`, `/shop`, and `/product/[id]` web-quality/Lighthouse checks once deploy is available.
+4. Native-speaker Sinhala/Tamil copy review still recommended before final submission.

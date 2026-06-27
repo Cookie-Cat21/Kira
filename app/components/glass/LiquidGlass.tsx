@@ -183,6 +183,13 @@ const FROST: Record<GlassVariant, (b: number) => string> = {
   clear: (b) => `blur(${b}px) saturate(140%) brightness(1.08)`,
 };
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export default function LiquidGlass({
   as,
   children,
@@ -206,11 +213,12 @@ export default function LiquidGlass({
   const raf = useRef(0);
   const b = blur ?? (variant === "clear" ? 3 : 12);
   const frost = FROST[variant](b);
+  const trackPointer = interactive && !live;
 
   const handleMove = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
       onPointerMove?.(e as ReactPointerEvent<HTMLButtonElement>);
-      if (!interactive) return;
+      if (!trackPointer || prefersReducedMotion()) return;
       const el = ref.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
@@ -223,13 +231,13 @@ export default function LiquidGlass({
         el.style.setProperty("--lg-spec", "1");
       });
     },
-    [interactive, onPointerMove]
+    [onPointerMove, trackPointer]
   );
 
   const handleLeave = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
       onPointerLeave?.(e as ReactPointerEvent<HTMLButtonElement>);
-      if (!interactive) return;
+      if (!trackPointer || prefersReducedMotion()) return;
       const el = ref.current;
       if (!el) return;
       cancelAnimationFrame(raf.current);
@@ -237,8 +245,10 @@ export default function LiquidGlass({
       el.style.setProperty("--lg-px", "50%");
       el.style.setProperty("--lg-py", "0%");
     },
-    [interactive, onPointerLeave]
+    [onPointerLeave, trackPointer]
   );
+
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
 
   // Live specular: nudge the gleam as the page scrolls and the device tilts, so
   // the rim "reacts to movement" the way Apple's real-time material does.
@@ -246,9 +256,10 @@ export default function LiquidGlass({
     if (!live) return;
     const el = ref.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
 
     let frame = 0;
+    let tiltFrame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -259,8 +270,11 @@ export default function LiquidGlass({
       });
     };
     const onTilt = (ev: DeviceOrientationEvent) => {
-      const g = Math.min(1, Math.max(0, ((ev.gamma ?? 0) + 45) / 90));
-      el.style.setProperty("--lg-px", `${(g * 100).toFixed(1)}%`);
+      cancelAnimationFrame(tiltFrame);
+      tiltFrame = requestAnimationFrame(() => {
+        const g = Math.min(1, Math.max(0, ((ev.gamma ?? 0) + 45) / 90));
+        el.style.setProperty("--lg-px", `${(g * 100).toFixed(1)}%`);
+      });
     };
 
     onScroll();
@@ -268,6 +282,7 @@ export default function LiquidGlass({
     window.addEventListener("deviceorientation", onTilt);
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(tiltFrame);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("deviceorientation", onTilt);
     };
@@ -277,8 +292,8 @@ export default function LiquidGlass({
     <Tag
       ref={ref}
       className={`lg-wrapper lg-${variant} ${className}`}
-      onPointerMove={handleMove}
-      onPointerLeave={handleLeave}
+      onPointerMove={trackPointer || onPointerMove ? handleMove : undefined}
+      onPointerLeave={trackPointer || onPointerLeave ? handleLeave : undefined}
       style={
         {
           "--lg-radius": `${radius}px`,
