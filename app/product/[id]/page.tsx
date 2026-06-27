@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import ProductDetailClient from "@/app/components/store/ProductDetailClient";
-import { getCategories, getProduct } from "@/lib/catalog";
+import { getCategories, getProduct, getRelatedProducts } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +38,13 @@ export default async function ProductPage({
   ]);
 
   if (!product) notFound();
+  const relatedProducts = await getRelatedProducts(product, 8);
 
   return (
     <div className="min-h-dvh">
       <StoreNav categories={categories} />
       <main className="relative">
-        <ProductDetailClient product={product} />
+        <ProductDetailClient product={product} relatedProducts={relatedProducts} />
       </main>
       <StoreFooter categories={categories} />
     </div>

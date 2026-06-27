@@ -252,19 +252,106 @@ export async function searchProducts(q: string, limit = 24): Promise<KiraProduct
 }
 
 export async function getRails(): Promise<ProductRail[]> {
-  const [featured, bakery, gifts] = await Promise.all([
+  const [featured, rush, sale, bakery, gifts] = await Promise.all([
     getFeaturedProducts(10),
+    getRushProducts(10),
+    getSaleProducts(10),
     getProductsByCategory("cakes", { limit: 10 }),
     cheapGifts(10),
   ]);
   const rails: ProductRail[] = [];
   if (featured.length)
     rails.push({ title: "Trending today", subtitle: "What everyone's sending", items: featured });
+  if (rush.length)
+    rails.push({ title: "Rush delivery lane", subtitle: "Same-day friendly picks for last-minute saves", items: rush });
+  if (sale.length)
+    rails.push({ title: "On sale now", subtitle: "Offers and price drops worth catching", items: sale });
   if (bakery.items.length)
     rails.push({ title: "Fresh from the bakery", subtitle: "Baked & delivered cool", items: bakery.items });
   if (gifts.length)
     rails.push({ title: "Gifts under LKR 5,000", subtitle: "Thoughtful, not pricey", items: gifts });
   return rails;
+}
+
+export async function getRushProducts(limit = 10): Promise<KiraProduct[]> {
+  return db(
+    async () => {
+      const rows = await query<DbRow>(
+        `select ${PRODUCT_COLS}
+         from products
+         where in_stock = true
+           and (
+             name ilike '%same-day%' or name ilike '%today%' or
+             summary ilike '%same-day%' or summary ilike '%today%' or
+             description ilike '%same-day%' or description ilike '%today%' or
+             category_slug in ('flowers', 'chocolates', 'hampers')
+           )
+         order by is_featured desc, rank asc
+         limit $1`,
+        [limit]
+      );
+      return rows.map(rowToProduct);
+    },
+    () =>
+      seed()
+        .products.filter((p) => {
+          const hay = `${p.name} ${p.summary ?? ""} ${p.description ?? ""} ${p.categorySlug ?? ""}`.toLowerCase();
+          return (
+            p.inStock !== false &&
+            (hay.includes("same-day") ||
+              hay.includes("today") ||
+              ["flowers", "chocolates", "hampers"].includes(p.categorySlug ?? ""))
+          );
+        })
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+        .slice(0, limit)
+        .map(seedToProduct)
+  );
+}
+
+export async function getSaleProducts(limit = 10): Promise<KiraProduct[]> {
+  return db(
+    async () => {
+      const rows = await query<DbRow>(
+        `select ${PRODUCT_COLS}
+         from products
+         where compare_at_price is not null and compare_at_price > price
+         order by ((compare_at_price - price) / nullif(compare_at_price, 0)) desc, rank asc
+         limit $1`,
+        [limit]
+      );
+      return rows.map(rowToProduct);
+    },
+    () =>
+      seed()
+        .products.filter((p) => p.compareAtPrice && p.compareAtPrice > p.price)
+        .sort((a, b) => {
+          const aDiscount = ((a.compareAtPrice ?? a.price) - a.price) / (a.compareAtPrice ?? a.price);
+          const bDiscount = ((b.compareAtPrice ?? b.price) - b.price) / (b.compareAtPrice ?? b.price);
+          return bDiscount - aDiscount || (a.rank ?? 0) - (b.rank ?? 0);
+        })
+        .slice(0, limit)
+        .map(seedToProduct)
+  );
+}
+
+export async function getRelatedProducts(
+  product: KiraProduct,
+  limit = 8
+): Promise<KiraProduct[]> {
+  const category = categorySlugFromProduct(product);
+  const relatedSlug =
+    category === "cakes"
+      ? "flowers"
+      : category === "flowers"
+      ? "chocolates"
+      : category === "chocolates"
+      ? "flowers"
+      : category === "hampers"
+      ? "cakes"
+      : category || "hampers";
+  const related = await getProductsByCategory(relatedSlug, { limit, sort: "featured" });
+  return related.items.filter((item) => item.id !== product.id).slice(0, limit);
 }
 
 async function cheapGifts(limit: number): Promise<KiraProduct[]> {
@@ -317,6 +404,20 @@ function seedDetails(id: string): KiraProductDetails | null {
     addons: [],
     attributes: p.attributes,
   };
+}
+
+function categorySlugFromProduct(product: KiraProduct): string | undefined {
+  const category = product.category?.toLowerCase() ?? "";
+  if (category.includes("cake") || category.includes("bakery")) return "cakes";
+  if (category.includes("flower")) return "flowers";
+  if (category.includes("chocolate")) return "chocolates";
+  if (category.includes("hamper") || category.includes("gift")) return "hampers";
+  if (category.includes("electronic") || category.includes("phone")) return "electronics";
+  if (category.includes("grocery")) return "grocery";
+  if (category.includes("toy") || category.includes("kid")) return "kids";
+  if (category.includes("home") || category.includes("lifestyle")) return "home";
+  const seedProduct = seed().products.find((item) => item.id === product.id);
+  return seedProduct?.categorySlug;
 }
 
 function asStringArray(value: unknown, fallback?: string | null): string[] {

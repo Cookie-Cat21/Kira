@@ -3,26 +3,48 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Check, Minus, Plus, Sparkles, Truck, ShieldCheck } from "lucide-react";
-import type { KiraProductDetails } from "@/types";
+import { ArrowLeft, Check, CreditCard, Gift, Minus, Plus, Sparkles, Truck, ShieldCheck } from "lucide-react";
+import type { KiraProduct, KiraProductDetails } from "@/types";
 import { useCart } from "@/app/context/CartContext";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import { categoryIcon, formatLKR, phClass } from "./storeIcons";
+import StoreProductCard from "./StoreProductCard";
 import { cn } from "@/lib/utils";
 
 const PlaceholderIcon = categoryIcon();
 
 export default function ProductDetailClient({
   product,
+  relatedProducts = [],
 }: {
   product: KiraProductDetails;
+  relatedProducts?: KiraProduct[];
 }) {
   const { cart, addToCart, updateQty, triggerFly, openCart } = useCart();
   const { open: openKira } = useKiraDock();
   const [imgError, setImgError] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    product.variants[0]?.id ?? null
+  );
   const imgRef = useRef<HTMLDivElement | null>(null);
 
-  const inCart = cart.find((i) => i.product.id === product.id);
+  const selectedVariant = product.variants.find((variant) => variant.id === selectedVariantId);
+  const activeProduct: KiraProduct = selectedVariant
+    ? {
+        id: selectedVariant.id,
+        name: `${product.name} (${selectedVariant.name})`,
+        price: selectedVariant.price || product.price,
+        currency: selectedVariant.currency ?? product.currency,
+        image: product.image,
+        summary: product.summary,
+        category: product.category,
+        url: product.url,
+        inStock: selectedVariant.inStock ?? product.inStock,
+        stockLevel: selectedVariant.stockLevel ?? product.stockLevel,
+      }
+    : product;
+
+  const inCart = cart.find((i) => i.product.id === activeProduct.id);
   const qty = inCart?.quantity ?? 0;
   const hero = product.images?.[0] ?? product.image;
   const showImage = Boolean(hero) && !imgError;
@@ -32,7 +54,7 @@ export default function ProductDetailClient({
       : 0;
 
   function handleAdd() {
-    addToCart(product);
+    addToCart(activeProduct);
     if (imgRef.current && hero) {
       triggerFly(imgRef.current.getBoundingClientRect(), hero);
     }
@@ -127,6 +149,64 @@ export default function ProductDetailClient({
           )}
 
           {/* Actions */}
+          {(product.variants.length > 0 || (product.addons?.length ?? 0) > 0) && (
+            <div className="mt-7 space-y-4 rounded-3xl border border-white/8 bg-white/[0.035] p-5">
+              {product.variants.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">
+                    Choose size
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {product.variants.slice(0, 6).map((variant) => (
+                      <button
+                        type="button"
+                        key={variant.id}
+                        onClick={() => setSelectedVariantId(variant.id)}
+                        className={cn(
+                          "rounded-full border px-3.5 py-2 text-[12px] font-semibold transition-all active:scale-95",
+                          selectedVariantId === variant.id
+                            ? "border-kap-yellow bg-kap-yellow text-kap-purple"
+                            : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08] hover:text-white"
+                        )}
+                      >
+                        {variant.name}
+                        {variant.price > 0 &&
+                          ` · ${formatLKR(variant.price, variant.currency ?? product.currency)}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {product.addons && product.addons.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/35">
+                    Add-ons
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {product.addons.slice(0, 4).map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-black/15 px-3 py-2.5"
+                      >
+                        <span className="text-[13px] font-medium text-white/78">
+                          {addon.name}
+                        </span>
+                        <span className="shrink-0 text-[12px] font-semibold text-kap-yellow">
+                          {formatLKR(addon.price, addon.currency)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[12px] text-white/42">
+                    Want icing text, candles, or a gift note? Ask Kira — she’ll
+                    carry it into the checkout note.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mt-8 flex flex-wrap items-center gap-3">
             {qty === 0 ? (
               <button
@@ -140,7 +220,7 @@ export default function ProductDetailClient({
               <div className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-2">
                 <button
                   type="button"
-                  onClick={() => updateQty(product.id, qty - 1)}
+                  onClick={() => updateQty(activeProduct.id, qty - 1)}
                   aria-label="Decrease quantity"
                   className="flex size-9 items-center justify-center rounded-full text-white/85 hover:bg-white/15 active:scale-90"
                 >
@@ -151,7 +231,7 @@ export default function ProductDetailClient({
                 </span>
                 <button
                   type="button"
-                  onClick={() => updateQty(product.id, qty + 1)}
+                  onClick={() => updateQty(activeProduct.id, qty + 1)}
                   aria-label="Increase quantity"
                   className="flex size-9 items-center justify-center rounded-full text-white/85 hover:bg-white/15 active:scale-90"
                 >
@@ -199,9 +279,59 @@ export default function ProductDetailClient({
                 </p>
               </div>
             </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 sm:col-span-2">
+              <CreditCard className="size-5 text-kap-yellow" />
+              <div>
+                <p className="text-[13px] font-semibold text-white">Secure Kapruka payment</p>
+                <p className="text-[12px] text-white/45">
+                  Card and online payment happen on the official Kapruka checkout link.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {relatedProducts.length > 0 && (
+        <section className="mt-20">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-kap-yellow/80">
+                You might also want these
+              </p>
+              <h2 className="display-hero mt-1 text-3xl text-white">
+                Pair it before checkout.
+              </h2>
+              <p className="mt-2 max-w-xl text-[14px] text-white/45">
+                Kapruka-style cross-sells — chocolates with flowers, flowers with cakes,
+                little extras that make the gift feel finished.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                openKira({
+                  prompt: `Find a good add-on or cross-sell to pair with "${product.name}"`,
+                  product: activeProduct,
+                })
+              }
+              className="inline-flex w-fit items-center gap-2 rounded-full glass-card px-5 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
+            >
+              <Gift className="size-4 text-kap-yellow" /> Ask Kira to pair it
+            </button>
+          </div>
+          <div className="scrollbar-hide -mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:px-0">
+            {relatedProducts.map((item) => (
+              <div
+                key={item.id}
+                className="w-[44vw] max-w-[230px] shrink-0 snap-start sm:w-[230px]"
+              >
+                <StoreProductCard product={item} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

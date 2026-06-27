@@ -27,6 +27,12 @@ test.describe("Shop storefront", () => {
       page.getByRole("heading", { name: /Shop by category/i })
     ).toBeVisible();
     await expect(
+      page.getByRole("heading", { name: /Kapruka fast lanes/i })
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Rush delivery", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "On sale", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Bakery brands", exact: true })).toBeVisible();
+    await expect(
       page.getByRole("link", { name: /Cakes & Bakery/i }).first()
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: /Trending today/i })).toBeVisible();
@@ -104,6 +110,7 @@ test.describe("Shop storefront", () => {
     await expect(dock).toBeVisible({ timeout: 10_000 });
     await expect(dock.getByText(/Here's the one you were looking at/i)).toBeVisible();
     await expect(dock.getByText(/Good pick to ask about/i)).toBeVisible({ timeout: 20_000 });
+    await expect(dock.locator('[aria-label="Send"]')).toBeVisible({ timeout: 10_000 });
   });
 
   test("mobile shop navigation, rails, bag, and Kira launcher are usable", async ({ page }) => {

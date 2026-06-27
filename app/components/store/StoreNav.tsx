@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Search, ShoppingBag, Sparkles, X } from "lucide-react";
 import type { KiraProduct } from "@/types";
@@ -10,6 +9,12 @@ import { useCart } from "@/app/context/CartContext";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import { formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
+
+const FEATURE_LINKS = [
+  { label: "Rush", href: "/shop/flowers" },
+  { label: "Sale", href: "/shop/hampers" },
+  { label: "Brands", href: "/shop/cakes" },
+];
 
 export default function StoreNav({ categories }: { categories: StoreCategory[] }) {
   const { cartCount, openCart } = useCart();
@@ -57,7 +62,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
     return () => clearTimeout(t);
   }, [q]);
 
-  const topCategories = categories.slice(0, 6);
+  const topCategories = categories.slice(0, 4);
 
   return (
     <header
@@ -75,19 +80,31 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
             scrolled ? "opacity-100" : "opacity-85"
           )}
         >
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/kapruka-logo.svg"
             alt="Kapruka"
             width={120}
             height={28}
-            className="object-contain"
-            style={{ width: "120px", height: "auto" }}
-            priority
+            className="h-7 w-auto object-contain"
           />
         </Link>
 
         {/* Categories */}
         <nav className="ml-2 hidden items-center gap-1 lg:flex">
+          {FEATURE_LINKS.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors duration-300 hover:bg-kap-yellow/15 hover:text-kap-yellow",
+                scrolled ? "text-kap-yellow/80" : "text-kap-yellow/55"
+              )}
+            >
+              {link.label}
+            </Link>
+          ))}
+          <span className="mx-1 h-4 w-px bg-white/10" aria-hidden="true" />
           {topCategories.map((c) => (
             <Link
               key={c.slug}
