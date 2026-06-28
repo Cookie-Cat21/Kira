@@ -11,7 +11,13 @@ import { useKiraDock } from "@/app/context/KiraDockContext";
 import { formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
-export default function StoreNav({ categories }: { categories: StoreCategory[] }) {
+export default function StoreNav({
+  categories,
+  minimal = false,
+}: {
+  categories: StoreCategory[];
+  minimal?: boolean;
+}) {
   const { cartCount, openCart } = useCart();
   const { open: openKira } = useKiraDock();
 
@@ -85,38 +91,41 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
           />
         </Link>
 
-        {/* Categories */}
-        <nav className="ml-2 hidden items-center gap-1 lg:flex">
-          {topCategories.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/shop/${c.slug}`}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
-                scrolled ? "text-white/70" : "text-white/45"
-              )}
-            >
-              {c.name}
-            </Link>
-          ))}
-        </nav>
+        {/* Categories — hidden on minimal landing for deference to hero */}
+        {!minimal && (
+          <nav className="ml-2 hidden items-center gap-1 lg:flex">
+            {topCategories.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/shop/${c.slug}`}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors duration-300 hover:bg-white/8 hover:text-white",
+                  scrolled ? "text-white/70" : "text-white/45"
+                )}
+              >
+                {c.name}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Ask Kira */}
-          <button
-            type="button"
-            onClick={() => openKira()}
-            className="hidden items-center gap-1.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_4px_20px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.03] active:scale-95 sm:flex"
-          >
-            <Sparkles className="size-3.5" /> Ask Kira
-          </button>
+          {!minimal && (
+            <button
+              type="button"
+              onClick={() => openKira()}
+              className="hidden min-h-11 items-center gap-1.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_4px_20px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.03] active:scale-95 sm:flex"
+            >
+              <Sparkles className="size-3.5" /> Ask Kira
+            </button>
+          )}
 
           {/* Search */}
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
             aria-label="Search"
-            className="flex size-9 items-center justify-center rounded-full glass-chip text-white/80"
+            className="flex size-11 items-center justify-center rounded-full glass-chip text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             {searchOpen ? <X className="size-4" /> : <Search className="size-4" />}
           </button>
@@ -126,7 +135,7 @@ export default function StoreNav({ categories }: { categories: StoreCategory[] }
             type="button"
             onClick={openCart}
             aria-label={`Open bag, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-            className="relative flex size-9 items-center justify-center rounded-full glass-chip text-white/90"
+            className="relative flex size-11 items-center justify-center rounded-full glass-chip text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             <ShoppingBag className="size-4" />
             {cartCount > 0 && (

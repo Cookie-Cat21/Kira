@@ -1,6 +1,6 @@
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreHero from "@/app/components/store/StoreHero";
-import AskKiraTab from "@/app/components/store/AskKiraTab";
+import { LiquidGlassFilters } from "@/app/components/glass";
 import { getCategories } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,9 @@ export default async function ShopHomePage() {
   const categories = await getCategories();
 
   return (
-    <div className="min-h-dvh bg-kira-canvas">
-      <StoreNav categories={categories} />
-      <AskKiraTab />
+    <div className="min-h-dvh bg-kira-canvas text-white">
+      <LiquidGlassFilters />
+      <StoreNav categories={categories} minimal />
       <main>
         <StoreHero categories={categories} />
       </main>

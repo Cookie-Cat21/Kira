@@ -51,6 +51,7 @@ import type {
   OrderTracking,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import KaprukaSmileMark from "@/app/components/brand/KaprukaSmileMark";
 
 const OCCASION_CHIPS = getOccasionChips();
 // An occasion is active iff getOccasionChips surfaced an urgent chip. When it
@@ -198,22 +199,6 @@ function buildOpeningMessage(): KiraMessage {
   };
 }
 
-function KaprukaSmileMark() {
-  return (
-    <svg
-      viewBox="326 40 114 58"
-      className="mx-auto mb-5 h-auto w-28 sm:w-36"
-      data-testid="kapruka-smile-mark"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        fill="#f8da08"
-        d="M402.986267,67.193703 C411.020386,61.704575 416.238495,54.617882 418.415070,45.324123 C424.890198,45.324123 431.318146,45.324123 437.750275,45.324123 C437.129608,66.508202 416.547272,90.716156 386.719543,92.762413 C356.255249,94.852348 331.226654,71.531693 328.261810,45.118824 C334.079407,45.118824 339.857269,44.962524 345.612488,45.253811 C346.731842,45.310467 348.364868,46.921478 348.743073,48.133221 C353.218384,62.471653 368.281891,74.652725 385.670837,72.854988 C391.454773,72.257019 396.988068,69.234306 402.986267,67.193703 z"
-      />
-    </svg>
-  );
-}
 
 const SESSION_KEY = "kira_session_v2";
 
@@ -1010,7 +995,10 @@ export default function KiraExperience({
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
           <div className="mb-8 text-center animate-fade-up">
-            <KaprukaSmileMark />
+            <KaprukaSmileMark
+              className="mx-auto mb-5 h-auto w-28 sm:w-36"
+              testId="kapruka-smile-mark"
+            />
             <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
               {heroGreeting ?? "Hello! 👋"}
             </h1>

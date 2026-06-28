@@ -13,18 +13,19 @@ export default function KiraDock() {
   // The root route IS the full-screen Kira experience — the dock only exists
   // on storefront pages (/shop, /product) as a way back into the conversation.
   // /liquid-glass is a standalone material demo and stays uncluttered.
-  if (
+  const onRoot =
     pathname === "/" ||
     pathname?.startsWith("/kira") ||
-    pathname?.startsWith("/liquid-glass")
-  )
-    return null;
+    pathname?.startsWith("/liquid-glass");
+  const hideLauncher = onRoot || pathname === "/shop";
+
+  if (onRoot) return null;
 
   return (
     <>
-      {/* Floating launcher */}
+      {/* Floating launcher — hidden on /shop landing (hero has Ask Kira CTA) */}
       <AnimatePresence>
-        {!isOpen && (
+        {!isOpen && !hideLauncher && (
           <motion.button
             type="button"
             onClick={() => open()}

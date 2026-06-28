@@ -301,6 +301,36 @@ body {
   text-transform: uppercase;
 }
 
+/* Shop landing — apple.com-style cinematic hero */
+.shop-hero-title {
+  font-size: clamp(2.75rem, 7.5vw + 0.5rem, 4.75rem);
+  line-height: 0.94;
+  letter-spacing: 0.045em;
+  text-shadow:
+    0 0 40px rgba(248, 218, 8, 0.38),
+    0 0 80px rgba(248, 218, 8, 0.14);
+}
+
+.shop-hero-vignette {
+  background:
+    radial-gradient(
+      ellipse 85% 65% at 50% 42%,
+      transparent 0%,
+      rgba(13, 8, 24, 0.2) 50%,
+      rgba(13, 8, 24, 0.88) 100%
+    );
+}
+
+.shop-hero-grain {
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.shop-hero-cta-primary:active {
+  transform: scale(0.97);
+}
+
 /* Spotlight glow used behind hero + Kira band */
 .spotlight {
   background: radial-gradient(60% 60% at 50% 0%, rgba(148, 100, 255, 0.22), transparent 70%);

@@ -9,7 +9,7 @@ export default function AskKiraTab() {
 
   const onStore =
     pathname.startsWith("/shop") || pathname.startsWith("/product/");
-  if (!onStore || isOpen) return null;
+  if (!onStore || isOpen || pathname === "/shop") return null;
 
   return (
     <button

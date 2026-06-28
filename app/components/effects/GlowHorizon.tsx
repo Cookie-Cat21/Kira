@@ -32,11 +32,11 @@ export interface GlowHorizonPalette {
 
 /** Kapruka smile yellow + brand purple depth */
 export const KAPRUKA_GLOW_PALETTE: GlowHorizonPalette = {
-  highlight: "rgba(248, 218, 8, 0.92)",
-  mid: "rgba(248, 218, 8, 0.55)",
-  deep: "rgba(64, 41, 112, 0.85)",
+  highlight: "rgba(248, 218, 8, 0.88)",
+  mid: "rgba(248, 218, 8, 0.42)",
+  deep: "rgba(64, 41, 112, 0.72)",
   base: "#0d0818",
-  highlightShadow: "0px -4px 28px 0px rgba(248, 218, 8, 0.55)",
+  highlightShadow: "0px -6px 32px 0px rgba(248, 218, 8, 0.42)",
 };
 
 export interface GlowHorizonProps {
