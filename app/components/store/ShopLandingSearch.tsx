@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GlassSearch } from "@/app/components/glass";
+import { LiquidGlass } from "@/app/components/glass";
+import DiscoverGlassBar, {
+  type DiscoverTabId,
+} from "@/app/components/glass/DiscoverGlassBar";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import { formatLKR } from "@/app/components/store/storeIcons";
 import type { KiraProduct } from "@/types";
@@ -15,6 +18,8 @@ const POPULAR = [
   "Same-day gifts",
 ] as const;
 
+type Suggestion = { label: string; hint?: string };
+
 export default function ShopLandingSearch({
   categories,
 }: {
@@ -24,6 +29,8 @@ export default function ShopLandingSearch({
   const { open: openKira } = useKiraDock();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<KiraProduct[]>([]);
+  const [activeTab, setActiveTab] = useState<DiscoverTabId>("popular");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const term = query.trim();
@@ -35,7 +42,7 @@ export default function ShopLandingSearch({
       try {
         const res = await fetch(`/api/store/search?q=${encodeURIComponent(term)}`);
         const data = await res.json();
-        setResults(Array.isArray(data.items) ? data.items.slice(0, 5) : []);
+        setResults(Array.isArray(data.items) ? data.items.slice(0, 6) : []);
       } catch {
         setResults([]);
       }
@@ -43,35 +50,44 @@ export default function ShopLandingSearch({
     return () => window.clearTimeout(t);
   }, [query]);
 
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo((): Suggestion[] => {
     const q = query.trim().toLowerCase();
-    const categoryLabels = categories.slice(0, 6).map((c) => c.name);
-    const productSuggestions = results.map((p) => ({
-      label: p.name,
-      hint: formatLKR(p.price, p.currency),
+    const categoryLabels = categories.slice(0, 6).map((c) => ({
+      label: c.name,
+      hint: "Category",
+      slug: c.slug,
     }));
 
-    if (!q) {
-      return [
-        ...POPULAR.map((label) => ({ label })),
-        ...categoryLabels.map((label) => ({ label, hint: "Category" })),
-      ];
+    if (q) {
+      const productSuggestions = results.map((p) => ({
+        label: p.name,
+        hint: formatLKR(p.price, p.currency),
+      }));
+      const staticPool =
+        activeTab === "popular"
+          ? [...POPULAR]
+          : categoryLabels.map((c) => c.label);
+      const staticMatches = staticPool
+        .filter((label) => label.toLowerCase().includes(q))
+        .map((label) => ({ label }));
+
+      const seen = new Set<string>();
+      return [...productSuggestions, ...staticMatches]
+        .filter((s) => {
+          const key = s.label.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 8);
     }
 
-    const staticMatches = [...POPULAR, ...categoryLabels]
-      .filter((label) => label.toLowerCase().includes(q))
-      .map((label) => ({ label }));
+    if (activeTab === "browse") {
+      return categoryLabels.map(({ label, hint }) => ({ label, hint }));
+    }
 
-    const seen = new Set<string>();
-    const merged = [...productSuggestions, ...staticMatches].filter((s) => {
-      const key = s.label.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    return merged.slice(0, 8);
-  }, [categories, query, results]);
+    return POPULAR.map((label) => ({ label }));
+  }, [activeTab, categories, query, results]);
 
   const resolveProduct = (label: string) =>
     results.find((p) => p.name === label);
@@ -83,6 +99,8 @@ export default function ShopLandingSearch({
     const product = resolveProduct(term);
     if (product) {
       router.push(`/product/${product.id}`);
+      setIsExpanded(false);
+      setQuery("");
       return;
     }
 
@@ -91,21 +109,60 @@ export default function ShopLandingSearch({
     );
     if (category) {
       router.push(`/shop/${category.slug}`);
+      setIsExpanded(false);
+      setQuery("");
       return;
     }
 
     openKira({ prompt: `I'm looking for ${term} on Kapruka` });
+    setIsExpanded(false);
+    setQuery("");
   };
 
+  const showSuggestions = isExpanded && suggestions.length > 0;
+
   return (
-    <GlassSearch
-      value={query}
-      onChange={setQuery}
-      onSearch={handleSearch}
-      placeholder="Search cakes, flowers, gifts…"
-      suggestions={suggestions}
-      className="w-full max-w-md"
-      radius={999}
-    />
+    <div className="relative w-full max-w-lg">
+      <DiscoverGlassBar
+        query={query}
+        onQueryChange={setQuery}
+        onSearch={handleSearch}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isExpanded={isExpanded}
+        onExpandedChange={setIsExpanded}
+        className="w-full"
+      />
+
+      {showSuggestions && (
+        <LiquidGlass
+          radius={20}
+          blur={14}
+          interactive={false}
+          className="absolute left-0 right-0 top-[calc(100%+10px)] z-40 animate-[fade-up_0.16s_ease]"
+          contentClassName="max-h-64 overflow-y-auto p-1.5"
+        >
+          <ul role="listbox" aria-label="Search suggestions">
+            {suggestions.map((s) => (
+              <li key={s.label} role="option">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSearch(s.label)}
+                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[14px] text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  <span className="flex-1 truncate">{s.label}</span>
+                  {s.hint && (
+                    <span className="shrink-0 text-[12px] text-white/30">
+                      {s.hint}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </LiquidGlass>
+      )}
+    </div>
   );
 }

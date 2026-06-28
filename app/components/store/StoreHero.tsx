@@ -64,7 +64,7 @@ export default function StoreHero({
         </motion.p>
 
         <motion.div
-          className="mt-8 w-full max-w-md"
+          className="mt-8 w-full max-w-lg"
           {...reveal(1.28)}
         >
           <ShopLandingSearch categories={categories} />
