@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Noto_Sans_Sinhala } from "next/font/google";
+import { sfPro } from "./fonts/sf-pro";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
 import KiraDock from "./components/store/KiraDock";
@@ -44,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${notoSinhala.variable} ${bebasNeue.variable} h-full antialiased`}
+      className={`${sfPro.variable} ${notoSinhala.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">
         <CartProvider>

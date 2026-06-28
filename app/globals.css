@@ -25,11 +25,9 @@
   --color-kira-leaf: #4ade80;
   --color-kira-rose: #f9a8d4;
 
-  /* Typography — two fonts only:
-     SF Pro (system stack) = all UI/body via font-sans
-     Bebas Neue = display headings ("Shop Electronics") via font-display */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
-    "SF Pro Rounded", "Helvetica Neue", Arial, var(--font-noto-sinhala), "Iskoola Pota",
+  /* Typography — SF Pro (self-hosted) + Bebas Neue display */
+  --font-sans: var(--font-sf-pro), system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Helvetica Neue", Arial, var(--font-noto-sinhala), "Iskoola Pota",
     sans-serif;
   --font-display: var(--font-bebas-neue);
 }

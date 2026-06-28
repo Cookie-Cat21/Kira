@@ -45,6 +45,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# SF Pro source artifacts (subset WOFF2 in app/fonts/sf-pro/ is committed)
+.tmp/
+app/fonts/sf-pro/*.otf
+app/fonts/sf-pro/*.dmg
+
 # Claude Code local artifacts
 .agents/
 .claude/worktrees/
