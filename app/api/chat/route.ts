@@ -539,6 +539,8 @@ const TOOL_STEPS: Record<string, string> = {
   kapruka_track_order: "Tracking your order",
 };
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const body: ChatRequest = await req.json();
   const sandboxCheckout = isSandboxCheckout(req);
@@ -634,6 +636,12 @@ export async function POST(req: NextRequest) {
             internationalMode: body.internationalMode,
           })
         ) {
+          controller.close();
+          return;
+        }
+
+        if (!process.env.GROQ_API_KEY) {
+          controller.enqueue(sse("error", "Demo mode limited: Set GROQ_API_KEY in .env.local"));
           controller.close();
           return;
         }
