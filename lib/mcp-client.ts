@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { clearMcpToolsCache } from "@/lib/kira/mcp-tools-cache";
 
 const KAPRUKA_MCP_URL = "https://mcp.kapruka.com/mcp";
 const CONNECT_TIMEOUT_MS = 8_000;
@@ -14,8 +15,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 }
 
+/** MCP Streamable HTTP session expiry: HTTP 404 + JSON-RPC -32001 or -32000. */
+export function isMcpSessionExpiredError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message;
+  const lower = msg.toLowerCase();
+  if (lower.includes("session not found")) return true;
+  if (/-32001/.test(msg) || /"code":\s*-32001/.test(msg)) return true;
+  if (/-32000/.test(msg) && /connection\s*closed/i.test(msg)) return true;
+  return false;
+}
+
 function isConnectionError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+  if (isMcpSessionExpiredError(err)) return true;
   const msg = err.message.toLowerCase();
   return (
     msg.includes("connection") ||
@@ -23,8 +36,7 @@ function isConnectionError(err: unknown): boolean {
     msg.includes("transport") ||
     msg.includes("closed") ||
     msg.includes("econnreset") ||
-    msg.includes("socket") ||
-    msg.includes("session not found")
+    msg.includes("socket")
   );
 }
 
@@ -62,6 +74,7 @@ export async function getMcpClient(): Promise<Client> {
 export function invalidateMcpClient(): void {
   _client = null;
   _connecting = null;
+  clearMcpToolsCache();
 }
 
 // Kept for backward-compat with scripts/test-mcp.mjs
