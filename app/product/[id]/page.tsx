@@ -35,7 +35,7 @@ export default async function ProductPage({
   const { id } = await params;
   const [categories, product] = await Promise.all([
     getCategories(),
-    getProductCached(id),
+    getProductCached(id).catch(() => getProduct(id)),
   ]);
 
   if (!product) notFound();

@@ -44,7 +44,12 @@ export function KiraDockProvider({ children }: { children: React.ReactNode }) {
     setIsOpen(false);
     setSeed(null);
   }, []);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
+  const toggle = useCallback(() => {
+    setIsOpen((v) => {
+      if (v) setSeed(null);
+      return !v;
+    });
+  }, []);
 
   const value = useMemo(
     () => ({ isOpen, seed, open, close, toggle }),
