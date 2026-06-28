@@ -6,15 +6,42 @@ import { useEffect, useRef, useState } from "react";
 import { ProductCardSkeleton } from "./ProductCard";
 import { ShiningText } from "./ui/shining-text";
 
-/* ── Live indicator — shown while API is streaming ── */
-interface ThinkingLiveProps {
-  steps: string[];
-  showProductSkeleton?: boolean;
+export type LiveStep = {
+  id: string;
+  label: string;
+  done?: boolean;
+};
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = () => setReduced(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
 }
 
-export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiveProps) {
+/* ── Live indicator — shown while API is streaming ── */
+interface ThinkingLiveProps {
+  steps: LiveStep[];
+  showProductSkeleton?: boolean;
+  liveSummary?: string;
+  lastActivityAt?: number;
+}
+
+export function ThinkingLive({
+  steps,
+  showProductSkeleton = false,
+  liveSummary,
+  lastActivityAt,
+}: ThinkingLiveProps) {
   const [elapsed, setElapsed] = useState(0);
+  const [stalled, setStalled] = useState(false);
   const startRef = useRef<number | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     startRef.current = Date.now();
@@ -25,9 +52,24 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!lastActivityAt) return;
+    const check = () => {
+      setStalled(Date.now() - lastActivityAt > 3000);
+    };
+    check();
+    const id = setInterval(check, 500);
+    return () => clearInterval(id);
+  }, [lastActivityAt]);
+
+  const statusText = stalled
+    ? elapsed > 15
+      ? "Still working — Kapruka can be slow at peak hours…"
+      : "Still checking Kapruka…"
+    : "Kira is thinking…";
+
   return (
     <div className="flex items-start gap-2.5 mb-4 animate-fade-up">
-      {/* Avatar */}
       <div
         className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-xs text-kap-yellow"
         style={{
@@ -40,40 +82,71 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
       </div>
 
       <div className="flex-1 max-w-[88%] pt-1.5">
-        {/* Shining "Kira is thinking…" label */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-50" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-400" />
-          </span>
-          <ShiningText text="Kira is thinking…" className="bg-[linear-gradient(110deg,rgba(255,255,255,0.2),35%,rgba(200,180,255,0.95),50%,rgba(255,255,255,0.2),75%,rgba(255,255,255,0.2))] bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent" />
+          {!reducedMotion && (
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full opacity-50 ${
+                  stalled ? "bg-amber-400/80" : "bg-purple-400 animate-ping"
+                }`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                  stalled ? "bg-amber-400" : "bg-purple-400"
+                }`}
+              />
+            </span>
+          )}
+          {reducedMotion ? (
+            <span
+              className={`text-xs font-medium ${stalled ? "text-amber-200/80" : "text-white/70"}`}
+            >
+              {statusText}
+            </span>
+          ) : (
+            <ShiningText
+              text={statusText}
+              className={`bg-[length:200%_100%] bg-clip-text text-xs font-medium text-transparent ${
+                stalled
+                  ? "bg-[linear-gradient(110deg,rgba(251,191,36,0.3),35%,rgba(251,191,36,0.95),50%,rgba(251,191,36,0.3),75%,rgba(251,191,36,0.3))]"
+                  : "bg-[linear-gradient(110deg,rgba(255,255,255,0.2),35%,rgba(200,180,255,0.95),50%,rgba(255,255,255,0.2),75%,rgba(255,255,255,0.2))]"
+              }`}
+            />
+          )}
           {elapsed > 0 && (
             <span className="text-[10px] tabular-nums text-white/25">{elapsed}s</span>
           )}
         </div>
 
-        {/* Steps — left-bordered, no box */}
+        {liveSummary && (
+          <p className="text-[11px] text-white/45 mb-2 leading-snug">{liveSummary}</p>
+        )}
+
         {steps.length > 0 && (
           <div
             className="pl-3 space-y-1.5"
             style={{ borderLeft: "2px solid rgba(156,132,198,0.3)" }}
           >
             <AnimatePresence initial={false}>
-              {steps.map((label, i) => {
-                const isDone = i < steps.length - 1;
-                const isActive = i === steps.length - 1;
+              {steps.map((step) => {
+                const isDone = step.done;
+                const isActive = !isDone;
                 return (
                   <motion.div
-                    key={label + i}
+                    key={step.id}
                     className="flex items-center gap-1.5"
-                    initial={{ opacity: 0, x: -4 }}
+                    initial={reducedMotion ? false : { opacity: 0, x: -4 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2 }}
                   >
                     {isDone ? (
                       <Check className="size-2.5 shrink-0 text-emerald-500/70" />
                     ) : isActive ? (
-                      <span className="size-1 rounded-full bg-purple-300/60 shrink-0 animate-pulse" />
+                      <span
+                        className={`size-1 rounded-full bg-purple-300/60 shrink-0 ${
+                          reducedMotion ? "" : "animate-pulse"
+                        }`}
+                      />
                     ) : null}
                     <span
                       className={`text-[11px] leading-snug ${
@@ -82,7 +155,7 @@ export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiv
                           : "text-white/55"
                       }`}
                     >
-                      {label}
+                      {step.label}
                     </span>
                   </motion.div>
                 );

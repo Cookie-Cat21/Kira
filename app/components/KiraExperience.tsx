@@ -29,7 +29,7 @@ import McpStatusBadge from "./McpStatusBadge";
 import ChatMessage from "./ChatMessage";
 import CheckoutModal from "./CheckoutModal";
 import ProductQuickView from "./ProductQuickView";
-import { ThinkingLive, ThinkingDone } from "./ThinkingBlock";
+import { ThinkingLive, ThinkingDone, type LiveStep } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
@@ -306,7 +306,9 @@ export default function KiraExperience({
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-  const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  const [liveSteps, setLiveSteps] = useState<LiveStep[]>([]);
+  const [liveStepSummary, setLiveStepSummary] = useState<string | undefined>();
+  const [lastStreamActivityAt, setLastStreamActivityAt] = useState<number>(Date.now());
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -393,6 +395,7 @@ export default function KiraExperience({
     pendingProductsRef.current = null;
     pendingPayLinkRef.current = null;
     setLiveSteps([]);
+    setLiveStepSummary(undefined);
     setIsLoading(false);
     setIsStreaming(false);
     setRequestHealth("idle");
@@ -440,6 +443,7 @@ export default function KiraExperience({
       setIsLoading(true);
       setIsStreaming(false);
       setLiveSteps([]);
+      setLiveStepSummary(undefined);
       setRequestHealth("loading");
       setLastErrorMessage(null);
       cancelledRef.current = false;
@@ -450,6 +454,7 @@ export default function KiraExperience({
       pendingProductsRef.current = null;
       pendingPayLinkRef.current = null;
       thinkingStartRef.current = Date.now();
+      setLastStreamActivityAt(Date.now());
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -525,9 +530,28 @@ export default function KiraExperience({
                 v?: unknown;
               };
 
-              if (payload.t === "step") {
-                setLiveSteps((prev) => [...prev, payload.v as string]);
+              if (payload.t === "ping") {
+                /* keepalive — ignore */
+              } else if (payload.t === "step") {
+                const raw = payload.v;
+                setLastStreamActivityAt(Date.now());
+                setLiveSteps((prev) => [
+                  ...prev,
+                  typeof raw === "string"
+                    ? { id: `step-${Date.now()}-${prev.length}`, label: raw }
+                    : {
+                        id: (raw as { id: string }).id,
+                        label: (raw as { label: string }).label,
+                      },
+                ]);
+              } else if (payload.t === "stepDone") {
+                const stepId = payload.v as string;
+                setLastStreamActivityAt(Date.now());
+                setLiveSteps((prev) =>
+                  prev.map((s) => (s.id === stepId ? { ...s, done: true } : s))
+                );
               } else if (payload.t === "token") {
+                setLastStreamActivityAt(Date.now());
                 if (!streamingMsgIdRef.current) {
                   const msgId = `kira-${Date.now()}`;
                   streamingMsgIdRef.current = msgId;
@@ -655,17 +679,20 @@ export default function KiraExperience({
                 addToCart(payload.v as KiraProduct);
               } else if (payload.t === "stepSummary") {
                 pendingStepSummaryRef.current = payload.v as string;
+                setLiveStepSummary(payload.v as string);
+                setLastStreamActivityAt(Date.now());
               } else if (payload.t === "done") {
                 const id = streamingMsgIdRef.current;
                 const elapsed = Date.now() - thinkingStartRef.current;
                 const stepSummary = pendingStepSummaryRef.current ?? undefined;
                 pendingStepSummaryRef.current = null;
                 setLiveSteps((completedSteps) => {
+                  const stepLabels = completedSteps.map((s) => s.label);
                   if (id) {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === id
-                          ? { ...m, thinkingMs: elapsed, steps: completedSteps, thinkingSummary: stepSummary }
+                          ? { ...m, thinkingMs: elapsed, steps: stepLabels, thinkingSummary: stepSummary }
                           : m
                       )
                     );
@@ -709,7 +736,7 @@ export default function KiraExperience({
                           ? { payLink: pendingPayLink }
                           : {}),
                         thinkingMs: elapsed,
-                        steps: completedSteps,
+                        steps: stepLabels,
                         thinkingSummary: stepSummary,
                       },
                     ]);
@@ -825,8 +852,6 @@ export default function KiraExperience({
 
   useEffect(() => {
     if (!seed?.prompt) return;
-    seedFiredRef.current = false;
-    seedSentRef.current = false;
     const timer = window.setTimeout(() => {
       if (seedFiredRef.current) return;
       seedFiredRef.current = true;
@@ -844,19 +869,14 @@ export default function KiraExperience({
         ]);
       }
       setPendingSeedPrompt(seed.prompt);
-    }, 50);
-    return () => {
-      window.clearTimeout(timer);
-    };
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [seed]);
 
   useEffect(() => {
     if (!pendingSeedPrompt || seedSentRef.current) return;
     seedSentRef.current = true;
     sendMessage(pendingSeedPrompt);
-    return () => {
-      seedSentRef.current = false;
-    };
   }, [pendingSeedPrompt, sendMessage]);
 
   const isOnlyOpening = messages.length === 1 && messages[0].id === "opening";
@@ -865,10 +885,10 @@ export default function KiraExperience({
     !isStreaming &&
     liveSteps.some(
       (step) =>
-        step.includes("Searching Kapruka catalog") ||
-        step.includes("Browsing categories")
+        step.label.includes("Searching Kapruka catalog") ||
+        step.label.includes("Browsing categories")
     );
-  const latestLiveStep = liveSteps[liveSteps.length - 1];
+  const latestLiveStep = liveSteps[liveSteps.length - 1]?.label;
   const latestDeliveryInfo = [...messages]
     .reverse()
     .find((msg) => msg.role === "assistant" && msg.deliveryInfo)?.deliveryInfo;
@@ -943,7 +963,7 @@ export default function KiraExperience({
           />
           {/* Status strip — hidden on mobile */}
           <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28">
+            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif", letterSpacing: "0.01em" }}>
               by Kapruka
             </span>
             {/* Live catalog pill */}
@@ -952,7 +972,7 @@ export default function KiraExperience({
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-kira-leaf opacity-60" style={{ animationDuration: "2.4s" }} />
                 <span className="relative inline-flex size-1.5 rounded-full bg-kira-leaf" />
               </span>
-              <span className="text-[11px] font-medium text-white/40">
+              <span className="text-[11px] font-medium text-white/40" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
                 Live
               </span>
             </span>
@@ -963,7 +983,7 @@ export default function KiraExperience({
 
         {/* Right — Free delivery + store bridge */}
         <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex">
+          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
             <Truck className="size-3 text-kira-leaf/70" />
             <span>Free delivery</span>
           </div>
@@ -1121,6 +1141,8 @@ export default function KiraExperience({
                 <ThinkingLive
                   steps={liveSteps}
                   showProductSkeleton={showProductSkeleton}
+                  liveSummary={liveStepSummary}
+                  lastActivityAt={lastStreamActivityAt}
                 />
               )}
               <div ref={bottomRef} />
