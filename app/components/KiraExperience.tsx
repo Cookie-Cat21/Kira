@@ -51,7 +51,6 @@ import type {
   OrderTracking,
 } from "@/types";
 import { cn } from "@/lib/utils";
-import WelcomeHorizon from "./effects/WelcomeHorizon";
 
 const OCCASION_CHIPS = getOccasionChips();
 // An occasion is active iff getOccasionChips surfaced an urgent chip. When it
@@ -207,7 +206,6 @@ function KaprukaSmileMark() {
       data-testid="kapruka-smile-mark"
       aria-hidden="true"
       focusable="false"
-      style={{ filter: "drop-shadow(0 0 18px rgba(248,218,8,0.35))" }}
     >
       <path
         fill="#f8da08"
@@ -924,17 +922,14 @@ export default function KiraExperience({
   };
 
   return (
-    <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "#0d0818", color: "rgba(255,255,255,0.92)" }}>
+    <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
-      {isOnlyOpening && !embedded && <WelcomeHorizon />}
-      {!isOnlyOpening && !embedded && (
-        <>
-          <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.45) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
-          <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.1) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
-        </>
-      )}
+      {/* Ambient blobs */}
+      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
 
       <header className="liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Left cluster */}
@@ -1014,10 +1009,7 @@ export default function KiraExperience({
 
       {isOnlyOpening ? (
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10">
-          <div
-            className="mb-8 text-center animate-fade-up"
-            style={{ animationDelay: "1.1s", animationFillMode: "both" }}
-          >
+          <div className="mb-8 text-center animate-fade-up">
             <KaprukaSmileMark />
             <h1 className="mb-3 min-h-[1.14em] font-sans text-4xl font-bold leading-[1.14] text-white sm:text-5xl">
               {heroGreeting ?? "Hello! 👋"}
@@ -1029,7 +1021,7 @@ export default function KiraExperience({
 
           <div
             className="w-full max-w-2xl animate-fade-up"
-            style={{ animationDelay: "1.25s", animationFillMode: "both" }}
+            style={{ animationDelay: "60ms" }}
           >
             <KiraChatInput
               onSendMessage={sendMessage}
@@ -1041,8 +1033,8 @@ export default function KiraExperience({
           </div>
 
           <div
-            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-kap-yellow/15 bg-white/[0.04] px-4 py-3"
-            style={{ animationDelay: "1.4s", animationFillMode: "both" }}
+            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3"
+            style={{ animationDelay: "90ms" }}
           >
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
               Start fast
@@ -1063,7 +1055,7 @@ export default function KiraExperience({
 
           <div
             className="mt-4 flex flex-wrap sm:flex-nowrap justify-center gap-2 px-4 animate-fade-up"
-            style={{ animationDelay: "1.55s", animationFillMode: "both" }}
+            style={{ animationDelay: "120ms" }}
           >
             {[
               // The hero headline already announces any active occasion, so drop

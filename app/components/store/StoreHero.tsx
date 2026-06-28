@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
 import gsap from "gsap";
 import { useKiraDock } from "@/app/context/KiraDockContext";
+import ShopHeroGlow from "@/app/components/effects/ShopHeroGlow";
 
 const HERO_TILES = [
   {
@@ -83,34 +84,9 @@ export default function StoreHero() {
       ref={root}
       className="relative overflow-hidden"
     >
-      {/* spotlight + ambient blobs */}
-      <div className="spotlight pointer-events-none absolute inset-x-0 top-0 h-[520px]" />
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          top: "-60px",
-          left: "-40px",
-          width: "480px",
-          height: "480px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(64,41,112,0.55) 0%, transparent 70%)",
-          filter: "blur(70px)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute"
-        style={{
-          bottom: "-80px",
-          right: "-60px",
-          width: "420px",
-          height: "420px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(248,218,8,0.10) 0%, transparent 70%)",
-          filter: "blur(80px)",
-        }}
-      />
+      <ShopHeroGlow />
 
-      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-10 px-5 pb-16 pt-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24 lg:pt-28">
+      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-10 px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24 lg:pt-36">
         {/* Copy */}
         <div className="relative z-10">
           <span className="hero-eyebrow inline-flex items-center gap-1.5 rounded-full glass-chip px-3 py-1 text-[12px] font-medium text-white/70">
