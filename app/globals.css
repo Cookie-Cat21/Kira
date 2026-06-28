@@ -5,6 +5,11 @@
   --color-kap-purple: #402970;
   --color-kap-yellow: #f8da08;
 
+  /* Horizon glow layers */
+  --color-kira-glow-highlight: rgba(248, 218, 8, 0.92);
+  --color-kira-glow-mid: rgba(248, 218, 8, 0.55);
+  --color-kira-glow-deep: rgba(64, 41, 112, 0.85);
+
   /* Dark glass surfaces */
   --color-kira-canvas: #0d0818;
   --color-kira-paper: #130d24;
