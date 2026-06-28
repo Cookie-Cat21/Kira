@@ -9,6 +9,8 @@ export interface KiraProduct {
   url?: string;
   inStock?: boolean;
   stockLevel?: string;
+  badges?: string[];
+  deliveryInfo?: DeliveryQuote;
 }
 
 export interface KiraProductVariant {
@@ -133,6 +135,9 @@ export interface ChatRequest {
   cart: CartItem[];
   deliveryCity?: string;
   deliveryDate?: string;
+  budget?: string;
+  occasion?: string;
+  recipient?: string;
   lastProducts?: KiraProduct[];
   lastOrder?: LastOrder;
   language?: "en" | "si" | "ta";

@@ -14,11 +14,13 @@ interface ThinkingLiveProps {
 
 export function ThinkingLive({ steps, showProductSkeleton = false }: ThinkingLiveProps) {
   const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(Date.now());
+  const startRef = useRef<number | null>(null);
 
   useEffect(() => {
+    startRef.current = Date.now();
     const id = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+      const startedAt = startRef.current ?? Date.now();
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
     return () => clearInterval(id);
   }, []);

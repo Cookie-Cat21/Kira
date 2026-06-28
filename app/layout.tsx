@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, Noto_Sans_Sinhala } from "next/font/google";
+import { Bebas_Neue, Noto_Sans_Sinhala } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { sfPro } from "./fonts/sf-pro";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
 import KiraDock from "./components/store/KiraDock";
@@ -8,16 +9,16 @@ import { CartProvider } from "./context/CartContext";
 import { KiraDockProvider } from "./context/KiraDockContext";
 import "./globals.css";
 
-const dmSerif = DM_Serif_Display({
-  variable: "--font-dm-serif",
-  subsets: ["latin"],
-  weight: "400",
-});
-
 const notoSinhala = Noto_Sans_Sinhala({
   variable: "--font-noto-sinhala",
   subsets: ["sinhala"],
   weight: ["400", "500", "600"],
+});
+
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas-neue",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerif.variable} ${notoSinhala.variable} h-full antialiased`}
+      className={`${sfPro.variable} ${notoSinhala.variable} ${bebasNeue.variable} h-full antialiased`}
     >
       <body className="h-full font-sans">
         <CartProvider>

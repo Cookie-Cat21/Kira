@@ -36,11 +36,12 @@ export default function ProductCard({
     maximumFractionDigits: 0,
   }).format(product.price);
 
-  const city = deliveryInfo?.city ?? deliveryCity;
-  const fee = deliveryInfo?.fee;
-  const perishable = deliveryInfo?.perishable;
+  const effectiveDeliveryInfo = product.deliveryInfo ?? deliveryInfo;
+  const city = effectiveDeliveryInfo?.city ?? deliveryCity;
+  const fee = effectiveDeliveryInfo?.fee;
+  const perishable = effectiveDeliveryInfo?.perishable;
 
-  const deliveryUnavailable = deliveryInfo && !deliveryInfo.available;
+  const deliveryUnavailable = effectiveDeliveryInfo && !effectiveDeliveryInfo.available;
 
   function flyToCart() {
     if (!imgRef.current || !product.image) return;
@@ -112,6 +113,19 @@ export default function ProductCard({
         </button>
         <p className="text-sm font-bold text-kap-yellow">{formattedPrice}</p>
 
+        {product.badges && product.badges.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {product.badges.slice(0, 4).map((badge) => (
+              <span
+                key={badge}
+                className="rounded-full border border-kap-yellow/20 bg-kap-yellow/10 px-2 py-0.5 text-[10px] font-semibold text-kap-yellow/90"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
         {city && (
           <div className="flex flex-col gap-0.5">
             <p
@@ -127,9 +141,9 @@ export default function ProductCard({
               )}
               {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
-            {deliveryInfo?.nextAvailableDate && (
+            {effectiveDeliveryInfo?.nextAvailableDate && (
               <p className="text-[10px] text-white/40 pl-3.5">
-                {deliveryInfo.nextAvailableDate}
+                {effectiveDeliveryInfo.nextAvailableDate}
               </p>
             )}
             {fee !== undefined && (
@@ -137,9 +151,9 @@ export default function ProductCard({
                 + LKR {fee.toLocaleString()} delivery
               </p>
             )}
-            {deliveryInfo?.perishableWarning && (
+            {effectiveDeliveryInfo?.perishableWarning && (
               <p className="text-[10px] text-amber-700 pl-3.5 line-clamp-2">
-                {deliveryInfo.perishableWarning}
+                {effectiveDeliveryInfo.perishableWarning}
               </p>
             )}
           </div>

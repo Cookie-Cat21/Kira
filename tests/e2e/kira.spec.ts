@@ -116,6 +116,14 @@ test.describe("Smoke", () => {
     expect((await hero.textContent() ?? "").length).toBeGreaterThan(10);
   });
 
+  test("commerce rail chips are editable", async ({ page }) => {
+    await expect(page.getByText("Gift Brief")).toBeVisible();
+    await page.getByRole("button", { name: /Budget/i }).click();
+    await page.getByRole("textbox", { name: "Budget", exact: true }).fill("Under LKR 12,000");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: /Under LKR 12,000/i })).toBeVisible();
+  });
+
   test("Send button is disabled on empty input", async ({ page }) => {
     expect(await page.locator('[aria-label="Send"]').isDisabled()).toBe(true);
   });

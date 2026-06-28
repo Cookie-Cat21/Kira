@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMcpClient, callMcpTool } from "@/lib/mcp-client";
 import { extractCheckoutInfoFromMcp } from "@/lib/mcp-parsing";
+import {
+  buildSandboxCheckoutInfo,
+  isSandboxCheckout,
+} from "@/lib/checkout-sandbox";
+import { getColomboTodayIso } from "@/lib/colombo-date";
+import { looksLikeMcpProductId, resolveMcpProductId } from "@/lib/product-id";
 import type { CartItem } from "@/types";
 
 export interface CheckoutRequest {
@@ -60,17 +66,22 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (delivery.date < new Date().toISOString().slice(0, 10)) {
+    if (delivery.date < getColomboTodayIso()) {
       return NextResponse.json(
         { error: "Delivery date cannot be in the past" },
         { status: 400 }
       );
     }
 
+    if (isSandboxCheckout(req)) {
+      return NextResponse.json({
+        checkoutInfo: buildSandboxCheckoutInfo(cart),
+        mode: "sandbox",
+      });
+    }
+
     const mcpClient = await getMcpClient();
 
-    // Resolve canonical city name via MCP (e.g. "Colombo" → "Colombo 01")
-    // Strip suburb numbers first so "Colombo 6" → "Colombo" before lookup
     const rawCity = delivery.city.replace(/^(colombo)\s*\d+$/i, "Colombo").trim();
     let city = rawCity;
     try {
@@ -85,11 +96,32 @@ export async function POST(req: NextRequest) {
       // non-fatal — proceed with the raw city name
     }
 
-    // Build items array for create_order
-    const items = cart.map((item) => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-    }));
+    const idResolutionCache = new Map<string, string>();
+    const unresolvedNames: string[] = [];
+    const items = [];
+    for (const item of cart) {
+      const resolvedId = await resolveMcpProductId(mcpClient, item, idResolutionCache);
+      if (!looksLikeMcpProductId(resolvedId)) {
+        unresolvedNames.push(item.product.name || item.product.id || "item");
+      }
+      items.push({
+        product_id: resolvedId,
+        quantity: Math.trunc(item.quantity),
+      });
+    }
+
+    if (unresolvedNames.length > 0) {
+      const unique = [...new Set(unresolvedNames)];
+      return NextResponse.json(
+        {
+          error:
+            unique.length === 1
+              ? `Could not verify this item with Kapruka right now: ${unique[0]}`
+              : `Could not verify some items with Kapruka right now: ${unique.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
 
     if (items.some((item) => !item.product_id || item.quantity < 1)) {
       return NextResponse.json(
@@ -98,11 +130,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // kapruka_create_order schema (confirmed from validation errors):
-    // recipient: { name, phone }
-    // delivery:  { city, address, date }
-    // cart:      [{product_id, quantity}]   ← direct list, NOT {items:[...]}
-    // sender:    { name, anonymous }
     const orderArgs = {
       recipient: {
         name: delivery.name.trim(),

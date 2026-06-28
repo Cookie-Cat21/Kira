@@ -41,10 +41,11 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
     maximumFractionDigits: 0,
   }).format(product.price);
 
-  const city = deliveryInfo?.city ?? deliveryCity;
-  const fee = deliveryInfo?.fee;
-  const perishable = deliveryInfo?.perishable;
-  const deliveryUnavailable = deliveryInfo && !deliveryInfo.available;
+  const effectiveDeliveryInfo = product.deliveryInfo ?? deliveryInfo;
+  const city = effectiveDeliveryInfo?.city ?? deliveryCity;
+  const fee = effectiveDeliveryInfo?.fee;
+  const perishable = effectiveDeliveryInfo?.perishable;
+  const deliveryUnavailable = effectiveDeliveryInfo && !effectiveDeliveryInfo.available;
 
   function handleAddToCart() {
     onAddToCart(product);
@@ -112,14 +113,27 @@ function ProductHero({ product, cart, onAddToCart, onOpenProduct, deliveryCity, 
         </button>
         <p className="text-base font-bold text-kap-yellow">{formattedPrice}</p>
 
+        {product.badges && product.badges.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {product.badges.slice(0, 4).map((badge) => (
+              <span
+                key={badge}
+                className="rounded-full border border-kap-yellow/20 bg-kap-yellow/10 px-2 py-0.5 text-[10px] font-semibold text-kap-yellow/90"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
         {city && (
           <div className="flex flex-col gap-0.5">
             <p className={cn("flex items-center gap-1 text-[11px] font-medium", deliveryUnavailable ? "text-amber-600" : "text-emerald-500")}>
               {deliveryUnavailable ? <AlertCircle className="size-3" /> : <Check className="size-3" />}
               {deliveryUnavailable ? "Next available" : "Delivers"} to {city}
             </p>
-            {deliveryInfo?.nextAvailableDate && (
-              <p className="pl-4 text-[10px] text-white/40">{deliveryInfo.nextAvailableDate}</p>
+            {effectiveDeliveryInfo?.nextAvailableDate && (
+              <p className="pl-4 text-[10px] text-white/40">{effectiveDeliveryInfo.nextAvailableDate}</p>
             )}
             {fee !== undefined && (
               <p className="pl-4 text-[10px] text-white/40">+ LKR {fee.toLocaleString()} delivery</p>

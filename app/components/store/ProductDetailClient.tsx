@@ -10,6 +10,8 @@ import { useKiraDock } from "@/app/context/KiraDockContext";
 import { categoryIcon, formatLKR, phClass } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
+const PlaceholderIcon = categoryIcon();
+
 export default function ProductDetailClient({
   product,
 }: {
@@ -22,7 +24,6 @@ export default function ProductDetailClient({
 
   const inCart = cart.find((i) => i.product.id === product.id);
   const qty = inCart?.quantity ?? 0;
-  const Icon = categoryIcon();
   const hero = product.images?.[0] ?? product.image;
   const showImage = Boolean(hero) && !imgError;
   const discount =
@@ -37,10 +38,30 @@ export default function ProductDetailClient({
     }
   }
 
+  function handleAskKira() {
+    openKira({
+      prompt: `Tell me about "${product.name}" — is it a good pick?`,
+      // Slim down to the KiraProduct shape — the detail object drags along
+      // images/variants/addons that don't belong in the chat session store.
+      product: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        currency: product.currency,
+        image: hero,
+        summary: product.summary,
+        category: product.category,
+        url: product.url,
+        inStock: product.inStock,
+        stockLevel: product.stockLevel,
+      },
+    });
+  }
+
   return (
     <div className="mx-auto w-full max-w-[1180px] px-5 pb-16 pt-10 sm:px-8">
       <Link
-        href="/"
+        href="/shop"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white"
       >
         <ArrowLeft className="size-4" /> Continue shopping
@@ -67,7 +88,7 @@ export default function ProductDetailClient({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
-              <Icon className="size-20 text-white/25" />
+              <PlaceholderIcon className="size-20 text-white/25" />
             </div>
           )}
           {discount > 0 && (
@@ -84,7 +105,7 @@ export default function ProductDetailClient({
               {product.category}
             </p>
           )}
-          <h1 className="display-hero mt-2 text-3xl text-white sm:text-4xl">
+          <h1 className="mt-2 font-sans text-3xl font-semibold leading-tight text-white sm:text-4xl">
             {product.name}
           </h1>
 
@@ -111,9 +132,9 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={handleAdd}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.03] active:scale-95"
+                className="w-full rounded-lg bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.01] active:scale-95 sm:w-auto"
               >
-                <Plus className="size-4" /> Add to bag
+                Add to Cart — {formatLKR(product.price, product.currency)}
               </button>
             ) : (
               <div className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-2">
@@ -151,7 +172,7 @@ export default function ProductDetailClient({
 
             <button
               type="button"
-              onClick={openKira}
+              onClick={handleAskKira}
               className="inline-flex items-center gap-2 rounded-full glass-card px-5 py-3.5 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
             >
               <Sparkles className="size-4 text-kap-yellow" /> Ask Kira about this

@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
         hostname: "partnercentral.kapruka.com",
         pathname: "/**",
       },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
     ],
   },
 };

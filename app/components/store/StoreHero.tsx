@@ -1,10 +1,42 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
 import gsap from "gsap";
 import { useKiraDock } from "@/app/context/KiraDockContext";
+
+const HERO_TILES = [
+  {
+    label: "Cakes",
+    href: "/shop/cakes",
+    image:
+      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&q=80",
+    className: "left-2 top-4 h-52 w-44 rotate-[-6deg]",
+  },
+  {
+    label: "Flowers",
+    href: "/shop/flowers",
+    image:
+      "https://images.unsplash.com/photo-1490750967868-88df5691cc8b?w=500&q=80",
+    className: "right-6 top-0 h-56 w-44 rotate-[5deg]",
+  },
+  {
+    label: "Hampers",
+    href: "/shop/hampers",
+    image:
+      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=500&q=80",
+    className: "bottom-2 left-24 h-52 w-48 rotate-[3deg]",
+  },
+  {
+    label: "Chocolates",
+    href: "/shop/chocolates",
+    image:
+      "https://images.unsplash.com/photo-1511381939415-e44015466834?w=500&q=80",
+    className: "bottom-10 right-0 h-44 w-40 rotate-[-4deg]",
+  },
+] as const;
 
 export default function StoreHero() {
   const root = useRef<HTMLDivElement | null>(null);
@@ -89,7 +121,7 @@ export default function StoreHero() {
             Live catalog · Islandwide delivery
           </span>
 
-          <h1 className="display-hero mt-5 text-6xl tracking-[-0.035em] text-white sm:text-7xl lg:text-[5.75rem] lg:leading-[0.93]">
+          <h1 className="display-hero mt-5 text-6xl text-white sm:text-7xl lg:text-[5.75rem] lg:leading-[0.93]">
             <span className="hero-line block">Send something</span>
             <span className="hero-line block">
               they&apos;ll{" "}
@@ -116,7 +148,7 @@ export default function StoreHero() {
             </Link>
             <button
               type="button"
-              onClick={openKira}
+              onClick={() => openKira()}
               className="hero-cta inline-flex items-center gap-2 rounded-full glass-card px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
             >
               <Sparkles className="size-4 text-kap-yellow" /> Ask Kira
@@ -126,22 +158,42 @@ export default function StoreHero() {
 
         {/* Visual collage */}
         <div className="relative z-10 hidden h-[420px] lg:block">
-          <HeroTile className="ph-cakes left-2 top-4 h-52 w-44 rotate-[-6deg]" label="Cakes" />
-          <HeroTile className="ph-flowers right-6 top-0 h-56 w-44 rotate-[5deg]" label="Flowers" />
-          <HeroTile className="ph-hampers bottom-2 left-24 h-52 w-48 rotate-[3deg]" label="Hampers" />
-          <HeroTile className="ph-chocolates bottom-10 right-0 h-44 w-40 rotate-[-4deg]" label="Chocolates" />
+          {HERO_TILES.map((tile) => (
+            <HeroTile key={tile.label} {...tile} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function HeroTile({ className, label }: { className: string; label: string }) {
+function HeroTile({
+  className,
+  label,
+  href,
+  image,
+}: {
+  className: string;
+  label: string;
+  href: string;
+  image: string;
+}) {
   return (
-    <div
-      className={`hero-tile ph-tile absolute flex items-end rounded-3xl border border-white/10 p-4 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] ${className}`}
+    <Link
+      href={href}
+      className={`hero-tile absolute overflow-hidden rounded-3xl border border-white/10 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] ${className}`}
     >
-      <span className="text-sm font-medium text-white/85">{label}</span>
-    </div>
+      <Image
+        src={image}
+        alt={label}
+        fill
+        sizes="200px"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+      <span className="absolute bottom-4 left-4 text-sm font-medium text-white/90">
+        {label}
+      </span>
+    </Link>
   );
 }

@@ -259,9 +259,18 @@ export async function getRails(): Promise<ProductRail[]> {
   ]);
   const rails: ProductRail[] = [];
   if (featured.length)
-    rails.push({ title: "Trending today", subtitle: "What everyone's sending", items: featured });
+    rails.push({
+      title: "Trending today",
+      subtitle: "What everyone's sending",
+      items: featured,
+    });
   if (bakery.items.length)
-    rails.push({ title: "Fresh from the bakery", subtitle: "Baked & delivered cool", items: bakery.items });
+    rails.push({
+      title: "Fresh from the bakery",
+      subtitle: "Baked & delivered cool",
+      items: bakery.items,
+      categorySlug: "cakes",
+    });
   if (gifts.length)
     rails.push({ title: "Gifts under LKR 5,000", subtitle: "Thoughtful, not pricey", items: gifts });
   return rails;
