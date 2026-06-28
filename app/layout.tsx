@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Noto_Sans_Sinhala } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { sfPro } from "./fonts/sf-pro";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCartButton from "./components/FloatingCartButton";
@@ -56,6 +57,7 @@ export default function RootLayout({
             <KiraDock />
           </KiraDockProvider>
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );
