@@ -546,8 +546,6 @@ const TOOL_STEPS: Record<string, string> = {
   kapruka_track_order: "Tracking your order",
 };
 
-export const maxDuration = 60;
-
 export async function POST(req: NextRequest) {
   const body: ChatRequest = await req.json();
   const sandboxCheckout = isSandboxCheckout(req);
