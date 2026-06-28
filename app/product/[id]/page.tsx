@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import StoreChrome from "@/app/components/store/StoreChrome";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreFooter from "@/app/components/store/StoreFooter";
 import ProductDetailClient from "@/app/components/store/ProductDetailClient";
@@ -41,6 +42,7 @@ export default async function ProductPage({
 
   return (
     <div className="min-h-dvh">
+      <StoreChrome />
       <StoreNav categories={categories} />
       <main className="relative">
         <ProductDetailClient product={product} />

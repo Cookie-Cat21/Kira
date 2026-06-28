@@ -1,0 +1,58 @@
+[
+  {
+    "site": "empire",
+    "slug": "home",
+    "ok": true
+  },
+  {
+    "site": "empire",
+    "slug": "shop-all",
+    "ok": true
+  },
+  {
+    "site": "empire",
+    "slug": "shop-clothing",
+    "ok": true
+  },
+  {
+    "site": "empire",
+    "slug": "pdp-snapback",
+    "ok": true
+  },
+  {
+    "site": "empire",
+    "slug": "in-the-news",
+    "ok": true
+  },
+  {
+    "site": "empire",
+    "slug": "store-home",
+    "ok": false,
+    "error": "page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"https://store.empi.re/\", waiting until \"networkidle\"\n"
+  },
+  {
+    "site": "kaleido",
+    "slug": "home",
+    "ok": true
+  },
+  {
+    "site": "kaleido",
+    "slug": "bestsellers",
+    "ok": true
+  },
+  {
+    "site": "kaleido",
+    "slug": "earrings",
+    "ok": true
+  },
+  {
+    "site": "kaleido",
+    "slug": "pdp-sample",
+    "ok": true
+  },
+  {
+    "site": "kaleido",
+    "slug": "sale",
+    "ok": true
+  }
+]

@@ -12,6 +12,7 @@ export interface ProductRail {
   title: string;
   subtitle?: string;
   items: KiraProduct[];
+  categorySlug?: string;
 }
 
 export type StoreSort = "featured" | "price_asc" | "price_desc" | "newest";

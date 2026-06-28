@@ -15,7 +15,8 @@
     "test:report": "node scripts/report-issues.mjs",
     "test:fix": "node scripts/auto-fix.mjs",
     "test:retest": "node scripts/retest-failed.mjs",
-    "test:full-cycle": "node scripts/run-tests.mjs && node scripts/report-issues.mjs && node scripts/auto-fix.mjs && node scripts/retest-failed.mjs"
+    "test:full-cycle": "node scripts/run-tests.mjs && node scripts/report-issues.mjs && node scripts/auto-fix.mjs && node scripts/retest-failed.mjs",
+    "setup:fonts": "node scripts/setup-sf-pro.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

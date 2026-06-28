@@ -1,0 +1,57 @@
+{
+  "body": {
+    "tag": "BODY",
+    "text": ":root body { background: var(--token-ec38428d-3a31-4b94-abff-9e09e67da8b6, rgb(2",
+    "fontFamily": "sans-serif",
+    "fontSize": "12px",
+    "fontWeight": "400",
+    "letterSpacing": "normal",
+    "textTransform": "none",
+    "color": "rgb(0, 0, 0)",
+    "backgroundColor": "rgb(255, 255, 255)",
+    "borderRadius": "0px",
+    "padding": "0px",
+    "gap": "normal",
+    "width": 1440,
+    "height": 3738
+  },
+  "headings": [
+    {
+      "tag": "H3",
+      "text": "Shop Clothing",
+      "fontFamily": "\"Druk Wide Web Medium\", \"Druk Wide Web Medium Placeholder\", sans-serif",
+      "fontSize": "47px",
+      "fontWeight": "500",
+      "letterSpacing": "-1.25px",
+      "textTransform": "none",
+      "color": "rgb(0, 0, 0)",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderRadius": "0px",
+      "padding": "0px",
+      "gap": "normal",
+      "width": 1360,
+      "height": 56
+    }
+  ],
+  "buttons": [
+    {
+      "tag": "BUTTON",
+      "text": "Sign Up",
+      "fontFamily": "sans-serif",
+      "fontSize": "12px",
+      "fontWeight": "400",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "color": "rgb(0, 0, 0)",
+      "backgroundColor": "rgb(255, 255, 255)",
+      "borderRadius": "4px",
+      "padding": "0px",
+      "gap": "0px",
+      "width": 84,
+      "height": 40
+    }
+  ],
+  "cards": [],
+  "url": "https://empi.re/shop/clothing?",
+  "title": "Shop EMPIRE | Clothing"
+}

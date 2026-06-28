@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { KiraProduct } from "@/types";
 import StoreProductCard from "./StoreProductCard";
+import StoreSectionHeading from "./StoreSectionHeading";
 import Reveal from "./Reveal";
 
 export default function ProductRail({
@@ -11,11 +12,13 @@ export default function ProductRail({
   subtitle,
   items,
   categorySlug,
+  viewAllHref,
 }: {
   title: string;
   subtitle?: string;
   items: KiraProduct[];
   categorySlug?: string;
+  viewAllHref?: string;
 }) {
   const scroller = useRef<HTMLDivElement | null>(null);
 
@@ -25,15 +28,17 @@ export default function ProductRail({
 
   if (!items.length) return null;
 
+  const slugHref =
+    viewAllHref ?? (categorySlug ? `/shop/${categorySlug}` : "/shop");
+
   return (
     <section className="mx-auto w-full max-w-[1280px] px-5 sm:px-8">
       <Reveal className="mb-5 flex items-end justify-between gap-4">
-        <div>
-          <h2 className="display-hero text-2xl text-white sm:text-3xl">{title}</h2>
-          {subtitle && (
-            <p className="mt-1 text-sm text-white/45">{subtitle}</p>
-          )}
-        </div>
+        <StoreSectionHeading
+          title={title}
+          subtitle={subtitle}
+          href={slugHref}
+        />
         <div className="hidden shrink-0 items-center gap-2 sm:flex">
           <button
             type="button"

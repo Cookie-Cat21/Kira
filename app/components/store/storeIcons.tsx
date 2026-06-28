@@ -43,6 +43,30 @@ export function phClass(slug?: string): string {
   return slug && KNOWN_PH.has(slug) ? `ph-${slug}` : "ph-default";
 }
 
+const BADGE_LABELS: Record<string, string> = {
+  cakes: "CAKE",
+  flowers: "FLOWERS",
+  hampers: "HAMPER",
+  chocolates: "CHOC",
+  plants: "PLANT",
+  candles: "CANDLE",
+  electronics: "TECH",
+  grocery: "GROCERY",
+  kids: "KIDS",
+  home: "HOME",
+};
+
+export function categoryBadgeLabel(
+  category?: string,
+  categorySlug?: string
+): string {
+  const key = (categorySlug ?? category ?? "").toLowerCase();
+  if (BADGE_LABELS[key]) return BADGE_LABELS[key];
+  const fromName = (category ?? "").trim();
+  if (!fromName) return "GIFT";
+  return fromName.length <= 8 ? fromName.toUpperCase() : "GIFT";
+}
+
 export function formatLKR(price: number, currency = "LKR"): string {
   return new Intl.NumberFormat("en-LK", {
     style: "currency",
