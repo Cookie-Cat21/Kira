@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference tree — not part of the Kira app
+    "claude-code-leak/**",
   ]),
 ]);
 
