@@ -132,9 +132,9 @@ export default function ProductDetailClient({
               <button
                 type="button"
                 onClick={handleAdd}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.03] active:scale-95"
+                className="w-full rounded-lg bg-white px-7 py-3.5 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.01] active:scale-95 sm:w-auto"
               >
-                <Plus className="size-4" /> Add to bag
+                Add to Cart — {formatLKR(product.price, product.currency)}
               </button>
             ) : (
               <div className="flex items-center gap-3 rounded-full bg-white/10 px-2 py-2">

@@ -1,9 +1,14 @@
+import StoreChrome from "@/app/components/store/StoreChrome";
 import StoreNav from "@/app/components/store/StoreNav";
 import StoreHero from "@/app/components/store/StoreHero";
+import MarqueeTicker from "@/app/components/store/MarqueeTicker";
 import CategoryRail from "@/app/components/store/CategoryRail";
+import OccasionCircles from "@/app/components/store/OccasionCircles";
+import CategoryFilterPills from "@/app/components/store/CategoryFilterPills";
 import ProductRail from "@/app/components/store/ProductRail";
-import KiraBand from "@/app/components/store/KiraBand";
+import EditorialPanels from "@/app/components/store/EditorialPanels";
 import StoreFooter from "@/app/components/store/StoreFooter";
+import StoreSectionHeading from "@/app/components/store/StoreSectionHeading";
 import Reveal from "@/app/components/store/Reveal";
 import { getCategories, getRails } from "@/lib/catalog";
 
@@ -26,39 +31,49 @@ export default async function ShopHomePage() {
 
   return (
     <div className="min-h-dvh">
+      <StoreChrome />
       <StoreNav categories={categories} />
 
       <main>
         <StoreHero />
+        <MarqueeTicker />
 
-        {/* Categories */}
-        <section className="mx-auto mt-2 w-full max-w-[1280px] px-5 sm:px-8">
+        <div className="mt-12">
+          <OccasionCircles />
+        </div>
+
+        <section className="mx-auto mt-16 w-full max-w-[1280px] px-5 sm:px-8">
           <Reveal className="mb-5">
-            <h2 className="display-hero text-2xl text-white sm:text-3xl">
-              Shop by category
-            </h2>
-            <p className="mt-1 text-sm text-white/45">
-              Everything Kapruka, reimagined dark.
-            </p>
+            <StoreSectionHeading
+              title="Shop by category"
+              subtitle="Everything Kapruka, reimagined dark."
+              href="/shop"
+            />
           </Reveal>
         </section>
         <CategoryRail categories={categories} />
 
-        {/* Editorial product rails */}
-        <div className="mt-28 space-y-28">
+        <section className="mx-auto mt-20 w-full max-w-[1280px] px-5 sm:px-8">
+          <CategoryFilterPills activeSlug="" />
+        </section>
+
+        <div className="mt-20 space-y-28">
           {rails.map((rail) => (
             <ProductRail
               key={rail.title}
               title={rail.title}
               subtitle={rail.subtitle}
               items={rail.items}
+              categorySlug={rail.categorySlug}
+              viewAllHref={
+                rail.categorySlug ? `/shop/${rail.categorySlug}` : "/shop"
+              }
             />
           ))}
         </div>
 
-        {/* Meet Kira */}
-        <div className="mt-32">
-          <KiraBand />
+        <div className="mt-32 space-y-8">
+          <EditorialPanels />
         </div>
       </main>
 

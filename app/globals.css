@@ -26,6 +26,8 @@
   --color-kira-rose: #f9a8d4;
 
   --font-display: var(--font-dm-serif);
+  --font-display-bold: var(--font-bebas-neue);
+  --font-outfit: var(--font-outfit-var);
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, var(--font-noto-sinhala), "Iskoola Pota", sans-serif;
 }
 
@@ -201,6 +203,35 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+
+.marquee-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 24s linear infinite;
+}
+
+.font-display-bold {
+  font-family: var(--font-display-bold), sans-serif;
+}
+
+.font-outfit {
+  font-family: var(--font-outfit), sans-serif;
 }
 
 @keyframes shimmer {
@@ -481,6 +512,8 @@ body {
   }
   .reveal { opacity: 1; transform: none; }
   .lg-shine::after { transition: none; }
+  .marquee-track,
+  .marquee-ticker-track { animation: none !important; }
 }
 
 /* ── Liquid Glass accessibility — replicate what Apple's system does for these
