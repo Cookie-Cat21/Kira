@@ -1,0 +1,7 @@
+import Groq from "groq-sdk";
+
+let _groq: Groq | undefined;
+export function getGroq(): Groq {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" });
+  return _groq;
+}

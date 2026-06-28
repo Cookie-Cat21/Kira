@@ -29,7 +29,7 @@ import McpStatusBadge from "./McpStatusBadge";
 import ChatMessage from "./ChatMessage";
 import CheckoutModal from "./CheckoutModal";
 import ProductQuickView from "./ProductQuickView";
-import { ThinkingLive, ThinkingDone } from "./ThinkingBlock";
+import { ThinkingLive, ThinkingDone, type LiveStep } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
 import CityPicker from "./CityPicker";
@@ -306,7 +306,9 @@ export default function KiraExperience({
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
-  const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  const [liveSteps, setLiveSteps] = useState<LiveStep[]>([]);
+  const [liveStepSummary, setLiveStepSummary] = useState<string | undefined>();
+  const [lastStreamActivityAt, setLastStreamActivityAt] = useState<number>(Date.now());
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -393,6 +395,7 @@ export default function KiraExperience({
     pendingProductsRef.current = null;
     pendingPayLinkRef.current = null;
     setLiveSteps([]);
+    setLiveStepSummary(undefined);
     setIsLoading(false);
     setIsStreaming(false);
     setRequestHealth("idle");
@@ -440,6 +443,7 @@ export default function KiraExperience({
       setIsLoading(true);
       setIsStreaming(false);
       setLiveSteps([]);
+      setLiveStepSummary(undefined);
       setRequestHealth("loading");
       setLastErrorMessage(null);
       cancelledRef.current = false;
@@ -450,6 +454,7 @@ export default function KiraExperience({
       pendingProductsRef.current = null;
       pendingPayLinkRef.current = null;
       thinkingStartRef.current = Date.now();
+      setLastStreamActivityAt(Date.now());
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -525,9 +530,28 @@ export default function KiraExperience({
                 v?: unknown;
               };
 
-              if (payload.t === "step") {
-                setLiveSteps((prev) => [...prev, payload.v as string]);
+              if (payload.t === "ping") {
+                /* keepalive — ignore */
+              } else if (payload.t === "step") {
+                const raw = payload.v;
+                setLastStreamActivityAt(Date.now());
+                setLiveSteps((prev) => [
+                  ...prev,
+                  typeof raw === "string"
+                    ? { id: `step-${Date.now()}-${prev.length}`, label: raw }
+                    : {
+                        id: (raw as { id: string }).id,
+                        label: (raw as { label: string }).label,
+                      },
+                ]);
+              } else if (payload.t === "stepDone") {
+                const stepId = payload.v as string;
+                setLastStreamActivityAt(Date.now());
+                setLiveSteps((prev) =>
+                  prev.map((s) => (s.id === stepId ? { ...s, done: true } : s))
+                );
               } else if (payload.t === "token") {
+                setLastStreamActivityAt(Date.now());
                 if (!streamingMsgIdRef.current) {
                   const msgId = `kira-${Date.now()}`;
                   streamingMsgIdRef.current = msgId;
@@ -655,17 +679,20 @@ export default function KiraExperience({
                 addToCart(payload.v as KiraProduct);
               } else if (payload.t === "stepSummary") {
                 pendingStepSummaryRef.current = payload.v as string;
+                setLiveStepSummary(payload.v as string);
+                setLastStreamActivityAt(Date.now());
               } else if (payload.t === "done") {
                 const id = streamingMsgIdRef.current;
                 const elapsed = Date.now() - thinkingStartRef.current;
                 const stepSummary = pendingStepSummaryRef.current ?? undefined;
                 pendingStepSummaryRef.current = null;
                 setLiveSteps((completedSteps) => {
+                  const stepLabels = completedSteps.map((s) => s.label);
                   if (id) {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === id
-                          ? { ...m, thinkingMs: elapsed, steps: completedSteps, thinkingSummary: stepSummary }
+                          ? { ...m, thinkingMs: elapsed, steps: stepLabels, thinkingSummary: stepSummary }
                           : m
                       )
                     );
@@ -709,7 +736,7 @@ export default function KiraExperience({
                           ? { payLink: pendingPayLink }
                           : {}),
                         thinkingMs: elapsed,
-                        steps: completedSteps,
+                        steps: stepLabels,
                         thinkingSummary: stepSummary,
                       },
                     ]);
@@ -858,10 +885,10 @@ export default function KiraExperience({
     !isStreaming &&
     liveSteps.some(
       (step) =>
-        step.includes("Searching Kapruka catalog") ||
-        step.includes("Browsing categories")
+        step.label.includes("Searching Kapruka catalog") ||
+        step.label.includes("Browsing categories")
     );
-  const latestLiveStep = liveSteps[liveSteps.length - 1];
+  const latestLiveStep = liveSteps[liveSteps.length - 1]?.label;
   const latestDeliveryInfo = [...messages]
     .reverse()
     .find((msg) => msg.role === "assistant" && msg.deliveryInfo)?.deliveryInfo;
@@ -1114,6 +1141,8 @@ export default function KiraExperience({
                 <ThinkingLive
                   steps={liveSteps}
                   showProductSkeleton={showProductSkeleton}
+                  liveSummary={liveStepSummary}
+                  lastActivityAt={lastStreamActivityAt}
                 />
               )}
               <div ref={bottomRef} />
