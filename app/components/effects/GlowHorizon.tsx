@@ -43,12 +43,15 @@ export interface GlowHorizonProps {
   className?: string;
   variant?: GlowHorizonVariant;
   palette?: GlowHorizonPalette;
+  /** Scale arc layers for hero prominence (default 1) */
+  intensity?: number;
 }
 
 export default function GlowHorizon({
   className,
   variant = "top",
   palette = KAPRUKA_GLOW_PALETTE,
+  intensity = 1,
 }: GlowHorizonProps) {
   const reduceMotion = useReducedMotion();
   const { axis, scaleAxis, enterPct, restPct } = VARIANTS[variant];
@@ -68,7 +71,7 @@ export default function GlowHorizon({
       <Arc
         variant={variant}
         color={palette.highlight}
-        size="132%"
+        size={`${132 * intensity}%`}
         boxShadow={palette.highlightShadow}
         delay={reduceMotion ? 0 : 1.2}
         reduceMotion={!!reduceMotion}
@@ -76,7 +79,7 @@ export default function GlowHorizon({
       <Arc
         variant={variant}
         color={palette.mid}
-        size="120%"
+        size={`${120 * intensity}%`}
         initialOffset="10%"
         blur={31}
         delay={reduceMotion ? 0 : 0.6}
@@ -85,7 +88,7 @@ export default function GlowHorizon({
       <Arc
         variant={variant}
         color={palette.deep}
-        size="124%"
+        size={`${124 * intensity}%`}
         initialOffset="10%"
         blur={21}
         delay={0}
@@ -94,7 +97,7 @@ export default function GlowHorizon({
       <Arc
         variant={variant}
         color={palette.base}
-        size="120%"
+        size={`${120 * intensity}%`}
         initialOffset="10%"
         blur={51}
         delay={0}

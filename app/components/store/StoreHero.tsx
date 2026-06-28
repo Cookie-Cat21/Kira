@@ -1,175 +1,110 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { Sparkles, ArrowRight } from "lucide-react";
-import gsap from "gsap";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Sparkles } from "lucide-react";
+import GlowHorizon from "@/app/components/effects/GlowHorizon";
 import { useKiraDock } from "@/app/context/KiraDockContext";
-import ShopHeroGlow from "@/app/components/effects/ShopHeroGlow";
+import type { StoreCategory } from "@/types/store";
 
-const HERO_TILES = [
-  {
-    label: "Cakes",
-    href: "/shop/cakes",
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500&q=80",
-    className: "left-2 top-4 h-52 w-44 rotate-[-6deg]",
-  },
-  {
-    label: "Flowers",
-    href: "/shop/flowers",
-    image:
-      "https://images.unsplash.com/photo-1490750967868-88df5691cc8b?w=500&q=80",
-    className: "right-6 top-0 h-56 w-44 rotate-[5deg]",
-  },
-  {
-    label: "Hampers",
-    href: "/shop/hampers",
-    image:
-      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=500&q=80",
-    className: "bottom-2 left-24 h-52 w-48 rotate-[3deg]",
-  },
-  {
-    label: "Chocolates",
-    href: "/shop/chocolates",
-    image:
-      "https://images.unsplash.com/photo-1511381939415-e44015466834?w=500&q=80",
-    className: "bottom-10 right-0 h-44 w-40 rotate-[-4deg]",
-  },
-] as const;
+const EASE = [0.16, 1, 0.3, 1] as const;
 
-export default function StoreHero() {
-  const root = useRef<HTMLDivElement | null>(null);
-  const { open: openKira } = useKiraDock();
-
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || !root.current) return;
-
-    // Inside gsap.context, plain string selectors are auto-scoped to `root`.
-    const ctx = gsap.context(() => {
-      gsap.set([".hero-line", ".hero-sub", ".hero-cta"], { opacity: 0, y: 22 });
-      gsap.set(".hero-tile", { opacity: 0, scale: 0.9 });
-
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".hero-eyebrow", { opacity: 0, y: 12, duration: 0.6 })
-        .to(".hero-line", { opacity: 1, y: 0, duration: 0.9, stagger: 0.12 }, "-=0.2")
-        .to(".hero-sub", { opacity: 1, y: 0, duration: 0.7 }, "-=0.55")
-        .to(".hero-cta", { opacity: 1, y: 0, duration: 0.6, stagger: 0.1 }, "-=0.4")
-        .to(".hero-tile", { opacity: 1, scale: 1, duration: 0.85, stagger: 0.12 }, "-=0.85");
-
-      // gentle parallax on pointer move
-      const onMove = (e: PointerEvent) => {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
-        const dx = (e.clientX - cx) / cx;
-        const dy = (e.clientY - cy) / cy;
-        gsap.to(".hero-tile", {
-          x: (i: number) => dx * (10 + i * 6),
-          y: (i: number) => dy * (10 + i * 6),
-          duration: 0.8,
-          ease: "power2.out",
-        });
-      };
-      window.addEventListener("pointermove", onMove);
-      return () => window.removeEventListener("pointermove", onMove);
-    }, root);
-
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <div
-      ref={root}
-      className="relative overflow-hidden"
-    >
-      <ShopHeroGlow />
-
-      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-10 px-5 pb-16 pt-28 sm:px-8 sm:pt-32 lg:grid-cols-[1.05fr_0.95fr] lg:pb-24 lg:pt-36">
-        {/* Copy */}
-        <div className="relative z-10">
-          <span className="hero-eyebrow inline-flex items-center gap-1.5 rounded-full glass-chip px-3 py-1 text-[12px] font-medium text-white/70">
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-kira-leaf opacity-60" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-kira-leaf" />
-            </span>
-            Live catalog · Islandwide delivery
-          </span>
-
-          <h1 className="display-hero mt-5 text-6xl text-white sm:text-7xl lg:text-[5.75rem] lg:leading-[0.93]">
-            <span className="hero-line block">Send something</span>
-            <span className="hero-line block">
-              they&apos;ll{" "}
-              <span className="bg-gradient-to-r from-kap-yellow to-[#ffe87a] bg-clip-text text-transparent">
-                remember
-              </span>
-              .
-            </span>
-          </h1>
-
-          <p className="hero-sub mt-7 max-w-md text-[17px] leading-relaxed text-white/55">
-            Cakes, flowers, hampers and more — delivered across Sri Lanka. Or
-            just tell Kira what you need, and she&apos;ll find it, check delivery,
-            and check you out.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link
-              href="/shop/cakes"
-              className="hero-cta group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-kira-canvas transition-transform hover:scale-[1.03] active:scale-95"
-            >
-              Start shopping
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => openKira()}
-              className="hero-cta inline-flex items-center gap-2 rounded-full glass-card px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.03] active:scale-95"
-            >
-              <Sparkles className="size-4 text-kap-yellow" /> Ask Kira
-            </button>
-          </div>
-        </div>
-
-        {/* Visual collage */}
-        <div className="relative z-10 hidden h-[420px] lg:block">
-          {HERO_TILES.map((tile) => (
-            <HeroTile key={tile.label} {...tile} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HeroTile({
-  className,
-  label,
-  href,
-  image,
+export default function StoreHero({
+  categories,
 }: {
-  className: string;
-  label: string;
-  href: string;
-  image: string;
+  categories: StoreCategory[];
 }) {
+  const { open: openKira } = useKiraDock();
+  const reduceMotion = useReducedMotion();
+  const topCategories = categories.slice(0, 6);
+
+  const fade = (delay: number) => ({
+    initial: reduceMotion
+      ? { opacity: 1, filter: "blur(0px)", y: 0 }
+      : { opacity: 0, filter: "blur(12px)", y: 14 },
+    animate: { opacity: 1, filter: "blur(0px)", y: 0 },
+    transition: { duration: reduceMotion ? 0 : 1.1, ease: EASE, delay: reduceMotion ? 0 : delay },
+  });
+
   return (
-    <Link
-      href={href}
-      className={`hero-tile absolute overflow-hidden rounded-3xl border border-white/10 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)] ${className}`}
-    >
-      <Image
-        src={image}
-        alt={label}
-        fill
-        sizes="200px"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-      <span className="absolute bottom-4 left-4 text-sm font-medium text-white/90">
-        {label}
-      </span>
-    </Link>
+    <section className="relative flex min-h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-kira-canvas">
+      {/* Horizon glow — the hero */}
+      <div className="pointer-events-none absolute inset-0">
+        <GlowHorizon variant="top" className="opacity-100" intensity={1.15} />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 90% 70% at 50% 38%, transparent 0%, rgba(13,8,24,0.25) 45%, rgba(13,8,24,0.92) 100%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        <motion.h1
+          className="font-display text-5xl leading-[0.92] tracking-[0.05em] text-kap-yellow sm:text-6xl md:text-7xl"
+          {...fade(0.75)}
+          style={{
+            textShadow:
+              "0 0 48px rgba(248,218,8,0.45), 0 0 96px rgba(248,218,8,0.2)",
+          }}
+        >
+          Welcome to Kapruka
+        </motion.h1>
+
+        <motion.p
+          className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/45 sm:text-base"
+          {...fade(1.15)}
+        >
+          Cakes, flowers, hampers and more — delivered across Sri Lanka.
+        </motion.p>
+
+        <motion.div
+          className="mt-10 flex flex-wrap items-center justify-center gap-3"
+          {...fade(1.45)}
+        >
+          <Link
+            href={topCategories[0] ? `/shop/${topCategories[0].slug}` : "/shop/cakes"}
+            className="group inline-flex items-center gap-2 rounded-full bg-kap-yellow px-6 py-3 text-sm font-semibold text-kap-purple transition-transform hover:scale-[1.03] active:scale-95"
+          >
+            Start shopping
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => openKira()}
+            className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur-sm transition-transform hover:scale-[1.03] hover:border-white/20 active:scale-95"
+          >
+            <Sparkles className="size-4 text-kap-yellow" />
+            Ask Kira
+          </button>
+        </motion.div>
+
+        {topCategories.length > 0 && (
+          <motion.nav
+            className="mt-14 flex flex-wrap items-center justify-center gap-x-1 gap-y-2"
+            aria-label="Shop categories"
+            {...fade(1.75)}
+          >
+            {topCategories.map((category, i) => (
+              <span key={category.slug} className="inline-flex items-center">
+                {i > 0 && (
+                  <span aria-hidden className="mx-2 text-white/15">
+                    ·
+                  </span>
+                )}
+                <Link
+                  href={`/shop/${category.slug}`}
+                  className="text-[13px] font-medium text-white/35 transition-colors hover:text-kap-yellow/90"
+                >
+                  {category.name}
+                </Link>
+              </span>
+            ))}
+          </motion.nav>
+        )}
+      </div>
+    </section>
   );
 }
