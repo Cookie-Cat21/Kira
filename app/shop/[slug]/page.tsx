@@ -54,7 +54,7 @@ export default async function CategoryPage({
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">
             Shop all / {category.name}
           </p>
-          <h1 className="font-display-bold mt-3 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+          <h1 className="font-display mt-3 text-4xl uppercase tracking-tight text-white sm:text-5xl">
             Shop {category.name}
           </h1>
           {category.blurb && (

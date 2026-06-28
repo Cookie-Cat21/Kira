@@ -7,8 +7,6 @@ import { ArrowRight, Gift, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-re
 import { useCart } from "@/app/context/CartContext";
 import CheckoutModal from "./CheckoutModal";
 
-const SF = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif';
-
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
   currency: "LKR",
@@ -70,7 +68,7 @@ export default function CartDrawer() {
               aria-modal="true"
               aria-label="Gift tray"
               className="relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
-              style={{ background: "#1C1C1E", fontFamily: SF }}
+              style={{ background: "#1C1C1E" }}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}

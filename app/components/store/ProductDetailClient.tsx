@@ -105,7 +105,7 @@ export default function ProductDetailClient({
               {product.category}
             </p>
           )}
-          <h1 className="display-hero mt-2 text-3xl text-white sm:text-4xl">
+          <h1 className="mt-2 font-sans text-3xl font-semibold leading-tight text-white sm:text-4xl">
             {product.name}
           </h1>
 

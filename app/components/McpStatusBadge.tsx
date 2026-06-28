@@ -127,7 +127,6 @@ export default function McpStatusBadge() {
         aria-expanded={open}
         aria-haspopup="true"
         className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition-all duration-150 hover:bg-white/6"
-        style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}
       >
         <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full shrink-0 ${DOT[key]}`} />
         <span className={`text-[11px] font-medium ${TEXT[key]}`}>{LABEL[key]}</span>

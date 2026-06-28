@@ -14,7 +14,7 @@ export default function StoreSectionHeading({
   return (
     <div>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-display-bold text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+        <h2 className="font-display text-3xl uppercase tracking-tight text-white sm:text-4xl">
           {title}
         </h2>
         {href && (

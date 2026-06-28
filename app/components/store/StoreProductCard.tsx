@@ -89,7 +89,7 @@ export default function StoreProductCard({
 
       <div className="flex flex-1 flex-col gap-2 p-3.5">
         <Link href={`/product/${product.id}`}>
-          <h3 className="font-outfit line-clamp-2 text-[13.5px] font-medium leading-snug text-white/90">
+          <h3 className="line-clamp-2 text-[13.5px] font-medium leading-snug text-white/90">
             {product.name}
           </h3>
         </Link>

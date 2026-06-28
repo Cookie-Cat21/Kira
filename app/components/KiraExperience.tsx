@@ -936,7 +936,7 @@ export default function KiraExperience({
           />
           {/* Status strip — hidden on mobile */}
           <div className="hidden items-center gap-0 sm:flex" style={{ marginLeft: "10px", paddingLeft: "12px", borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif", letterSpacing: "0.01em" }}>
+            <span className="text-[11px] font-medium tracking-[0.02em] text-white/28">
               by Kapruka
             </span>
             {/* Live catalog pill */}
@@ -945,7 +945,7 @@ export default function KiraExperience({
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-kira-leaf opacity-60" style={{ animationDuration: "2.4s" }} />
                 <span className="relative inline-flex size-1.5 rounded-full bg-kira-leaf" />
               </span>
-              <span className="text-[11px] font-medium text-white/40" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+              <span className="text-[11px] font-medium text-white/40">
                 Live
               </span>
             </span>
@@ -956,7 +956,7 @@ export default function KiraExperience({
 
         {/* Right — Free delivery + store bridge */}
         <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex" style={{ fontFamily: "-apple-system, 'SF Pro Text', sans-serif" }}>
+          <div className="hidden items-center gap-1.5 text-[11px] font-medium text-white/38 sm:flex">
             <Truck className="size-3 text-kira-leaf/70" />
             <span>Free delivery</span>
           </div>

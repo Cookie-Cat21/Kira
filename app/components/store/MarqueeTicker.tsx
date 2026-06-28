@@ -9,10 +9,10 @@ export default function MarqueeTicker() {
       aria-hidden
     >
       <div className="marquee-ticker-track items-center">
-        <span className="font-display-bold whitespace-nowrap px-3 text-[13px] uppercase tracking-[0.12em] sm:text-sm">
+        <span className="font-display whitespace-nowrap px-3 text-[13px] uppercase tracking-[0.12em] sm:text-sm">
           {line}
         </span>
-        <span className="font-display-bold whitespace-nowrap px-3 text-[13px] uppercase tracking-[0.12em] sm:text-sm">
+        <span className="font-display whitespace-nowrap px-3 text-[13px] uppercase tracking-[0.12em] sm:text-sm">
           {line}
         </span>
       </div>

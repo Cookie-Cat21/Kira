@@ -121,7 +121,7 @@ export default function StoreHero() {
             Live catalog · Islandwide delivery
           </span>
 
-          <h1 className="display-hero mt-5 text-6xl tracking-[-0.035em] text-white sm:text-7xl lg:text-[5.75rem] lg:leading-[0.93]">
+          <h1 className="display-hero mt-5 text-6xl text-white sm:text-7xl lg:text-[5.75rem] lg:leading-[0.93]">
             <span className="hero-line block">Send something</span>
             <span className="hero-line block">
               they&apos;ll{" "}
