@@ -5,10 +5,12 @@
   --color-kap-purple: #402970;
   --color-kap-yellow: #f8da08;
 
-  /* Horizon glow layers */
-  --color-kira-glow-highlight: rgba(248, 218, 8, 0.92);
-  --color-kira-glow-mid: rgba(248, 218, 8, 0.55);
-  --color-kira-glow-deep: rgba(64, 41, 112, 0.85);
+  /* Horizon glow — layered sunset (champagne → gold → plum) */
+  --color-kira-glow-rim: rgba(255, 252, 245, 0.22);
+  --color-kira-glow-warm: rgba(232, 196, 106, 0.28);
+  --color-kira-glow-amber: rgba(158, 98, 48, 0.2);
+  --color-kira-glow-deep: rgba(64, 41, 112, 0.42);
+  --color-kira-glow-gold-text: #e8d48a;
 
   /* Dark glass surfaces */
   --color-kira-canvas: #0d0818;
@@ -306,18 +308,25 @@ body {
   font-size: clamp(2.75rem, 7.5vw + 0.5rem, 4.75rem);
   line-height: 0.94;
   letter-spacing: 0.045em;
-  text-shadow:
-    0 0 40px rgba(248, 218, 8, 0.38),
-    0 0 80px rgba(248, 218, 8, 0.14);
+  background: linear-gradient(
+    180deg,
+    #fff8e8 0%,
+    #e8d48a 45%,
+    #c9a84a 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 40px rgba(212, 178, 96, 0.15));
 }
 
 .shop-hero-vignette {
   background:
     radial-gradient(
-      ellipse 85% 65% at 50% 42%,
+      ellipse 88% 68% at 50% 40%,
       transparent 0%,
-      rgba(13, 8, 24, 0.2) 50%,
-      rgba(13, 8, 24, 0.88) 100%
+      rgba(13, 8, 24, 0.18) 48%,
+      rgba(8, 5, 14, 0.9) 100%
     );
 }
 
