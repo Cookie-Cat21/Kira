@@ -17,6 +17,15 @@ export function validateLastProducts(lastProducts?: KiraProduct[]): KiraProduct[
   );
 }
 
+export function validateShownProducts(
+  shownProducts?: KiraProduct[],
+  lastProducts?: KiraProduct[]
+): KiraProduct[] {
+  const valid = validateLastProducts(shownProducts);
+  if (valid.length > 0) return valid;
+  return validateLastProducts(lastProducts);
+}
+
 export type SessionContextInput = {
   cart: CartItem[];
   deliveryCity?: string;

@@ -1,8 +1,10 @@
 import { callMcpTool, getMcpClient } from "@/lib/mcp-client";
 import {
   extractProductDetailsFromMcp,
+  extractProductsFromMcp,
   formatMcpContentForModel,
 } from "@/lib/mcp-parsing";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CartItem, DeliveryQuote, KiraProduct, TrackingItem } from "@/types";
 
 export const SERVER_CITY_REGEX =
@@ -109,6 +111,13 @@ export function extractLastSearchContext(
 
     // Match product category keywords
     const msgLow = msg.content.toLowerCase();
+    if (/\bshow me\s+([a-z]+)/i.test(msg.content)) {
+      const showMatch = msg.content.match(/\bshow me\s+([a-z]+)/i);
+      const word = showMatch?.[1]?.toLowerCase();
+      if (word && word.length >= 3) {
+        return { query: normalizeProductQuery(word), maxPrice };
+      }
+    }
     if (/\bcake\b/.test(msgLow)) { query = "cake"; break; }
     if (/\bflower/.test(msgLow)) { query = "flowers"; break; }
     if (/\bchocolat/.test(msgLow)) { query = "chocolate"; break; }
@@ -137,6 +146,58 @@ export function dedupeProducts(products: KiraProduct[]): KiraProduct[] {
   });
 }
 
+export function productIds(products: KiraProduct[] | undefined): Set<string> {
+  return new Set((products ?? []).map((p) => p.id).filter(Boolean));
+}
+
+/** Rotate sorts/queries until we find items not already shown in this chat. */
+export async function fetchFreshMoreProducts({
+  mcpClient,
+  query,
+  maxPrice,
+  excludeIds,
+  onStep,
+}: {
+  mcpClient: Client;
+  query: string;
+  maxPrice?: number;
+  excludeIds: Set<string>;
+  onStep?: (label: string) => void;
+}): Promise<KiraProduct[]> {
+  const sorts = ["price_asc", "price_desc", "bestseller"] as const;
+  const queries = [query, fallbackQuery(query)].filter(
+    (q): q is string => Boolean(q)
+  );
+  const uniqueQueries = [...new Set(queries)];
+  const freshPool: KiraProduct[] = [];
+  const poolIds = new Set<string>();
+
+  for (const q of uniqueQueries) {
+    for (const sort of sorts) {
+      onStep?.(`Searching Kapruka for "${q}" (${sort})`);
+      const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: 12,
+          in_stock_only: true,
+          sort,
+          ...(maxPrice ? { max_price: maxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
+      for (const product of batch) {
+        if (excludeIds.has(product.id) || poolIds.has(product.id)) continue;
+        poolIds.add(product.id);
+        freshPool.push(product);
+        if (freshPool.length >= 6) return freshPool;
+      }
+    }
+  }
+
+  return freshPool;
+}
+
 export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
   return items.map((item) => item.product);
 }
@@ -144,12 +205,26 @@ export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
 export function extractProductKeyword(lower: string): string | null {
   if (/\bcake\b/.test(lower)) return "cake";
   if (/\bflower|\brose|\bbouquet\b/.test(lower)) return "roses";
+  if (/\blilies?\b/.test(lower)) return "flowers";
+  if (/\borchids?\b/.test(lower)) return "flowers";
   if (/\bchocolat/.test(lower)) return "chocolate";
   if (/\bhamper\b/.test(lower)) return "gift hamper";
-  if (/\belectronic|\bphone|\bgadget\b/.test(lower)) return "electronics";
+  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(lower)) return "electronics";
+  if (/\bphones?\b/.test(lower)) {
+    if (
+      /\b(my phone|phone is|phone number|recipient phone|contact number|your phone|phone\s*[:=]?\s*(?:\+?94|0)\d)/i.test(
+        lower
+      )
+    ) {
+      return null;
+    }
+    return "electronics";
+  }
   if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
   if (/\bgrocery\b/.test(lower)) return "grocery";
-  if (/\btoy\b/.test(lower)) return "soft toy";
+  if (/\btoy\b|\bteddy\b/.test(lower)) return "soft toy";
+  if (/\bsweet\b/.test(lower)) return "chocolate";
+  if (/\bgift\b/.test(lower)) return "gift set";
   return null;
 }
 
@@ -266,8 +341,12 @@ export function fallbackQuery(query: string): string | undefined {
 }
 
 export function extractCityHint(text: string): string | undefined {
-  const match = text.match(SERVER_CITY_REGEX);
-  return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+  const stripped = text.replace(/\bgalle\s+(?:road|rd\.?|mawatha|street|st\.?)\b/gi, " ");
+  const cityRe = new RegExp(SERVER_CITY_REGEX.source, "gi");
+  const matches = [...stripped.matchAll(cityRe)];
+  if (matches.length === 0) return undefined;
+  const last = matches[matches.length - 1][1];
+  return last.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function extractOccasionHint(text: string): string | undefined {

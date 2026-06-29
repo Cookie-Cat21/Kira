@@ -41,7 +41,7 @@ Results are written to `test-results/results.json`.
 
 ## Persona Suite
 
-`scripts/test-personas.mjs` runs 120 judge-style personas:
+`scripts/test-personas.mjs` runs 165 judge-style personas:
 
 - **Group A (25)** — vague or indirect gift prompts.
 - **Group B (25)** — out-of-scope prompts.
@@ -49,9 +49,11 @@ Results are written to `test-results/results.json`.
 - **Group D (12)** — Sinhala/Tamil/language-mode prompts.
 - **Group E (13)** — adversarial and edge prompts.
 - **Group F (20)** — judge-path regressions: fake-card removal, editable delivery date, MCP city aliases, COD questions, checkout validation, gift-message readback, multi-item checkout, perishable warnings, wrong-localhost guard, and Sinhala demos.
+- **Group G (45)** — founder/friend delivery: angry-partner repair, send-to-recipient, gift messages, city/address orders, anti-hand-deliver guard.
 
 ```bash
-node scripts/test-personas.mjs                      # all 120
+node scripts/test-personas.mjs                      # all 165
+node scripts/test-personas.mjs --group g            # founder/friend delivery (45)
 node scripts/test-personas.mjs --group f            # one group (a|b|c|d|e|f)
 node scripts/test-personas.mjs --id C20,F07         # specific personas
 node scripts/test-personas.mjs --concurrency 1      # explicit default

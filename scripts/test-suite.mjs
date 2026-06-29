@@ -689,10 +689,11 @@ export const TESTS = [
     ],
     checks: [
       notEmpty,
-      { fn: "textMatches", args: [/hand.?deliver|yourself|pick up|conversation/i] },
-      { fn: "noProductsEvent" },
+      { fn: "eventHasProducts" },
+      { fn: "textMatches", args: [/deliver|send|her|card|machang|sorry|rough/i] },
+      { fn: "noPattern", args: [/hand.?deliver|pick up yourself|dodging the conversation/i] },
     ],
-    notes: "CEO gold-demo — opinionated friend before search",
+    notes: "CEO gold-demo — friend helps send flowers via Kapruka delivery",
   }),
   test({
     id: 58,

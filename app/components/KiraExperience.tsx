@@ -5,6 +5,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   type ComponentType,
 } from "react";
 import Image from "next/image";
@@ -37,7 +38,7 @@ import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { useKiraDock } from "../context/KiraDockContext";
-import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
+import { getContextualGreeting, getOccasionChips, getStarterPrompts } from "@/lib/kira-client";
 import {
   getColomboTodayIso,
   getColomboTomorrowIso,
@@ -54,33 +55,10 @@ import type {
 import { cn } from "@/lib/utils";
 import KaprukaSmileMark from "@/app/components/brand/KaprukaSmileMark";
 
-const OCCASION_CHIPS = getOccasionChips();
-// An occasion is active iff getOccasionChips surfaced an urgent chip. When it
-// is, the hero headline already announces it — so we drop the duplicate chip.
-const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
-const STARTER_PROMPTS: { label: string; value: string }[] = [
-  {
-    label: "Birthday gifts",
-    value: "I need birthday gift ideas under LKR 5,000",
-  },
-  {
-    label: "Track order",
-    value: "I want to track my order",
-  },
-  {
-    label: "Same-day in Colombo",
-    value: "Show me gifts with same-day delivery in Colombo",
-  },
-  {
-    label: "Popular now",
-    value: "What are the most popular gifts right now?",
-  },
-];
-type KiraIcon = ComponentType<{ className?: string }>;
-
-// Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
 const CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
+
+type KiraIcon = ComponentType<{ className?: string }>;
 
 const CATEGORIES: {
   icon: KiraIcon;
@@ -481,6 +459,12 @@ export default function KiraExperience({
         const lastWithProducts = [...allMsgs].reverse().find(
           (m) => m.role === "assistant" && m.products && m.products.length > 0
         );
+        const shownById = new Map<string, KiraProduct>();
+        for (const m of allMsgs) {
+          if (m.role !== "assistant" || !m.products?.length) continue;
+          for (const p of m.products) shownById.set(p.id, p);
+        }
+        const shownProducts = [...shownById.values()];
 
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -495,6 +479,7 @@ export default function KiraExperience({
             occasion: requestOccasion,
             recipient: requestRecipient,
             lastProducts: lastWithProducts?.products,
+            shownProducts,
             lastOrder,
             language,
             internationalMode: /\b(overseas|from (uk|us|australia|dubai|uae)|dollars|pounds|aud)\b/i.test(trimmed),
@@ -913,12 +898,18 @@ export default function KiraExperience({
     if ("recipient" in updates) setRecipient(updates.recipient);
   };
 
+  const occasionChips = useMemo(() => getOccasionChips(), []);
+  const starterPrompts = useMemo(() => getStarterPrompts(), []);
+  const hasActiveOccasion = occasionChips.some((chip) => chip.urgent);
+
   return (
-    <div className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")} style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}>
+    <div
+      className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")}
+      style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}
+    >
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
-      {/* Ambient blobs */}
       <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
       <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
       <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
@@ -1035,12 +1026,12 @@ export default function KiraExperience({
               Start fast
             </p>
             <div className="flex flex-wrap gap-2">
-              {STARTER_PROMPTS.map((prompt) => (
+              {starterPrompts.map((prompt) => (
                 <button
                   key={prompt.label}
                   type="button"
                   onClick={() => sendMessage(prompt.value)}
-                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
+                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/85 transition-colors hover:text-white"
                 >
                   {prompt.label}
                 </button>
@@ -1053,23 +1044,21 @@ export default function KiraExperience({
             style={{ animationDelay: "120ms" }}
           >
             {[
-              // The hero headline already announces any active occasion, so drop
-              // the redundant urgent occasion chip and lead with categories.
-              ...OCCASION_CHIPS.slice(0, 4)
+              ...occasionChips.slice(0, 4)
                 .map((chip) => ({
                   label: stripDecorativeGlyphs(chip.label),
                   value: chip.value,
-                  Icon: null,
+                  Icon: null as KiraIcon | null,
                   urgent: chip.urgent,
                 }))
                 .filter(
                   (option) =>
                     option.label !== "Flowers & cake" &&
                     option.label !== "Just browsing" &&
-                    !(HAS_ACTIVE_OCCASION && option.urgent)
+                    !(hasActiveOccasion && option.urgent)
                 )
                 .sort((a, b) => Number(b.urgent) - Number(a.urgent)),
-              ...CATEGORIES.slice(0, HAS_ACTIVE_OCCASION ? 5 : 4).map((category) => ({
+              ...CATEGORIES.slice(0, hasActiveOccasion ? 5 : 4).map((category) => ({
                 label: category.label,
                 value: category.value,
                 Icon: category.icon,

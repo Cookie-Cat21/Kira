@@ -1,0 +1,146 @@
+/**
+ * ceo-lens.mjs — Dulith-inspired heuristic review per persona response.
+ * Maps the founder evaluator skill to automated checks per persona group.
+ */
+
+const KAPRUKA_RE = /kapruka|gift|shop|browse|catalog|order|deliver/i;
+const WARM_RE =
+  /machang|oof|sweet|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්/i;
+const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that request/i;
+const PREACHY_RE =
+  /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
+const LEAK_RE =
+  /you are kira|core flow|kapruka_search_products|sinhala mirroring|tryHandleDeterministic/i;
+
+function hasProducts(events) {
+  return (events ?? []).some(
+    (e) => e.t === "products" && Array.isArray(e.v) && e.v.length > 0
+  );
+}
+
+function toolCount(events) {
+  return (events ?? []).filter((e) => e.t === "step").length;
+}
+
+function userMessage(persona) {
+  if (persona?.msg) return persona.msg;
+  const msgs = persona?.request?.messages;
+  if (!Array.isArray(msgs)) return "";
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i]?.role === "user") return msgs[i].content ?? "";
+  }
+  return "";
+}
+
+/**
+ * @returns {{ score: number, excitement: number, flags: string[], pass: boolean, verdict: string }}
+ */
+export function scoreCeoLens(group, persona, responseText, events, personaPassed) {
+  const text = (responseText ?? "").trim();
+  const flags = [];
+  let score = 5;
+  let excitement = 5;
+  const msg = userMessage(persona);
+
+  if (!text) {
+    return { score: 0, excitement: 0, flags: ["empty_response"], pass: false, verdict: "No response — dead end." };
+  }
+  if (PREACHY_RE.test(text)) {
+    return { score: 0, excitement: 0, flags: ["preachy_hand_deliver"], pass: false, verdict: "Wrong advice — Kapruka exists to deliver." };
+  }
+  if (CORPORATE_RE.test(text)) {
+    flags.push("corporate_robot");
+    score -= 4;
+    excitement -= 4;
+  }
+  if (LEAK_RE.test(text)) {
+    flags.push("prompt_leak");
+    score = 0;
+    excitement = 0;
+    return { score, excitement, flags, pass: false, verdict: "Leaked internals — trust killer." };
+  }
+
+  switch (group) {
+    case "A": {
+      if (WARM_RE.test(text)) { flags.push("warm_approachable"); score += 2; excitement += 1; }
+      else { flags.push("cold_or_flat"); score -= 2; }
+      if (persona.expect === "ask" && hasProducts(events)) {
+        flags.push("premature_products"); score -= 3; excitement -= 2;
+      }
+      if (/nothing in stock|couldn'?t find|no results/i.test(text)) {
+        flags.push("nothing_found_on_vague"); score -= 3;
+      }
+      if (persona.expect === "search" && hasProducts(events)) {
+        flags.push("useful_browse"); score += 2; excitement += 2;
+      }
+      break;
+    }
+    case "B": {
+      if (KAPRUKA_RE.test(text)) { flags.push("warm_redirect"); score += 2; }
+      if (text.length <= 220) { flags.push("concise"); score += 1; }
+      else { flags.push("too_long"); score -= 2; }
+      if (toolCount(events) === 0) { flags.push("no_wasted_tools"); score += 2; excitement += 1; }
+      else { flags.push("unnecessary_tools"); score -= 3; }
+      break;
+    }
+    case "C": {
+      if (hasProducts(events)) { flags.push("real_catalog"); score += 2; excitement += 2; }
+      if (events?.some((e) => e.t === "delivery")) { flags.push("delivery_aware"); score += 1; excitement += 1; }
+      if (/LKR\s*[\d,]+/i.test(text) && !hasProducts(events)) {
+        flags.push("possible_hallucination"); score -= 4; excitement -= 3;
+      }
+      if (WARM_RE.test(text)) { flags.push("human_checkout_tone"); score += 1; }
+      break;
+    }
+    case "D": {
+      flags.push("language_gating");
+      if (personaPassed) { score += 3; excitement += 2; }
+      else { score -= 3; excitement -= 2; }
+      break;
+    }
+    case "E": {
+      if (toolCount(events) === 0) { flags.push("stayed_in_lane"); score += 2; }
+      if (/kira/i.test(text)) { flags.push("in_character"); score += 1; }
+      if (personaPassed) { score += 2; excitement += 1; }
+      else { score -= 3; }
+      break;
+    }
+    case "F": {
+      if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 2; }
+      else { score -= 3; excitement -= 2; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { flags.push("polished"); score += 1; }
+      break;
+    }
+    case "G": {
+      if (WARM_RE.test(text)) { flags.push("friend_tone"); score += 2; }
+      if (/deliver|send/i.test(text)) { flags.push("delivery_help"); score += 2; }
+      if (hasProducts(events) && /flowers?|roses?|send|order/i.test(msg)) {
+        flags.push("sends_to_her"); score += 2; excitement += 2;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (personaPassed) { flags.push("persona_checks_passed"); score += 1; }
+  else { flags.push("persona_checks_failed"); score -= 2; }
+
+  const rounded = Math.round(Math.min(10, Math.max(0, score)));
+  const exc = Math.round(Math.min(10, Math.max(0, excitement)));
+  const pass = rounded >= 7 && !flags.includes("prompt_leak") && !flags.includes("preachy_hand_deliver");
+
+  const verdict = pass
+    ? exc >= 8
+      ? "Founder would notice — useful and shippable."
+      : "Acceptable — works but not memorable."
+    : flags.includes("premature_products")
+    ? "Too eager to sell before understanding the user."
+    : flags.includes("nothing_found_on_vague")
+    ? "Feels broken — should ask, not give up."
+    : flags.includes("unnecessary_tools")
+    ? "Wasted MCP calls on out-of-scope chat."
+    : "Needs fix before a founder demo.";
+
+  return { score: rounded, excitement: exc, flags, pass, verdict };
+}

@@ -167,6 +167,8 @@ type LiquidGlassOwnProps = {
   lens?: boolean;
   /** Apply the SVG edge-lensing refraction (#lg-distortion). Expensive; opt-in. */
   displace?: boolean;
+  /** Bespalov frosted refraction — use on individual glass components only. */
+  frosted?: boolean;
   /** Track the pointer with a moving specular highlight. */
   interactive?: boolean;
   /** Drift the specular highlight with scroll + device tilt — Apple's "reacts to
@@ -194,6 +196,7 @@ export default function LiquidGlass({
   tint,
   lens = true,
   displace = false,
+  frosted = false,
   interactive = true,
   live = false,
   style,
@@ -205,7 +208,8 @@ export default function LiquidGlass({
   const ref = useRef<HTMLElement | null>(null);
   const raf = useRef(0);
   const b = blur ?? (variant === "clear" ? 3 : 12);
-  const frost = FROST[variant](b);
+  const frostBase = FROST[variant](b);
+  const frost = frosted ? `url(#kira-frosted) ${frostBase}` : frostBase;
 
   const handleMove = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {

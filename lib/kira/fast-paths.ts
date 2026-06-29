@@ -8,6 +8,7 @@ import {
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
+import { handleCheckoutFillIn, isCheckoutFillInTurn } from "@/lib/kira/checkout-flow";
 import { L, Lf } from "@/lib/kira/localization";
 import {
   BAKERY_BRANDS,
@@ -18,7 +19,6 @@ import {
   REORDER_REF_RE,
   REORDER_SESSION_RE,
   REPAIR_GIFT_RE,
-  REPAIR_INSIST_RE,
   RUSH_RE,
   SALE_RE,
   buildReasonBadges,
@@ -32,7 +32,9 @@ import {
   extractProductKeyword,
   extractRecipientHint,
   fallbackQuery,
+  fetchFreshMoreProducts,
   parseSearchIntent,
+  productIds,
   productsFromTrackingItems,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
@@ -65,6 +67,7 @@ export async function tryHandleDeterministicPrompt({
   deliveryCity,
   deliveryDate,
   lastProducts,
+  shownProducts,
   lastOrder,
   language,
   mcpClient,
@@ -80,6 +83,7 @@ export async function tryHandleDeterministicPrompt({
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  shownProducts?: KiraProduct[];
   lastOrder?: LastOrder;
   language: string;
   mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
@@ -529,19 +533,66 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  // ── Emotional repair scenario — friend advice before search ──────────────
-  const wantsProductSearch =
-    /\b(flowers?|roses?|cakes?|chocolates?|gift|hamper|bouquet)\b/i.test(lower);
-  if (
-    REPAIR_GIFT_RE.test(lower) &&
-    !REPAIR_INSIST_RE.test(lower) &&
-    wantsProductSearch
-  ) {
-    await streamWords(controller, L("repairGiftAdvice", language));
+  // ── Emotional repair — warm friend + Kapruka delivery to recipient ─────
+  const repairProductKw = extractProductKeyword(lower);
+  if (REPAIR_GIFT_RE.test(lower) && repairProductKw) {
+    await streamWords(controller, L("repairGiftSearchIntro", language));
+    controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
+    let repairProducts: KiraProduct[] = [];
+    for (const q of [repairProductKw, fallbackQuery(repairProductKw)]) {
+      if (!q) continue;
+      const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q, limit: 6, in_stock_only: true, response_format: "json" },
+      });
+      let batch = extractProductsFromMcp(repairResult.content);
+      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[q];
+      const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[q];
+      if (relevanceFilter) {
+        batch = batch.filter((p) => {
+          const txt = `${p.name} ${p.category ?? ""}`;
+          return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
+        });
+      }
+      repairProducts = dedupeProducts([...repairProducts, ...batch]);
+      if (repairProducts.length >= 3) break;
+    }
+    const repairCity = extractCityHint(trimmed) ?? deliveryCity;
+    if (repairProducts.length === 0) {
+      await streamWords(
+        controller,
+        Lf("searchNothingFound", language, { query: repairProductKw })
+      );
+    } else {
+      const cityText = repairCity ? ` to ${repairCity}` : "";
+      const key = repairProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+      await streamWords(
+        controller,
+        Lf(key, language, {
+          n: repairProducts.length,
+          budget: "",
+          city: cityText,
+          date: "",
+        })
+      );
+      controller.enqueue(sse("products", repairProducts));
+      if (repairCity && repairProducts[0]) {
+        controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+        const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+          params: {
+            city: repairCity,
+            product_id: repairProducts[0].id,
+            ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
+            response_format: "json",
+          },
+        });
+        const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+        if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+      }
+    }
     controller.enqueue(sse("done"));
     return true;
   }
-  if (REPAIR_GIFT_RE.test(lower) && !wantsProductSearch) {
+  if (REPAIR_GIFT_RE.test(lower)) {
     await streamWords(controller, L("repairGiftAsk", language));
     controller.enqueue(sse("done"));
     return true;
@@ -550,11 +601,54 @@ export async function tryHandleDeterministicPrompt({
   const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
   const ADDRESS_RE =
     /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
+  const hasPhone = PHONE_RE.test(trimmed);
+  const hasAddress = ADDRESS_RE.test(trimmed);
+  const hasOrderCity = !!extractCityHint(trimmed);
+  const isPlaceOrderIntent =
+    /\b(place an order|want to order|order for|ready to order|deliver to)\b/i.test(lower);
+
+  // Partial checkout — collect missing fields before product search hijacks the turn.
+  if (isPlaceOrderIntent && hasPhone && hasOrderCity && !hasAddress) {
+    await streamWords(controller, L("checkoutNeedAddress", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+  if (
+    /\b(order|deliver)\b/i.test(lower) &&
+    extractProductKeyword(lower) &&
+    hasAddress &&
+    hasOrderCity &&
+    !hasPhone
+  ) {
+    const orderKw = extractProductKeyword(lower)!;
+    const orderDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const orderCity = extractCityHint(trimmed) ?? deliveryCity;
+    controller.enqueue(sse("step", `Searching Kapruka for "${orderKw}"`));
+    const orderResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: orderKw, limit: 6, in_stock_only: true, response_format: "json" },
+    });
+    const orderProducts = dedupeProducts(extractProductsFromMcp(orderResult.content));
+    if (orderProducts.length > 0) {
+      const cityText = orderCity ? ` to ${orderCity}` : "";
+      const dateText = orderDate ? ` on ${orderDate}` : "";
+      await streamWords(
+        controller,
+        Lf(orderProducts.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
+          n: orderProducts.length,
+          budget: "",
+          city: cityText,
+          date: dateText,
+        })
+      );
+      controller.enqueue(sse("products", orderProducts));
+    }
+    await streamWords(controller, L("checkoutNeedPhone", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
   // Only collect partial checkout fields once the tray has items — otherwise
   // "send flowers to 12 Galle Road" gets misread as checkout field collection.
   if (cart.length > 0) {
-    const hasPhone = PHONE_RE.test(trimmed);
-    const hasAddress = ADDRESS_RE.test(trimmed);
     if (hasAddress && !hasPhone) {
       await streamWords(controller, L("checkoutNeedPhone", language));
       controller.enqueue(sse("done"));
@@ -573,9 +667,15 @@ export async function tryHandleDeterministicPrompt({
     (/මල්|பூ|மலர்/i.test(trimmed) ? "flowers" : null) ??
     (/\bbooks?\b/i.test(lower) ? "books" : null) ??
     (/\bstationary\b/i.test(lower) ? "stationery" : null);
+  const hasDeliveryToRecipient =
+    /\bto\s+(my\s+)?(wife|husband|her|him|gf|girlfriend|boyfriend|partner|office|home)\b/i.test(
+      lower
+    ) || /\bdeliver(?:y)?\s+to\b/i.test(lower);
   const hasSimpleProductIntent =
     !!simpleProductQuery &&
-    (/\b(show|search|want|need|looking for|send|buy|get)\b/i.test(lower) ||
+    !(cart.length > 0 && hasPhone && (hasAddress || hasOrderCity) && /\b(place|order|recipient|deliver|gift message|address)\b/i.test(lower)) &&
+    (/\b(show|search|want|need|looking for|send|buy|get|order|deliver)\b/i.test(lower) ||
+      hasDeliveryToRecipient ||
       /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
       /\b(vesak|birthday|anniversary)\b/i.test(lower) ||
       trimmed.toLowerCase() === simpleProductQuery ||
@@ -634,6 +734,12 @@ export async function tryHandleDeterministicPrompt({
       const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
       const cityText = productCity ? ` to ${productCity}` : "";
       const dateText = productDate ? ` on ${productDate}` : "";
+      const isEmotionalSend =
+        REPAIR_GIFT_RE.test(lower) ||
+        /\b(machang|bro\b|mate\b|messed up|pissed|furious|angry|mad|fight|sorry)\b/i.test(lower);
+      if (isEmotionalSend) {
+        await streamWords(controller, L("repairGiftSearchIntro", language));
+      }
       await streamWords(
         controller,
         Lf(products.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
@@ -842,41 +948,22 @@ export async function tryHandleDeterministicPrompt({
 
   if (isPureMoreRequest) {
     const ctx = extractLastSearchContext(messages, trimmed);
-    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (price ↑)`));
-    const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-      params: {
-        q: ctx.query,
-        limit: 9,
-        in_stock_only: true,
-        sort: "price_asc", // different angle from the default bestseller ordering
-        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
-        response_format: "json",
-      },
+    const excludeIds = productIds(shownProducts ?? lastProducts);
+    const moreProducts = await fetchFreshMoreProducts({
+      mcpClient,
+      query: ctx.query,
+      maxPrice: ctx.maxPrice,
+      excludeIds,
+      onStep: (label) => controller.enqueue(sse("step", label)),
     });
-    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
-    let moreProducts = extractProductsFromMcp(moreResult.content);
-    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[ctx.query];
-    const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[ctx.query];
-    if (relevanceFilter) {
-      moreProducts = moreProducts.filter((p) => {
-        const txt = `${p.name} ${p.category ?? ""}`;
-        return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
-      });
-    }
-    moreProducts = dedupeProducts(moreProducts.filter((p) => !seenIds.has(p.id)));
-    // If still empty after dedup, fall back to the full set without seen-ID filter
-    if (moreProducts.length === 0) {
-      moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
-    }
 
     if (moreProducts.length === 0) {
-      await streamWords(controller, L("moreOptionsSamePicks", language));
-    } else if (moreProducts.length <= 3) {
       await streamWords(
         controller,
-        Lf("moreOptionsAboutAll", language, { query: ctx.query })
+        excludeIds.size > 0
+          ? L("moreOptionsSamePicks", language)
+          : Lf("moreOptionsAboutAll", language, { query: ctx.query })
       );
-      controller.enqueue(sse("products", moreProducts));
     } else {
       const budgetText = ctx.maxPrice
         ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
@@ -892,10 +979,24 @@ export async function tryHandleDeterministicPrompt({
   }
 
   // Gift intent fast-path — catches broad gift/occasion queries that stall the LLM loop.
+  // Skip when the tray has items and the user is filling checkout fields (e.g. gift message).
+  if (isCheckoutFillInTurn(cart.length, trimmed)) {
+    return handleCheckoutFillIn({
+      text: trimmed,
+      messages,
+      cart,
+      deliveryCity,
+      deliveryDate,
+      mcpClient,
+      controller,
+      language,
+    });
+  }
+
   // Matches: "something for Father's Day under 3000", "amma ta gift ekak ganna ona",
   // "I need a gift for Colombo", etc.
   const GIFT_INTENT_RE =
-    /\b(gift|present|something\s+(for|nice)|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
+    /\b(gift|present|something\s+(?:for|nice|to)|send something|make it up|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
   const SL_FAMILY_GIFT_RE =
     /\b(amma|thaththa|thaththaa|acca|akka|aiya|malli|nangi|nona)\s+(ta|ge|for)\b/i;
   const PRODUCT_RECIPIENT_RE =
@@ -1220,6 +1321,32 @@ export async function tryHandleDeterministicPrompt({
     }
     products = dedupeProducts([...products, ...batch]);
     if (products.length >= 3) break;
+  }
+
+  if (products.length === 0 && contextMaxPrice) {
+    for (const query of [searchIntent.query, fallbackQuery(searchIntent.query), "chocolate"]) {
+      if (!query) continue;
+      const retryResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q: query,
+          limit: 12,
+          in_stock_only: true,
+          sort: "price_asc",
+          response_format: "json",
+        },
+      });
+      let batch = extractProductsFromMcp(retryResult.content).filter(
+        (p) => p.price > 0 && p.price <= contextMaxPrice
+      );
+      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[query];
+      if (relevanceFilter) {
+        batch = batch.filter(
+          (p) => relevanceFilter.test(p.name) || relevanceFilter.test(p.category ?? "")
+        );
+      }
+      products = dedupeProducts([...products, ...batch]);
+      if (products.length > 0) break;
+    }
   }
 
   let deliveryCityForMessage = deliveryCity;

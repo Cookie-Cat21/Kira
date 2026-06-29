@@ -19,12 +19,16 @@ export interface KiraDockSeed {
 
 interface KiraDockValue {
   isOpen: boolean;
+  /** True when the dock has expanded to full viewport (from floating glass). */
+  isExpanded: boolean;
   seed: KiraDockSeed | null;
   /** True while Kira is processing a response (tool calls / streaming). */
   isThinking: boolean;
   open: (seed?: KiraDockSeed) => void;
   close: () => void;
   toggle: () => void;
+  expand: () => void;
+  collapse: () => void;
   setThinking: (thinking: boolean) => void;
 }
 
@@ -38,16 +42,21 @@ export function useKiraDock(): KiraDockValue {
 
 export function KiraDockProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [seed, setSeed] = useState<KiraDockSeed | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const open = useCallback((nextSeed?: KiraDockSeed) => {
     setSeed(nextSeed ?? null);
+    setIsExpanded(false);
     setIsOpen(true);
   }, []);
   const close = useCallback(() => {
     setIsOpen(false);
+    setIsExpanded(false);
     setSeed(null);
   }, []);
+  const expand = useCallback(() => setIsExpanded(true), []);
+  const collapse = useCallback(() => setIsExpanded(false), []);
   const toggle = useCallback(() => {
     setIsOpen((v) => {
       if (v) setSeed(null);
@@ -59,8 +68,19 @@ export function KiraDockProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ isOpen, seed, isThinking, open, close, toggle, setThinking }),
-    [isOpen, seed, isThinking, open, close, toggle, setThinking]
+    () => ({
+      isOpen,
+      isExpanded,
+      seed,
+      isThinking,
+      open,
+      close,
+      toggle,
+      expand,
+      collapse,
+      setThinking,
+    }),
+    [isOpen, isExpanded, seed, isThinking, open, close, toggle, expand, collapse, setThinking]
   );
 
   return (

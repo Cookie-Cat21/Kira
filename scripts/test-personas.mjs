@@ -1,6 +1,6 @@
 /**
  * test-personas.mjs
- * Runs 120 persona test cases against POST /api/chat and prints a pass/fail table.
+ * Runs 165 persona test cases against POST /api/chat and prints a pass/fail table.
  *
  * Groups:
  *   A (25) — vague / indirect gift messages        → must ask, never "nothing found"
@@ -9,10 +9,11 @@
  *   D (12) — multilingual (si / ta / romanized)     → output-language gating
  *   E (13) — adversarial / robustness / edge        → injection, gibberish, long input, mixed scripts
  *   F (20) — regression / judge paths: checkout handoff, delivery date, city aliases, Sinhala demos
+ *   G (45) — founder / friend / delivery repair       → angry-partner flowers, Kapruka send-not-hand-deliver
  *
  * Usage:
- *   node scripts/test-personas.mjs                       # all 120
- *   node scripts/test-personas.mjs --group a             # a single group (a|b|c|d|e|f)
+ *   node scripts/test-personas.mjs                       # all 165
+ *   node scripts/test-personas.mjs --group a             # a single group (a|b|c|d|e|f|g)
  *   node scripts/test-personas.mjs --id A03,C12,E07      # specific IDs
  *   node scripts/test-personas.mjs --concurrency 1       # default is already 1
  *
@@ -26,6 +27,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { runCheck } from "./evaluate.mjs";
+import { scoreCeoLens } from "./ceo-lens.mjs";
+import { scoreFounderLens } from "./founder-lens.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -235,7 +238,56 @@ const GROUP_F = [
   { id: "F20", request: { messages: [{ role: "user", content: "show me gift hampers" }], language: "si" }, checks: [["lang", "si"], "productsOrHonestEmpty"], note: "Sinhala judge demo — gift search" },
 ];
 
-const GROUPS = { A: GROUP_A, B: GROUP_B, C: GROUP_C, D: GROUP_D, E: GROUP_E, F: GROUP_F };
+// Group G — founder / friend / delivery repair. Kapruka delivery help, not hand-deliver advice.
+const GROUP_G = [
+  { id: "G01", msg: "I messed up wife is angry need to send flowers", checks: ["products", ["text", /deliver|send|her|card|sorry|machang/i], ["noText", /hand.?deliver|pick up yourself|dodging the conversation/i]], note: "CEO gold-demo — friend helps send flowers" },
+  { id: "G02", msg: "I messed up got drunk wife is pissed need to send flowers", checks: ["products", ["text", /deliver|send|her|card|sorry|machang|rough/i], ["noText", /hand.?deliver|pick up yourself/i]], note: "Drunk apology — search + delivery tone" },
+  { id: "G03", msg: "order roses for my wife to Colombo", checks: ["products"], note: "Direct order + city" },
+  { id: "G04", msg: "husband came home late wife mad can you send flowers to her", checks: ["products", ["text", /deliver|send|her|flowers|roses/i]], note: "Late husband — send to her" },
+  { id: "G05", msg: "she's mad what should I send to her office", checks: ["asksClarifyingOrProducts"], note: "Office vague — clarify or suggest products" },
+  { id: "G06", msg: "my girlfriend is furious I forgot our anniversary send roses to Colombo", checks: ["products", ["text", /deliver|send|colombo|roses|her/i]], note: "Anniversary miss — roses + city" },
+  { id: "G07", msg: "wife won't talk to me need flowers ASAP to Colombo", checks: ["products", ["text", /deliver|send|colombo|flowers|her/i]], note: "Silent treatment — urgent flowers" },
+  { id: "G08", msg: "bro help me wife is pissed send flowers to her in Kandy", checks: ["products", ["text", /deliver|send|her|bro|machang|kandy|flowers/i]], note: "Friend tone — bro/machang delivery help" },
+  { id: "G09", msg: "machang messed up need send gift wife Colombo", checks: ["products", ["text", /deliver|send|colombo|gift|wife|machang/i]], note: "Machang opener — gift to Colombo" },
+  { id: "G10", msg: "mate she's furious help me send roses to Colombo today", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|colombo|roses|today|urgent/i]], note: "Same-day roses — friend tone" },
+  { id: "G11", msg: "send lilies to her office in Kandy tomorrow", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Office delivery + date hint" },
+  { id: "G12", msg: "deliver chocolates to my wife at 45 Galle Road Colombo", checks: ["noHallucination", ["text", /deliver|send|colombo|chocolate|wife|address/i]], note: "Named address — delivery intent" },
+  { id: "G13", msg: "flowers to wife in Negombo by Friday", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Outstation wife delivery" },
+  { id: "G14", msg: "need red roses delivered to Batticaloa for my wife", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|roses|wife|batticaloa/i]], note: "East-coast delivery ask" },
+  { id: "G15", msg: "add gift note I'm sorry love you and send roses to Colombo", checks: ["noHallucination", ["text", /note|message|card|sorry|send|deliver|roses|colombo/i]], note: "Gift message + product + city" },
+  { id: "G16", msg: "include card saying sorry baby deliver flowers today Colombo", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /card|message|sorry|deliver|send|colombo|flowers/i]], note: "Card text + same-day flowers" },
+  { id: "G17", msg: "write sorry on the card and send flowers to her in Colombo", checks: ["products", ["text", /card|sorry|send|deliver|her|colombo|flowers/i]], note: "Card + flowers combo" },
+  { id: "G18", msg: "she's mad send something sweet to her office Colombo", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Vague sweet + office + city" },
+  { id: "G19", msg: "angry wife what flowers under 5000 to Colombo", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Budget + city + emotional context" },
+  { id: "G20", msg: "wife mad need bouquet under 3000 delivered Kandy", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Budget bouquet + Kandy" },
+  { id: "G21", msg: "forgot birthday wife furious send cake Colombo urgent", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|cake|colombo|urgent|wife/i]], note: "Birthday miss — cake rush" },
+  { id: "G22", msg: "I need to fix things send flowers with apology note to her", checks: ["products", ["text", /send|deliver|her|sorry|note|card|flowers/i], ["noText", /hand.?deliver|pick up yourself/i]], note: "Apology note + flowers — no hand-deliver" },
+  { id: "G23", msg: "gf angry send teddy and flowers Colombo", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Teddy + flowers bundle ask" },
+  { id: "G24", msg: "send surprise flowers wife doesn't know I'm ordering to Colombo", checks: ["products", ["text", /deliver|send|surprise|colombo|flowers|wife/i]], note: "Surprise delivery — stealth order" },
+  { id: "G25", msg: "wife won't pick up phone send flowers to home Colombo", checks: ["products", ["text", /deliver|send|home|colombo|flowers|wife/i]], note: "Unreachable wife — home delivery" },
+  { id: "G26", msg: "partner angry need gift to say sorry deliver to Galle", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|sorry|gift|galle/i]], note: "Generic partner + Galle" },
+  { id: "G27", msg: "sorry card and roses to wife Colombo office", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /card|roses|colombo|office|wife|deliver|send/i]], note: "Card + roses + office" },
+  { id: "G28", msg: "wife mad at me send her favorite chocolates Colombo", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Favorite product hint + city" },
+  { id: "G29", msg: "I screwed up send orchids to her workplace Kandy", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|orchid|kandy|work|office|her/i]], note: "Named flower + workplace" },
+  { id: "G30", msg: "she blocked me on WhatsApp can you still deliver flowers Colombo", expectProducts: false, checks: ["noHallucination", ["text", /deliver|send|colombo|flowers|her|yes|can/i], ["noText", /hand.?deliver|pick up yourself/i]], note: "Blocked contact — still deliver via Kapruka" },
+  { id: "G31", msg: "need apology hamper wife angry deliver Colombo tomorrow", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Hamper + angry wife + date" },
+  { id: "G32", msg: "send roses and a sorry note to my wife in Matara", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /roses|sorry|note|matara|deliver|send|wife/i]], note: "Matara delivery + note" },
+  { id: "G33", msg: "what flowers should I send my angry wife in Colombo", checks: ["asksClarifyingOrProducts", ["noText", /hand.?deliver|pick up yourself/i]], note: "Advice ask — products or clarify, not hand-deliver" },
+  { id: "G34", msg: "help me make it up to her send something to Colombo under 4000", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Make-up gift + budget + city" },
+  { id: "G35", msg: "wife is giving me silent treatment send red roses Colombo today", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|roses|colombo|today|red/i]], note: "Silent treatment + same-day roses" },
+  { id: "G36", msg: "can Kapruka deliver flowers to her office in Colombo if she's mad at me", expectProducts: false, checks: ["noHallucination", ["text", /deliver|send|yes|can|colombo|office|flowers|kapruka/i], ["noText", /hand.?deliver|pick up yourself/i]], note: "Kapruka capability — delivery not DIY" },
+  { id: "G37", msg: "I owe her an apology send the nicest bouquet you have to Colombo", checks: ["noHallucination", "productsOrHonestEmpty"], note: "Premium bouquet + apology" },
+  { id: "G38", msg: "she's upset what can I send to her in Jaffna", checks: ["asksClarifyingOrProducts"], note: "Outstation vague — clarify or search" },
+  { id: "G39", msg: "order a flower bouquet for my wife delivery to 12 Ward Place Colombo", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|bouquet|colombo|wife|address/i]], note: "Street address order" },
+  { id: "G40", msg: "my husband forgot Valentine's send her flowers to Kurunegala", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|flowers|kurunegala|her|valentine/i]], note: "Third-party order — send to her" },
+  { id: "G41", msg: "fight with wife need to send something to her office what do you have", checks: ["asksClarifyingOrProducts"], note: "Post-fight browse — clarify or products" },
+  { id: "G42", msg: "please deliver roses with message sorry I was wrong to her in Colombo", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|roses|sorry|message|colombo|her/i]], note: "Explicit message + roses + city" },
+  { id: "G43", msg: "wife kopa send flowers colombo machang", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|colombo|flowers|machang|wife|kopa|sorry/i]], note: "Romanized Sinhala angry-wife — friend tone" },
+  { id: "G44", msg: "I messed up big time send her chocolates and a card to Kandy", checks: ["noHallucination", "productsOrHonestEmpty", ["text", /deliver|send|card|chocolate|kandy|her/i]], note: "Chocolates + card + city mix" },
+  { id: "G45", msg: "she's mad at me for coming home late send flowers don't tell me to hand deliver", checks: ["products", ["text", /deliver|send|flowers|her|kapruka/i], ["noText", /hand.?deliver|pick up yourself|dodging the conversation|go see her/i]], note: "Explicit anti-hand-deliver guard" },
+];
+
+const GROUPS = { A: GROUP_A, B: GROUP_B, C: GROUP_C, D: GROUP_D, E: GROUP_E, F: GROUP_F, G: GROUP_G };
 
 // --- Generic check tokens (Groups C / D / E) ---
 function productsOf(events) {
@@ -268,6 +320,15 @@ function applyToken(token, arg, events, text) {
       };
     case "asksClarifying":
       return { pass: /\?/.test(text) && !(products && products.length), reason: "Expected a clarifying question, no products" };
+    case "asksClarifyingOrProducts": {
+      const hasProds = !!products && products.length > 0;
+      const honestEmpty = HONEST_EMPTY_RE.test(text);
+      const asks = /\?/.test(text) && !hasProds;
+      return {
+        pass: hasProds || honestEmpty || asks,
+        reason: "Expected products, honest empty, or a clarifying question",
+      };
+    }
     case "noTools":
       return { pass: toolStepCount(events) === 0, reason: `Called ${toolStepCount(events)} tool(s); should redirect with none` };
     case "text":
@@ -339,9 +400,35 @@ function evaluateChecks(persona, result) {
   return { passed: reasons.length === 0, reasons, toolCalls: toolStepCount(events) };
 }
 
+function evaluateG(persona, result) {
+  const gate = sentinelGate(result);
+  if (gate) return { passed: false, isError: true, reasons: [gate.reason], toolCalls: toolStepCount(result.events ?? []) };
+  const { responseText, events } = result;
+  const reasons = [];
+  if (!responseText.trim()) reasons.push("Empty response");
+  for (const chk of persona.checks ?? []) {
+    const [token, arg] = Array.isArray(chk) ? chk : [chk];
+    const r = applyToken(token, arg, events, responseText);
+    if (!r.pass) reasons.push(r.reason);
+  }
+  const lens = scoreFounderLens(responseText, events, persona);
+  const allowsClarify = (persona.checks ?? []).some(
+    (c) => (Array.isArray(c) ? c[0] : c) === "asksClarifyingOrProducts"
+  );
+  const clarifyPass = allowsClarify && applyToken("asksClarifyingOrProducts", null, events, responseText).pass;
+  if (lens.flags.includes("preachy_hand_deliver")) reasons.push("Preachy hand-deliver advice (founder-lens fail)");
+  if (!lens.pass && !clarifyPass) {
+    if (lens.flags.includes("missing_friendly_tone")) reasons.push("Missing friendly tone (founder-lens)");
+    if (lens.flags.includes("missing_delivery_offer")) reasons.push("Missing delivery/send offer (founder-lens)");
+    if (lens.flags.includes("missing_products")) reasons.push("Missing products for flower/send request (founder-lens)");
+  }
+  return { passed: reasons.length === 0, reasons, toolCalls: toolStepCount(events), founderLens: lens };
+}
+
 function evaluatorFor(group) {
   if (group === "A") return evaluateA;
   if (group === "B") return evaluateB;
+  if (group === "G") return evaluateG;
   return evaluateChecks;
 }
 
@@ -364,6 +451,15 @@ async function runPersona(persona, group) {
       result = await sendTestCase(testCase);
       evaluation = evaluate(persona, result);
     }
+    if (!evaluation.isError) {
+      evaluation.ceoLens = scoreCeoLens(
+        group,
+        persona,
+        result?.responseText ?? "",
+        result?.events ?? [],
+        evaluation.passed
+      );
+    }
     if (INTER_REQUEST_DELAY_MS) await sleep(INTER_REQUEST_DELAY_MS);
     return { persona, result, evaluation, error: null };
   } catch (err) {
@@ -380,8 +476,9 @@ function truncate(str, n) {
 const GROUP_LABELS = {
   A: "Vague / Indirect", B: "Out-of-Scope", C: "Feature / Transactional",
   D: "Multilingual", E: "Adversarial / Edge", F: "Regression / Judge Path",
+  G: "Founder / Friend / Delivery",
 };
-const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white };
+const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white, G: c.green };
 
 function printGroupResults(groupChar, runs) {
   const passed = runs.filter((r) => r.evaluation.passed).length;
@@ -399,6 +496,8 @@ function printGroupResults(groupChar, runs) {
     const preview = truncate(result?.responseText, 56);
     console.log(`${persona.id.padEnd(5)} ${persona.note.padEnd(38)} ${status} ${tools} ${c.dim}${preview}${c.reset}`);
     if (!evaluation.passed) for (const r of evaluation.reasons) console.log(`      ${c.red}-> ${r}${c.reset}`);
+    if (evaluation.founderLens) console.log(`      ${c.dim}founder-lens: ${evaluation.founderLens.score}/10 [${evaluation.founderLens.flags.join(", ")}]${c.reset}`);
+    if (evaluation.ceoLens) console.log(`      ${c.dim}ceo-lens: ${evaluation.ceoLens.score}/10 exc ${evaluation.ceoLens.excitement}/10 — ${evaluation.ceoLens.verdict}${c.reset}`);
   }
   const color = pct >= 80 ? c.green : pct >= 50 ? c.yellow : c.red;
   const errNote = errored ? `${c.yellow} - ${errored} errored (re-run)${c.reset}` : "";
@@ -423,8 +522,9 @@ async function main() {
   const args = process.argv.slice(2);
   const groupFilter = args.includes("--group") ? args[args.indexOf("--group") + 1]?.toUpperCase() : null;
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
+  const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : RESULTS_PATH;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
-  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 120 personas${c.reset}`);
+  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 165 personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
   if (concurrency > 1) console.log(`${c.yellow}! concurrency > 1 on Groq free tier causes rate-limit fallbacks (scored as ERR).${c.reset}`);
   await assertDevServerAvailable();
@@ -454,7 +554,7 @@ async function main() {
   printProgress();
   const runs = await runWithConcurrency(tasks, concurrency);
   process.stdout.write("\n");
-  for (const g of ["A", "B", "C", "D", "E", "F"]) {
+  for (const g of ["A", "B", "C", "D", "E", "F", "G"]) {
     const groupRuns = runs.filter((r) => r._group === g);
     if (groupRuns.length) printGroupResults(g, groupRuns);
   }
@@ -475,10 +575,12 @@ async function main() {
     reasons: r.evaluation.reasons,
     toolCalls: r.evaluation.toolCalls ?? 0,
     response: r.result?.responseText?.slice(0, 300) ?? "",
+    ...(r.evaluation.founderLens ? { founderLens: r.evaluation.founderLens } : {}),
+    ...(r.evaluation.ceoLens ? { ceoLens: r.evaluation.ceoLens } : {}),
   }));
-  await mkdir(dirname(RESULTS_PATH), { recursive: true });
-  await writeFile(RESULTS_PATH, `${JSON.stringify(jsonOut, null, 2)}\n`);
-  console.log(`${c.dim}\nFull results written to ${RESULTS_PATH}${c.reset}\n`);
+  await mkdir(dirname(outPath), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(jsonOut, null, 2)}\n`);
+  console.log(`${c.dim}\nFull results written to ${outPath}${c.reset}\n`);
   const genuineFailures = runs.filter((r) => !r.evaluation.passed && !r.evaluation.isError).length;
   process.exit(genuineFailures === 0 ? 0 : 1);
 }

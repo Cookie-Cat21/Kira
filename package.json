@@ -10,6 +10,8 @@
     "seed": "node scripts/gen-seed.mjs",
     "sync": "node scripts/sync-catalog.mjs",
     "test:all": "node scripts/run-tests.mjs",
+    "test:batch": "node scripts/run-with-keys.mjs",
+    "ceo:review": "node scripts/ceo-review-llm.mjs",
     "test:load-smoke": "node scripts/load-smoke.mjs",
     "test:language-smoke": "node scripts/language-smoke.mjs",
     "test:report": "node scripts/report-issues.mjs",

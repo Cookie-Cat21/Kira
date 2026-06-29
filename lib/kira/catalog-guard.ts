@@ -5,15 +5,20 @@ export const CATALOG_GUARD_INTENT_RE =
 export const CURRENCY_AMOUNT_RE = /\b(?:LKR|Rs\.?|රු)\s*([\d,]+(?:\.\d+)?)/gi;
 export const BUDGET_CONTEXT_AMOUNT_RE =
   /\b(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+(?:\.\d+)?)/i;
+const PHONE_NUMBER_RE =
+  /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b|(?:\+?94|0)\d{9}\b/g;
 
 export function parseBudgetAmount(value?: string): number | undefined {
   if (!value) return undefined;
+  const stripped = value.replace(PHONE_NUMBER_RE, " ");
   const match =
-    value.match(BUDGET_CONTEXT_AMOUNT_RE) ??
-    value.match(/\b(?:lkr|rs\.?)\s*([\d,]+(?:\.\d+)?)/i) ??
-    value.match(/\b([\d,]{3,}(?:\.\d+)?)\b/);
+    stripped.match(BUDGET_CONTEXT_AMOUNT_RE) ??
+    stripped.match(/\b(?:lkr|rs\.?)\s*([\d,]+(?:\.\d+)?)/i);
   const amount = match ? Number(match[1].replace(/,/g, "")) : undefined;
-  return amount && Number.isFinite(amount) && amount > 0 ? Math.round(amount) : undefined;
+  if (!amount || !Number.isFinite(amount) || amount <= 0) return undefined;
+  // Sri Lankan mobile/landline digits must never become a budget cap.
+  if (amount > 500_000) return undefined;
+  return Math.round(amount);
 }
 
 function extractCurrencyAmounts(text: string): number[] {

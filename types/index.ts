@@ -139,6 +139,7 @@ export interface ChatRequest {
   occasion?: string;
   recipient?: string;
   lastProducts?: KiraProduct[];
+  shownProducts?: KiraProduct[];
   lastOrder?: LastOrder;
   language?: "en" | "si" | "ta";
   internationalMode?: boolean;
