@@ -4,7 +4,7 @@
 // working even if the MCP / DB are down. Live actions (delivery, checkout,
 // tracking) stay on the MCP via the existing Kira chat — this layer is catalog only.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { KiraProduct, KiraProductDetails } from "@/types";
 import type { ProductRail, StoreCategory, StoreSort } from "@/types/store";
@@ -39,15 +39,28 @@ interface SeedFile {
 }
 
 let seedCache: SeedFile | null = null;
+let seedMtime = 0;
+
 function seed(): SeedFile {
-  if (seedCache) return seedCache;
   try {
     const file = path.join(process.cwd(), "data", "seed-catalog.json");
+    const mtime = statSync(file).mtimeMs;
+    if (seedCache && mtime === seedMtime) return seedCache;
     seedCache = JSON.parse(readFileSync(file, "utf8")) as SeedFile;
+    seedMtime = mtime;
   } catch {
     seedCache = { categories: [], products: [] };
+    seedMtime = 0;
   }
   return seedCache;
+}
+
+function resolveProductImage(
+  image?: string | null,
+  images?: unknown
+): string | undefined {
+  if (typeof image === "string" && image.trim()) return image.trim();
+  return asStringArray(images)[0];
 }
 
 function seedToProduct(p: SeedProduct): KiraProduct {
@@ -57,7 +70,7 @@ function seedToProduct(p: SeedProduct): KiraProduct {
     summary: p.summary,
     price: p.price,
     currency: p.currency ?? "LKR",
-    image: p.image,
+    image: resolveProductImage(p.image, p.images),
     category: p.category,
     url: p.url,
     inStock: p.inStock ?? true,
@@ -96,7 +109,7 @@ function rowToProduct(r: DbRow): KiraProduct {
     summary: r.summary ?? undefined,
     price: Number(r.price),
     currency: r.currency ?? "LKR",
-    image: r.image ?? undefined,
+    image: resolveProductImage(r.image, r.images),
     category: r.category ?? undefined,
     url: r.url ?? undefined,
     inStock: r.in_stock ?? true,
@@ -317,10 +330,11 @@ function sortSeed(items: SeedProduct[], sort: StoreSort): SeedProduct[] {
 function seedDetails(id: string): KiraProductDetails | null {
   const p = seed().products.find((x) => x.id === id);
   if (!p) return null;
+  const hero = resolveProductImage(p.image, p.images);
   return {
     ...seedToProduct(p),
     description: p.description,
-    images: p.image ? [p.image] : [],
+    images: hero ? [hero, ...asStringArray(p.images).filter((url) => url !== hero)] : asStringArray(p.images),
     compareAtPrice: p.compareAtPrice,
     variants: [],
     addons: [],
