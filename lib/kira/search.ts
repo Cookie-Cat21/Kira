@@ -109,6 +109,13 @@ export function extractLastSearchContext(
 
     // Match product category keywords
     const msgLow = msg.content.toLowerCase();
+    if (/\bshow me\s+([a-z]+)/i.test(msg.content)) {
+      const showMatch = msg.content.match(/\bshow me\s+([a-z]+)/i);
+      const word = showMatch?.[1]?.toLowerCase();
+      if (word && word.length >= 3) {
+        return { query: normalizeProductQuery(word), maxPrice };
+      }
+    }
     if (/\bcake\b/.test(msgLow)) { query = "cake"; break; }
     if (/\bflower/.test(msgLow)) { query = "flowers"; break; }
     if (/\bchocolat/.test(msgLow)) { query = "chocolate"; break; }
@@ -148,7 +155,15 @@ export function extractProductKeyword(lower: string): string | null {
   if (/\borchids?\b/.test(lower)) return "flowers";
   if (/\bchocolat/.test(lower)) return "chocolate";
   if (/\bhamper\b/.test(lower)) return "gift hamper";
-  if (/\belectronic|\bphone|\bgadget\b/.test(lower)) return "electronics";
+  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(lower)) return "electronics";
+  if (
+    /\bphones?\b/.test(lower) &&
+    !/\b(my phone|phone is|phone number|recipient phone|contact number|your phone|mobile is)\b/i.test(
+      lower
+    )
+  ) {
+    return "electronics";
+  }
   if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
   if (/\bgrocery\b/.test(lower)) return "grocery";
   if (/\btoy\b|\bteddy\b/.test(lower)) return "soft toy";

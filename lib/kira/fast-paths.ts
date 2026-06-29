@@ -596,11 +596,54 @@ export async function tryHandleDeterministicPrompt({
   const PHONE_RE = /(?:\+?94|0)\s*\d(?:[\s-]?\d){7,9}\b/;
   const ADDRESS_RE =
     /\b(?:address|street|st\.?|road|rd\.?|mawatha|lane|galle\s+rd|main\s+st|flower\s+road)\b|\b\d{1,4}\s+[a-z][a-z\s.]{2,30}\b/i;
+  const hasPhone = PHONE_RE.test(trimmed);
+  const hasAddress = ADDRESS_RE.test(trimmed);
+  const hasOrderCity = !!extractCityHint(trimmed);
+  const isPlaceOrderIntent =
+    /\b(place an order|want to order|order for|ready to order|deliver to)\b/i.test(lower);
+
+  // Partial checkout — collect missing fields before product search hijacks the turn.
+  if (isPlaceOrderIntent && hasPhone && hasOrderCity && !hasAddress) {
+    await streamWords(controller, L("checkoutNeedAddress", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+  if (
+    /\b(order|deliver)\b/i.test(lower) &&
+    extractProductKeyword(lower) &&
+    hasAddress &&
+    hasOrderCity &&
+    !hasPhone
+  ) {
+    const orderKw = extractProductKeyword(lower)!;
+    const orderDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const orderCity = extractCityHint(trimmed) ?? deliveryCity;
+    controller.enqueue(sse("step", `Searching Kapruka for "${orderKw}"`));
+    const orderResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: orderKw, limit: 6, in_stock_only: true, response_format: "json" },
+    });
+    const orderProducts = dedupeProducts(extractProductsFromMcp(orderResult.content));
+    if (orderProducts.length > 0) {
+      const cityText = orderCity ? ` to ${orderCity}` : "";
+      const dateText = orderDate ? ` on ${orderDate}` : "";
+      await streamWords(
+        controller,
+        Lf(orderProducts.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
+          n: orderProducts.length,
+          budget: "",
+          city: cityText,
+          date: dateText,
+        })
+      );
+      controller.enqueue(sse("products", orderProducts));
+    }
+    await streamWords(controller, L("checkoutNeedPhone", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
   // Only collect partial checkout fields once the tray has items — otherwise
   // "send flowers to 12 Galle Road" gets misread as checkout field collection.
   if (cart.length > 0) {
-    const hasPhone = PHONE_RE.test(trimmed);
-    const hasAddress = ADDRESS_RE.test(trimmed);
     if (hasAddress && !hasPhone) {
       await streamWords(controller, L("checkoutNeedPhone", language));
       controller.enqueue(sse("done"));
@@ -899,41 +942,34 @@ export async function tryHandleDeterministicPrompt({
 
   if (isPureMoreRequest) {
     const ctx = extractLastSearchContext(messages, trimmed);
-    controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (price ↑)`));
-    const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-      params: {
-        q: ctx.query,
-        limit: 9,
-        in_stock_only: true,
-        sort: "price_asc", // different angle from the default bestseller ordering
-        ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
-        response_format: "json",
-      },
-    });
-    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
-    let moreProducts = extractProductsFromMcp(moreResult.content);
-    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[ctx.query];
-    const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[ctx.query];
-    if (relevanceFilter) {
-      moreProducts = moreProducts.filter((p) => {
-        const txt = `${p.name} ${p.category ?? ""}`;
-        return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
+    const sorts = ["price_asc", "bestseller", "price_desc"] as const;
+    let moreProducts: KiraProduct[] = [];
+    for (const sort of sorts) {
+      controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (${sort})`));
+      const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q: ctx.query,
+          limit: 9,
+          in_stock_only: true,
+          sort,
+          ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
+          response_format: "json",
+        },
       });
+      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
+      if (batch.length > 0) {
+        moreProducts = batch;
+        break;
+      }
     }
-    moreProducts = dedupeProducts(moreProducts.filter((p) => !seenIds.has(p.id)));
-    // If still empty after dedup, fall back to the full set without seen-ID filter
-    if (moreProducts.length === 0) {
-      moreProducts = dedupeProducts(extractProductsFromMcp(moreResult.content));
+    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
+    if (seenIds.size > 0) {
+      const fresh = moreProducts.filter((p) => !seenIds.has(p.id));
+      if (fresh.length > 0) moreProducts = fresh;
     }
 
     if (moreProducts.length === 0) {
       await streamWords(controller, L("moreOptionsSamePicks", language));
-    } else if (moreProducts.length <= 3) {
-      await streamWords(
-        controller,
-        Lf("moreOptionsAboutAll", language, { query: ctx.query })
-      );
-      controller.enqueue(sse("products", moreProducts));
     } else {
       const budgetText = ctx.maxPrice
         ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`
@@ -1277,6 +1313,32 @@ export async function tryHandleDeterministicPrompt({
     }
     products = dedupeProducts([...products, ...batch]);
     if (products.length >= 3) break;
+  }
+
+  if (products.length === 0 && contextMaxPrice) {
+    for (const query of [searchIntent.query, fallbackQuery(searchIntent.query), "chocolate"]) {
+      if (!query) continue;
+      const retryResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q: query,
+          limit: 12,
+          in_stock_only: true,
+          sort: "price_asc",
+          response_format: "json",
+        },
+      });
+      let batch = extractProductsFromMcp(retryResult.content).filter(
+        (p) => p.price > 0 && p.price <= contextMaxPrice
+      );
+      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[query];
+      if (relevanceFilter) {
+        batch = batch.filter(
+          (p) => relevanceFilter.test(p.name) || relevanceFilter.test(p.category ?? "")
+        );
+      }
+      products = dedupeProducts([...products, ...batch]);
+      if (products.length > 0) break;
+    }
   }
 
   let deliveryCityForMessage = deliveryCity;
