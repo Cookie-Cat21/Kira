@@ -5,6 +5,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   type ComponentType,
 } from "react";
 import Image from "next/image";
@@ -37,7 +38,9 @@ import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { useKiraDock } from "../context/KiraDockContext";
-import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
+import { getContextualGreeting, getOccasionChips, getStarterPrompts } from "@/lib/kira-client";
+import GlassChip from "@/app/components/glass/GlassChip";
+import LiquidGlass from "@/app/components/glass/LiquidGlass";
 import {
   getColomboTodayIso,
   getColomboTomorrowIso,
@@ -54,33 +57,10 @@ import type {
 import { cn } from "@/lib/utils";
 import KaprukaSmileMark from "@/app/components/brand/KaprukaSmileMark";
 
-const OCCASION_CHIPS = getOccasionChips();
-// An occasion is active iff getOccasionChips surfaced an urgent chip. When it
-// is, the hero headline already announces it — so we drop the duplicate chip.
-const HAS_ACTIVE_OCCASION = OCCASION_CHIPS.some((chip) => chip.urgent);
-const STARTER_PROMPTS: { label: string; value: string }[] = [
-  {
-    label: "Birthday gifts",
-    value: "I need birthday gift ideas under LKR 5,000",
-  },
-  {
-    label: "Track order",
-    value: "I want to track my order",
-  },
-  {
-    label: "Same-day in Colombo",
-    value: "Show me gifts with same-day delivery in Colombo",
-  },
-  {
-    label: "Popular now",
-    value: "What are the most popular gifts right now?",
-  },
-];
-type KiraIcon = ComponentType<{ className?: string }>;
-
-// Fast-path city hint — server will canonicalise via kapruka_list_delivery_cities
 const CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
+
+type KiraIcon = ComponentType<{ className?: string }>;
 
 const CATEGORIES: {
   icon: KiraIcon;
@@ -917,6 +897,10 @@ export default function KiraExperience({
   };
 
   const chromeTransparent = embedded || glassChrome;
+  const occasionChips = useMemo(() => getOccasionChips(), []);
+  const starterPrompts = useMemo(() => getStarterPrompts(), []);
+  const hasActiveOccasion = occasionChips.some((chip) => chip.urgent);
+  const useComponentGlass = glassChrome;
 
   return (
     <div
@@ -1039,28 +1023,58 @@ export default function KiraExperience({
               onCancel={cancelActiveResponse}
               language={language}
               onLanguageChange={setLanguage}
+              glass={useComponentGlass}
             />
           </div>
 
           <div
-            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3"
+            className="mt-4 w-full max-w-2xl animate-fade-up"
             style={{ animationDelay: "90ms" }}
           >
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
-              Start fast
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt.label}
-                  type="button"
-                  onClick={() => sendMessage(prompt.value)}
-                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
-                >
-                  {prompt.label}
-                </button>
-              ))}
-            </div>
+            {useComponentGlass ? (
+              <LiquidGlass
+                radius={20}
+                blur={10}
+                frosted
+                variant="regular"
+                interactive={false}
+                className="w-full"
+                contentClassName="px-4 py-3"
+              >
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+                  Start fast
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {starterPrompts.map((prompt) => (
+                    <GlassChip
+                      key={prompt.label}
+                      frosted
+                      onClick={() => sendMessage(prompt.value)}
+                    >
+                      {prompt.label}
+                    </GlassChip>
+                  ))}
+                </div>
+              </LiquidGlass>
+            ) : (
+              <div className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+                  Start fast
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {starterPrompts.map((prompt) => (
+                    <button
+                      key={prompt.label}
+                      type="button"
+                      onClick={() => sendMessage(prompt.value)}
+                      className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
+                    >
+                      {prompt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div
@@ -1068,23 +1082,21 @@ export default function KiraExperience({
             style={{ animationDelay: "120ms" }}
           >
             {[
-              // The hero headline already announces any active occasion, so drop
-              // the redundant urgent occasion chip and lead with categories.
-              ...OCCASION_CHIPS.slice(0, 4)
+              ...occasionChips.slice(0, 4)
                 .map((chip) => ({
                   label: stripDecorativeGlyphs(chip.label),
                   value: chip.value,
-                  Icon: null,
+                  Icon: null as KiraIcon | null,
                   urgent: chip.urgent,
                 }))
                 .filter(
                   (option) =>
                     option.label !== "Flowers & cake" &&
                     option.label !== "Just browsing" &&
-                    !(HAS_ACTIVE_OCCASION && option.urgent)
+                    !(hasActiveOccasion && option.urgent)
                 )
                 .sort((a, b) => Number(b.urgent) - Number(a.urgent)),
-              ...CATEGORIES.slice(0, HAS_ACTIVE_OCCASION ? 5 : 4).map((category) => ({
+              ...CATEGORIES.slice(0, hasActiveOccasion ? 5 : 4).map((category) => ({
                 label: category.label,
                 value: category.value,
                 Icon: category.icon,
@@ -1092,6 +1104,19 @@ export default function KiraExperience({
               })),
             ].map((option) => {
               const Icon = option.Icon;
+              if (useComponentGlass) {
+                return (
+                  <GlassChip
+                    key={option.label}
+                    frosted
+                    urgent={option.urgent}
+                    icon={Icon ? <Icon className="size-3 opacity-60" /> : undefined}
+                    onClick={() => sendMessage(option.value)}
+                  >
+                    {option.label}
+                  </GlassChip>
+                );
+              }
               return (
                 <button
                   key={option.label}

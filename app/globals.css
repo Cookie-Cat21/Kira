@@ -596,29 +596,4 @@ body {
   }
 }
 
-/* ── Kira full-panel glass chat ─────────────────────────────────────────
-   The entire chat surface is glass over the animated bar-noise field. */
-.kira-glass-panel .lg-content {
-  height: 100%;
-}
-
-.kira-glass-panel .lg-tint {
-  background:
-    linear-gradient(
-      150deg,
-      rgba(255, 255, 255, 0.05) 0%,
-      rgba(255, 255, 255, 0.01) 40%,
-      rgba(255, 255, 255, 0) 60%
-    ),
-    rgba(10, 6, 18, 0.18);
-}
-
-.kira-glass-panel.lg-clear .lg-scrim,
-.kira-glass-panel .lg-scrim {
-  background: radial-gradient(
-    120% 120% at 50% 0%,
-    rgba(0, 0, 0, 0.12) 0%,
-    rgba(0, 0, 0, 0.04) 55%,
-    rgba(0, 0, 0, 0) 100%
-  );
-}
+/* ── Kira chat — glass on individual components, not the full panel. */

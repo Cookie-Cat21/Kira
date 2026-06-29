@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import LiquidGlass, { LiquidGlassFilters } from "@/app/components/glass/LiquidGlass";
+import { LiquidGlassFilters } from "@/app/components/glass/LiquidGlass";
 import KiraFrostedFilter from "@/app/components/glass/KiraFrostedFilter";
 import VerticalBarsNoise from "@/app/components/VerticalBarsNoise";
 
@@ -12,8 +12,8 @@ type Props = {
 };
 
 /**
- * Full-panel liquid glass over the animated bar-noise field. The entire chat
- * surface is glass — no separate opaque core or glass border frame.
+ * Chat chrome: soft animated noise + light blur. Glass material lives on the
+ * individual UI components (input, chips) — not a full-panel displacement layer.
  */
 export default function KiraGlassShell({
   children,
@@ -28,26 +28,20 @@ export default function KiraGlassShell({
         className={`relative h-full w-full overflow-hidden ${className}`}
         style={{ borderRadius: radius }}
       >
-        <VerticalBarsNoise
-          backgroundColor="#0a0612"
-          lineColor="#2a1f42"
-          barColor="#6b4fa8"
+        <div className="absolute inset-0 opacity-[0.28]">
+          <VerticalBarsNoise
+            backgroundColor="#0a0612"
+            lineColor="#1a1428"
+            barColor="#4a3868"
+            animationSpeed={0.00022}
+            intensity={0.45}
+          />
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0 bg-[#0a0612]/72 backdrop-blur-[14px]"
+          aria-hidden="true"
         />
-        <LiquidGlass
-          as="div"
-          variant="clear"
-          blur={6}
-          radius={radius}
-          displace
-          frosted
-          lens
-          interactive
-          live
-          className="kira-glass-panel absolute inset-0 h-full w-full"
-          contentClassName="flex h-full min-h-0 flex-col"
-        >
-          {children}
-        </LiquidGlass>
+        <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>
       </div>
     </>
   );

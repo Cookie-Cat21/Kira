@@ -9,6 +9,8 @@ interface VerticalBarsNoiseProps {
   lineWidth?: number;
   animationSpeed?: number;
   removeWaveLine?: boolean;
+  /** Multiplier for bar/line opacity (0–1). Lower = subtler background. */
+  intensity?: number;
   className?: string;
 }
 
@@ -28,6 +30,7 @@ export default function VerticalBarsNoise({
   lineWidth = 1,
   animationSpeed = 0.0005,
   removeWaveLine = true,
+  intensity: intensityScale = 1,
   className = "",
 }: VerticalBarsNoiseProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -152,7 +155,7 @@ export default function VerticalBarsNoise({
     for (let i = 0; i < numLines; i++) {
       const y = i * lineSpacing + lineSpacing / 2;
       const mouseInfluence = getMouseInfluence(canvasWidth / 2, y);
-      const lineAlpha = Math.max(0.3, 0.3 + mouseInfluence * 0.7);
+      const lineAlpha = Math.max(0.15, (0.3 + mouseInfluence * 0.7) * intensityScale);
 
       ctx.beginPath();
       const lineRgb = hexToRgb(lineColor);
@@ -184,12 +187,12 @@ export default function VerticalBarsNoise({
             rippleInfl * Math.sin(timeRef.current * 2 + x * 0.02) * 15;
           const animatedX =
             x + baseAnimation + mouseAnimation + rippleAnimation;
-          const intensity = Math.min(
+          const barAlpha = Math.min(
             1,
-            Math.max(0.7, 0.7 + totalInfluence * 0.3)
+            Math.max(0.35, (0.7 + totalInfluence * 0.3) * intensityScale)
           );
           const barRgb = hexToRgb(barColor);
-          ctx.fillStyle = `rgba(${barRgb.r}, ${barRgb.g}, ${barRgb.b}, ${intensity})`;
+          ctx.fillStyle = `rgba(${barRgb.r}, ${barRgb.g}, ${barRgb.b}, ${barAlpha})`;
           ctx.fillRect(
             animatedX - barWidth / 2,
             y - barHeight / 2,
@@ -225,6 +228,7 @@ export default function VerticalBarsNoise({
     lineColor,
     lineWidth,
     removeWaveLine,
+    intensityScale,
   ]);
 
   useEffect(() => {

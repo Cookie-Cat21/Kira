@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, ArrowUp, Square, X, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import LiquidGlass from "@/app/components/glass/LiquidGlass";
 
 /* --- UTILS --- */
 const formatFileSize = (bytes: number) => {
@@ -103,6 +104,8 @@ interface KiraChatInputProps {
   className?: string;
   language?: "en" | "si" | "ta";
   onLanguageChange?: (lang: "en" | "si" | "ta") => void;
+  /** Bespalov frosted glass shell (CodePen-style) — no full-panel displacement. */
+  glass?: boolean;
 }
 
 export function KiraChatInput({
@@ -113,6 +116,7 @@ export function KiraChatInput({
   className,
   language = "en" as "en" | "si" | "ta",
   onLanguageChange,
+  glass = false,
 }: KiraChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<AttachedFile[]>([]);
@@ -200,33 +204,8 @@ export function KiraChatInput({
   const hasContent = !!(message.trim() || files.length > 0 || pastedContent.length > 0);
   const canAct = hasContent || isLoading;
 
-  return (
-    <div
-      className={cn("relative w-full", className)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragging(true);
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        setIsDragging(false);
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
-      }}
-    >
-      {/* Input container */}
-      <div
-        className={cn(
-          "flex flex-col rounded-xl border border-white/[0.12] bg-white/[0.07] backdrop-blur-xl",
-          "transition-all duration-200",
-          "focus-within:border-[rgba(156,132,198,0.55)] focus-within:shadow-[0_0_0_1px_rgba(156,132,198,0.25),0_4px_24px_rgba(0,0,0,0.35)]",
-          "shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
-        )}
-      >
-        <div className="flex flex-col px-3 pt-3 pb-2 gap-2">
+  const inputBody = (
+    <div className="flex flex-col px-3 pt-3 pb-2 gap-2">
           {/* Attachments row */}
           {(files.length > 0 || pastedContent.length > 0) && (
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 px-1">
@@ -322,8 +301,50 @@ export function KiraChatInput({
               )}
             </button>
           </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn("relative w-full", className)}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+      }}
+    >
+      {glass ? (
+        <LiquidGlass
+          radius={16}
+          blur={10}
+          frosted
+          variant="regular"
+          interactive={false}
+          className="w-full shadow-[0_4px_20px_rgba(0,0,0,0.28)]"
+          contentClassName="p-0"
+        >
+          {inputBody}
+        </LiquidGlass>
+      ) : (
+        <div
+          className={cn(
+            "flex flex-col rounded-xl border border-white/[0.12] bg-white/[0.07] backdrop-blur-xl",
+            "transition-all duration-200",
+            "focus-within:border-[rgba(156,132,198,0.55)] focus-within:shadow-[0_0_0_1px_rgba(156,132,198,0.25),0_4px_24px_rgba(0,0,0,0.35)]",
+            "shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+          )}
+        >
+          {inputBody}
         </div>
-      </div>
+      )}
 
       {/* Drag overlay */}
       {isDragging && (

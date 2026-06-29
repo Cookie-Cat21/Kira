@@ -167,7 +167,7 @@ type LiquidGlassOwnProps = {
   lens?: boolean;
   /** Apply the SVG edge-lensing refraction (#lg-distortion). Expensive; opt-in. */
   displace?: boolean;
-  /** Bespalov frosted displacement on the backdrop layer. */
+  /** Bespalov frosted refraction — use on individual glass components only. */
   frosted?: boolean;
   /** Track the pointer with a moving specular highlight. */
   interactive?: boolean;

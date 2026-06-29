@@ -27,7 +27,7 @@ export default function KiraFrostedFilter() {
         <feDisplacementMap
           in="blur"
           in2="map"
-          scale="1.15"
+          scale="0.65"
           xChannelSelector="R"
           yChannelSelector="G"
         />
