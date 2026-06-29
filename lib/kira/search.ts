@@ -156,12 +156,14 @@ export function extractProductKeyword(lower: string): string | null {
   if (/\bchocolat/.test(lower)) return "chocolate";
   if (/\bhamper\b/.test(lower)) return "gift hamper";
   if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(lower)) return "electronics";
-  if (
-    /\bphones?\b/.test(lower) &&
-    !/\b(my phone|phone is|phone number|recipient phone|contact number|your phone|mobile is)\b/i.test(
-      lower
-    )
-  ) {
+  if (/\bphones?\b/.test(lower)) {
+    if (
+      /\b(my phone|phone is|phone number|recipient phone|contact number|your phone|phone\s*[:=]?\s*(?:\+?94|0)\d)/i.test(
+        lower
+      )
+    ) {
+      return null;
+    }
     return "electronics";
   }
   if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";

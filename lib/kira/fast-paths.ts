@@ -8,6 +8,7 @@ import {
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
+import { handleCheckoutFillIn, isCheckoutFillInTurn } from "@/lib/kira/checkout-flow";
 import { L, Lf } from "@/lib/kira/localization";
 import {
   BAKERY_BRANDS,
@@ -668,6 +669,7 @@ export async function tryHandleDeterministicPrompt({
     ) || /\bdeliver(?:y)?\s+to\b/i.test(lower);
   const hasSimpleProductIntent =
     !!simpleProductQuery &&
+    !(cart.length > 0 && hasPhone && (hasAddress || hasOrderCity) && /\b(place|order|recipient|deliver|gift message|address)\b/i.test(lower)) &&
     (/\b(show|search|want|need|looking for|send|buy|get|order|deliver)\b/i.test(lower) ||
       hasDeliveryToRecipient ||
       /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
@@ -985,6 +987,20 @@ export async function tryHandleDeterministicPrompt({
   }
 
   // Gift intent fast-path — catches broad gift/occasion queries that stall the LLM loop.
+  // Skip when the tray has items and the user is filling checkout fields (e.g. gift message).
+  if (isCheckoutFillInTurn(cart.length, trimmed)) {
+    return handleCheckoutFillIn({
+      text: trimmed,
+      messages,
+      cart,
+      deliveryCity,
+      deliveryDate,
+      mcpClient,
+      controller,
+      language,
+    });
+  }
+
   // Matches: "something for Father's Day under 3000", "amma ta gift ekak ganna ona",
   // "I need a gift for Colombo", etc.
   const GIFT_INTENT_RE =
