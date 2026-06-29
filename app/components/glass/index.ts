@@ -11,6 +11,5 @@ export { default as GlassField } from "./GlassField";
 export { default as GlassSearch } from "./GlassSearch";
 export { default as GlassDock } from "./GlassDock";
 export { default as GlassCard } from "./GlassCard";
-export { default as DiscoverGlassBar, DISCOVER_TABS } from "./DiscoverGlassBar";
-export type { DiscoverTabId } from "./DiscoverGlassBar";
+export { default as DiscoverGlassBar } from "./DiscoverGlassBar";
 export * from "./icons";

@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, ShoppingBag, Sparkles, X } from "lucide-react";
-import type { KiraProduct } from "@/types";
+import { ShoppingBag } from "lucide-react";
+import { KiraOrb } from "@/app/components/KiraOrb";
 import type { StoreCategory } from "@/types/store";
 import { useCart } from "@/app/context/CartContext";
 import { useKiraDock } from "@/app/context/KiraDockContext";
-import { formatLKR } from "./storeIcons";
 import { cn } from "@/lib/utils";
 
 export default function StoreNav({
@@ -20,13 +19,7 @@ export default function StoreNav({
 }) {
   const { cartCount, openCart } = useCart();
   const { open: openKira } = useKiraDock();
-
   const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<KiraProduct[]>([]);
-  const [searching, setSearching] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -34,34 +27,6 @@ export default function StoreNav({
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
-  }, [searchOpen]);
-
-  useEffect(() => {
-    const term = q.trim();
-    if (!term) {
-      const t = setTimeout(() => {
-        setResults([]);
-        setSearching(false);
-      }, 0);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/store/search?q=${encodeURIComponent(term)}`);
-        const data = await res.json();
-        setResults(Array.isArray(data.items) ? data.items.slice(0, 6) : []);
-      } catch {
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q]);
 
   const topCategories = categories.slice(0, 6);
 
@@ -116,19 +81,9 @@ export default function StoreNav({
               onClick={() => openKira()}
               className="hidden min-h-11 items-center gap-1.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] px-3.5 py-2 text-[13px] font-semibold text-white shadow-[0_4px_20px_rgba(64,41,112,0.5)] transition-transform hover:scale-[1.03] active:scale-95 sm:flex"
             >
-              <Sparkles className="size-3.5" /> Ask Kira
+              <KiraOrb size={22} /> Ask Kira
             </button>
           )}
-
-          {/* Search */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen((v) => !v)}
-            aria-label="Search"
-            className="flex size-11 items-center justify-center rounded-full glass-chip text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-          >
-            {searchOpen ? <X className="size-4" /> : <Search className="size-4" />}
-          </button>
 
           {/* Cart */}
           <button
@@ -146,48 +101,6 @@ export default function StoreNav({
           </button>
         </div>
       </div>
-
-      {/* Search panel */}
-      {searchOpen && (
-        <div className="liquid-glass-nav border-t border-white/8">
-          <div className="mx-auto w-full max-w-[1280px] px-5 py-4 sm:px-8">
-            <div className="glass-input flex items-center gap-3 rounded-xl px-4 py-3">
-              <Search className="size-4 shrink-0 text-white/40" />
-              <input
-                ref={inputRef}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search cakes, flowers, gifts…"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/35"
-              />
-              {searching && <span className="text-[11px] text-white/40">…</span>}
-            </div>
-
-            {results.length > 0 && (
-              <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
-                {results.map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/product/${p.id}`}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-white/6"
-                  >
-                    <span className="truncate text-sm text-white/85">{p.name}</span>
-                    <span className="ml-3 shrink-0 text-xs font-semibold text-white/55">
-                      {formatLKR(p.price, p.currency)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {q.trim() && !searching && results.length === 0 && (
-              <p className="mt-3 px-1 text-sm text-white/40">
-                No matches — try asking Kira instead.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 }
