@@ -69,7 +69,7 @@ export default function KiraDock() {
                     : "kira-ring absolute inset-0 rounded-full bg-white/20 opacity-70"
                 }
               />
-              <KiraOrb thinking={isThinking} size={52} />
+              <KiraOrb size={52} />
             </span>
             <span className="text-sm font-semibold text-white/95">
               {isThinking ? "Kira is thinking…" : "Ask Kira"}

@@ -12,7 +12,7 @@ export default function KiraOrbDemoPage() {
       <div className="text-center">
         <h1 className="font-display text-2xl text-white">Kira orb preview</h1>
         <p className="mt-2 text-sm text-white/50">
-          Toggle thinking to crossfade wave ↔ fluid dots
+          Dock launcher uses the wave shader; toggle to preview the thinking ring state
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default function KiraOrbDemoPage() {
                 : "kira-ring absolute inset-0 rounded-full bg-white/20 opacity-70"
             }
           />
-          <KiraOrb thinking={thinking} size={52} />
+          <KiraOrb size={52} />
         </span>
         <span className="text-sm font-semibold text-white/95">
           {thinking ? "Kira is thinking…" : "Ask Kira"}
