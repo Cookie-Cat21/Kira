@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LiquidGlass } from "@/app/components/glass";
-import DiscoverGlassBar, {
-  type DiscoverTabId,
-} from "@/app/components/glass/DiscoverGlassBar";
+import DiscoverGlassBar from "@/app/components/glass/DiscoverGlassBar";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import { formatLKR } from "@/app/components/store/storeIcons";
 import type { KiraProduct } from "@/types";
@@ -29,8 +27,7 @@ export default function ShopLandingSearch({
   const { open: openKira } = useKiraDock();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<KiraProduct[]>([]);
-  const [activeTab, setActiveTab] = useState<DiscoverTabId>("popular");
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const term = query.trim();
@@ -52,22 +49,13 @@ export default function ShopLandingSearch({
 
   const suggestions = useMemo((): Suggestion[] => {
     const q = query.trim().toLowerCase();
-    const categoryLabels = categories.slice(0, 6).map((c) => ({
-      label: c.name,
-      hint: "Category",
-      slug: c.slug,
-    }));
 
     if (q) {
       const productSuggestions = results.map((p) => ({
         label: p.name,
         hint: formatLKR(p.price, p.currency),
       }));
-      const staticPool =
-        activeTab === "popular"
-          ? [...POPULAR]
-          : categoryLabels.map((c) => c.label);
-      const staticMatches = staticPool
+      const staticMatches = [...POPULAR]
         .filter((label) => label.toLowerCase().includes(q))
         .map((label) => ({ label }));
 
@@ -82,12 +70,8 @@ export default function ShopLandingSearch({
         .slice(0, 8);
     }
 
-    if (activeTab === "browse") {
-      return categoryLabels.map(({ label, hint }) => ({ label, hint }));
-    }
-
     return POPULAR.map((label) => ({ label }));
-  }, [activeTab, categories, query, results]);
+  }, [categories, query, results]);
 
   const resolveProduct = (label: string) =>
     results.find((p) => p.name === label);
@@ -99,7 +83,6 @@ export default function ShopLandingSearch({
     const product = resolveProduct(term);
     if (product) {
       router.push(`/product/${product.id}`);
-      setIsExpanded(false);
       setQuery("");
       return;
     }
@@ -109,17 +92,15 @@ export default function ShopLandingSearch({
     );
     if (category) {
       router.push(`/shop/${category.slug}`);
-      setIsExpanded(false);
       setQuery("");
       return;
     }
 
-    openKira({ prompt: `I'm looking for ${term} on Kapruka` });
-    setIsExpanded(false);
+    openKira({ prompt: term });
     setQuery("");
   };
 
-  const showSuggestions = isExpanded && suggestions.length > 0;
+  const showSuggestions = focused && suggestions.length > 0;
 
   return (
     <div className="relative w-full max-w-lg">
@@ -127,10 +108,8 @@ export default function ShopLandingSearch({
         query={query}
         onQueryChange={setQuery}
         onSearch={handleSearch}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isExpanded={isExpanded}
-        onExpandedChange={setIsExpanded}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         className="w-full"
       />
 

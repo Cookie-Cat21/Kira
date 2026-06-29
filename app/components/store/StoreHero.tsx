@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import GlowHorizon from "@/app/components/effects/GlowHorizon";
-import { GlassButton } from "@/app/components/glass";
 import KaprukaSmileMark from "@/app/components/brand/KaprukaSmileMark";
 import ShopLandingSearch from "@/app/components/store/ShopLandingSearch";
-import { useKiraDock } from "@/app/context/KiraDockContext";
 import type { StoreCategory } from "@/types/store";
 
 const UI_EASE = [0.22, 1, 0.36, 1] as const;
@@ -17,12 +14,9 @@ export default function StoreHero({
 }: {
   categories: StoreCategory[];
 }) {
-  const { open: openKira } = useKiraDock();
   const reduceMotion = useReducedMotion();
   const topCategories = categories.slice(0, 6);
-  const shopHref = topCategories[0]
-    ? `/shop/${topCategories[0].slug}`
-    : "/shop/cakes";
+  const shopHref = "/shop";
 
   const reveal = (delay: number) => ({
     initial: reduceMotion
@@ -70,37 +64,18 @@ export default function StoreHero({
           <ShopLandingSearch categories={categories} />
         </motion.div>
 
-        <motion.div
-          className="mt-6 flex flex-wrap items-center justify-center gap-3"
-          {...reveal(1.42)}
-        >
-          <Link
-            href={shopHref}
-            className="text-[13px] font-medium text-white/45 underline-offset-4 transition-colors hover:text-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-sm"
-          >
-            Browse all categories
-          </Link>
-          <span aria-hidden className="text-white/15">
-            ·
-          </span>
-          <GlassButton
-            variant="ghost"
-            size="sm"
-            onClick={() => openKira()}
-            icon={<Sparkles className="size-3.5 text-kap-yellow" />}
-            className="min-h-9"
-          >
-            Ask Kira
-          </GlassButton>
-        </motion.div>
       </div>
 
       {topCategories.length > 0 && (
         <motion.nav
-          className="relative z-10 mx-auto flex w-full max-w-3xl flex-wrap items-center justify-center gap-1 px-4 pb-10 pt-2"
+          className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-1 px-4 pb-10 pt-2"
           aria-label="Shop categories"
           {...reveal(1.55)}
         >
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-widest text-white/25">
+            Browse all categories
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-1">
           {topCategories.map((category, i) => (
             <span key={category.slug} className="inline-flex items-center">
               {i > 0 && (
@@ -116,6 +91,7 @@ export default function StoreHero({
               </Link>
             </span>
           ))}
+          </div>
         </motion.nav>
       )}
     </section>
