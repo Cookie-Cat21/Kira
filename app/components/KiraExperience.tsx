@@ -36,6 +36,7 @@ import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
+import { useKiraDock } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips } from "@/lib/kira-client";
 import {
   getColomboTodayIso,
@@ -258,6 +259,7 @@ export default function KiraExperience({
 }) {
   // When docked inside the storefront we skip the full-screen loader splash.
   const [appReady, setAppReady] = useState(embedded);
+  const { setThinking } = useKiraDock();
 
   const [messages, setMessages] = useState<KiraMessage[]>(() => [buildOpeningMessage()]);
   const [isLoading, setIsLoading] = useState(false);
@@ -323,6 +325,11 @@ export default function KiraExperience({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    setThinking(isLoading);
+    return () => setThinking(false);
+  }, [isLoading, setThinking]);
 
   useEffect(() => {
     setCheckoutDefaults({ city: deliveryCity, date: deliveryDate });

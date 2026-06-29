@@ -2,13 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import KiraExperience from "@/app/components/KiraExperience";
+import KiraOrb from "@/app/components/KiraOrb";
 
 export default function KiraDock() {
   const pathname = usePathname();
-  const { isOpen, open, close, seed } = useKiraDock();
+  const { isOpen, open, close, seed, isThinking } = useKiraDock();
 
   // The root route IS the full-screen Kira experience — the dock only exists
   // on storefront pages (/shop, /product) as a way back into the conversation.
@@ -29,20 +30,50 @@ export default function KiraDock() {
           <motion.button
             type="button"
             onClick={() => open()}
-            aria-label="Open Kira, your shopping assistant"
+            aria-label={
+              isThinking
+                ? "Kira is thinking — open assistant"
+                : "Open Kira, your shopping assistant"
+            }
             initial={{ opacity: 0, scale: 0.8, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 12 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-5 right-5 z-[90] flex items-center gap-2.5 rounded-full bg-gradient-to-r from-kap-purple to-[#6d4ec9] py-3 pl-4 pr-5 shadow-[0_8px_30px_rgba(64,41,112,0.6)] transition-transform hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="group fixed bottom-5 right-5 z-[90] flex items-center gap-3 rounded-full border border-white/10 bg-[#0a0612]/90 p-1.5 pl-1.5 pr-5 shadow-[0_8px_32px_rgba(64,41,112,0.55)] backdrop-blur-md sm:bottom-6 sm:right-6"
           >
-            <span className="relative flex size-7 items-center justify-center">
-              <span className="kira-ring absolute inline-flex size-7 rounded-full bg-white/40" />
-              <span className="relative flex size-7 items-center justify-center rounded-full bg-white/15">
-                <Sparkles className="size-4 text-kap-yellow" />
-              </span>
+            <span className="relative flex size-[52px] items-center justify-center">
+              <motion.span
+                className="absolute inset-0 rounded-full"
+                animate={
+                  isThinking
+                    ? {
+                        boxShadow: [
+                          "0 0 0 0 rgba(248,218,8,0.35)",
+                          "0 0 0 10px rgba(248,218,8,0)",
+                        ],
+                      }
+                    : { boxShadow: "0 0 0 0 rgba(148,100,255,0)" }
+                }
+                transition={
+                  isThinking
+                    ? { duration: 1.4, repeat: Infinity, ease: "easeOut" }
+                    : { duration: 0.3 }
+                }
+              />
+              <span
+                className={
+                  isThinking
+                    ? "kira-ring absolute inset-0 rounded-full bg-kap-yellow/25"
+                    : "kira-ring absolute inset-0 rounded-full bg-white/20 opacity-70"
+                }
+              />
+              <KiraOrb thinking={isThinking} size={52} />
             </span>
-            <span className="text-sm font-semibold text-white">Ask Kira</span>
+            <span className="text-sm font-semibold text-white/95">
+              {isThinking ? "Kira is thinking…" : "Ask Kira"}
+            </span>
           </motion.button>
         )}
       </AnimatePresence>

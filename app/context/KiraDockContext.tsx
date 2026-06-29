@@ -20,9 +20,12 @@ export interface KiraDockSeed {
 interface KiraDockValue {
   isOpen: boolean;
   seed: KiraDockSeed | null;
+  /** True while Kira is processing a response (tool calls / streaming). */
+  isThinking: boolean;
   open: (seed?: KiraDockSeed) => void;
   close: () => void;
   toggle: () => void;
+  setThinking: (thinking: boolean) => void;
 }
 
 const KiraDockContext = createContext<KiraDockValue | null>(null);
@@ -36,6 +39,7 @@ export function useKiraDock(): KiraDockValue {
 export function KiraDockProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [seed, setSeed] = useState<KiraDockSeed | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
   const open = useCallback((nextSeed?: KiraDockSeed) => {
     setSeed(nextSeed ?? null);
     setIsOpen(true);
@@ -50,10 +54,13 @@ export function KiraDockProvider({ children }: { children: React.ReactNode }) {
       return !v;
     });
   }, []);
+  const setThinking = useCallback((thinking: boolean) => {
+    setIsThinking(thinking);
+  }, []);
 
   const value = useMemo(
-    () => ({ isOpen, seed, open, close, toggle }),
-    [isOpen, seed, open, close, toggle]
+    () => ({ isOpen, seed, isThinking, open, close, toggle, setThinking }),
+    [isOpen, seed, isThinking, open, close, toggle, setThinking]
   );
 
   return (
