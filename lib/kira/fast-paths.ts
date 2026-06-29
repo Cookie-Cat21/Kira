@@ -18,7 +18,6 @@ import {
   REORDER_REF_RE,
   REORDER_SESSION_RE,
   REPAIR_GIFT_RE,
-  REPAIR_INSIST_RE,
   RUSH_RE,
   SALE_RE,
   buildReasonBadges,
@@ -529,19 +528,66 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  // ── Emotional repair scenario — friend advice before search ──────────────
-  const wantsProductSearch =
-    /\b(flowers?|roses?|cakes?|chocolates?|gift|hamper|bouquet)\b/i.test(lower);
-  if (
-    REPAIR_GIFT_RE.test(lower) &&
-    !REPAIR_INSIST_RE.test(lower) &&
-    wantsProductSearch
-  ) {
-    await streamWords(controller, L("repairGiftAdvice", language));
+  // ── Emotional repair — warm friend + Kapruka delivery to recipient ─────
+  const repairProductKw = extractProductKeyword(lower);
+  if (REPAIR_GIFT_RE.test(lower) && repairProductKw) {
+    await streamWords(controller, L("repairGiftSearchIntro", language));
+    controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
+    let repairProducts: KiraProduct[] = [];
+    for (const q of [repairProductKw, fallbackQuery(repairProductKw)]) {
+      if (!q) continue;
+      const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q, limit: 6, in_stock_only: true, response_format: "json" },
+      });
+      let batch = extractProductsFromMcp(repairResult.content);
+      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[q];
+      const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[q];
+      if (relevanceFilter) {
+        batch = batch.filter((p) => {
+          const txt = `${p.name} ${p.category ?? ""}`;
+          return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
+        });
+      }
+      repairProducts = dedupeProducts([...repairProducts, ...batch]);
+      if (repairProducts.length >= 3) break;
+    }
+    const repairCity = extractCityHint(trimmed) ?? deliveryCity;
+    if (repairProducts.length === 0) {
+      await streamWords(
+        controller,
+        Lf("searchNothingFound", language, { query: repairProductKw })
+      );
+    } else {
+      const cityText = repairCity ? ` to ${repairCity}` : "";
+      const key = repairProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+      await streamWords(
+        controller,
+        Lf(key, language, {
+          n: repairProducts.length,
+          budget: "",
+          city: cityText,
+          date: "",
+        })
+      );
+      controller.enqueue(sse("products", repairProducts));
+      if (repairCity && repairProducts[0]) {
+        controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+        const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+          params: {
+            city: repairCity,
+            product_id: repairProducts[0].id,
+            ...(deliveryDate ? { delivery_date: deliveryDate } : {}),
+            response_format: "json",
+          },
+        });
+        const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+        if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+      }
+    }
     controller.enqueue(sse("done"));
     return true;
   }
-  if (REPAIR_GIFT_RE.test(lower) && !wantsProductSearch) {
+  if (REPAIR_GIFT_RE.test(lower)) {
     await streamWords(controller, L("repairGiftAsk", language));
     controller.enqueue(sse("done"));
     return true;
@@ -573,9 +619,14 @@ export async function tryHandleDeterministicPrompt({
     (/මල්|பூ|மலர்/i.test(trimmed) ? "flowers" : null) ??
     (/\bbooks?\b/i.test(lower) ? "books" : null) ??
     (/\bstationary\b/i.test(lower) ? "stationery" : null);
+  const hasDeliveryToRecipient =
+    /\bto\s+(my\s+)?(wife|husband|her|him|gf|girlfriend|boyfriend|partner|office|home)\b/i.test(
+      lower
+    ) || /\bdeliver(?:y)?\s+to\b/i.test(lower);
   const hasSimpleProductIntent =
     !!simpleProductQuery &&
-    (/\b(show|search|want|need|looking for|send|buy|get)\b/i.test(lower) ||
+    (/\b(show|search|want|need|looking for|send|buy|get|order|deliver)\b/i.test(lower) ||
+      hasDeliveryToRecipient ||
       /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
       /\b(vesak|birthday|anniversary)\b/i.test(lower) ||
       trimmed.toLowerCase() === simpleProductQuery ||
@@ -634,6 +685,12 @@ export async function tryHandleDeterministicPrompt({
       const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
       const cityText = productCity ? ` to ${productCity}` : "";
       const dateText = productDate ? ` on ${productDate}` : "";
+      const isEmotionalSend =
+        REPAIR_GIFT_RE.test(lower) ||
+        /\b(machang|bro\b|mate\b|messed up|pissed|furious|angry|mad|fight|sorry)\b/i.test(lower);
+      if (isEmotionalSend) {
+        await streamWords(controller, L("repairGiftSearchIntro", language));
+      }
       await streamWords(
         controller,
         Lf(products.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
@@ -895,7 +952,7 @@ export async function tryHandleDeterministicPrompt({
   // Matches: "something for Father's Day under 3000", "amma ta gift ekak ganna ona",
   // "I need a gift for Colombo", etc.
   const GIFT_INTENT_RE =
-    /\b(gift|present|something\s+(for|nice)|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
+    /\b(gift|present|something\s+(?:for|nice|to)|send something|make it up|what\s+(to\s+)?(buy|get|send)|father'?s\s+day|mother'?s\s+day|birthday\s+gift)\b/i;
   const SL_FAMILY_GIFT_RE =
     /\b(amma|thaththa|thaththaa|acca|akka|aiya|malli|nangi|nona)\s+(ta|ge|for)\b/i;
   const PRODUCT_RECIPIENT_RE =

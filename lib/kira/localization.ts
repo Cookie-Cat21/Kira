@@ -194,15 +194,15 @@ export const LS: Record<string, Record<string, string>> = {
     si: "Order {orderNumber} rebuild කරන්න බෑ. Confirmation email number double-check කරන්න.",
     ta: "Order {orderNumber} rebuild செய்ய முடியவில்லை. Confirmation email number double-check செய்யுங்கள்.",
   },
-  repairGiftAdvice: {
-    en: "Machang, honestly? Flowers arriving at the door can feel like you're dodging the conversation. Pick them up yourself — hand-deliver with an apology. That's the real fix. Want me to find flowers you can collect, or something else entirely?",
-    si: "Machang, honestly? Flowers door-to-door එන්නේ conversation avoid කරනවා වගේ. Pick up කරලා hand-deliver — apology එක්ක. ඒක real fix. Collect කරන්න flowers හොයමුද?",
-    ta: "Machang, honestly? Flowers door-to-door வந்தால் conversation avoid பண்ணுற மாதிரி. Pick up பண்ணி hand-deliver — apology-ஓட. அதுதான் real fix. Collect flowers தேடலாமா?",
+  repairGiftSearchIntro: {
+    en: "Machang, rough patch eh? Let's get this to her — here are options Kapruka can deliver:",
+    si: "Machang, rough patch eh? Her එකට deliver කරන්න පුළුවන් options:",
+    ta: "Machang, rough patch eh? அவருக்கு deliver பண்ண options:",
   },
   repairGiftAsk: {
-    en: "Oof, sounds rough. What happened — and are you trying to fix it with a gift, or do you just need to talk it through first?",
-    si: "Oof, rough වගේ. What happened — gift fix කරන්නද, නැත්නම් talk it through first?",
-    ta: "Oof, rough மாதிரி. What happened — gift fix-க்கா, அல்லது talk it through first?",
+    en: "Oof, sounds rough — zero judgment. Flowers or chocolates usually land well. What should I send, and where?",
+    si: "Oof, rough වගේ — judgment නෑ. Flowers හෝ chocolates හොඳයි. මොකක්ද යවන්නේ, කොහෙද?",
+    ta: "Oof, rough மாதிரி — judgment இல்ல. Flowers அல்லது chocolates நல்லா இருக்கும். என்ன அனுப்பணும், எங்க?",
   },
   rushSearchIntro: {
     en: "These can reach {city} on {date} — rush slots fill fast:",

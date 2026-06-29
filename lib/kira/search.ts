@@ -144,12 +144,16 @@ export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
 export function extractProductKeyword(lower: string): string | null {
   if (/\bcake\b/.test(lower)) return "cake";
   if (/\bflower|\brose|\bbouquet\b/.test(lower)) return "roses";
+  if (/\blilies?\b/.test(lower)) return "flowers";
+  if (/\borchids?\b/.test(lower)) return "flowers";
   if (/\bchocolat/.test(lower)) return "chocolate";
   if (/\bhamper\b/.test(lower)) return "gift hamper";
   if (/\belectronic|\bphone|\bgadget\b/.test(lower)) return "electronics";
   if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
   if (/\bgrocery\b/.test(lower)) return "grocery";
-  if (/\btoy\b/.test(lower)) return "soft toy";
+  if (/\btoy\b|\bteddy\b/.test(lower)) return "soft toy";
+  if (/\bsweet\b/.test(lower)) return "chocolate";
+  if (/\bgift\b/.test(lower)) return "gift set";
   return null;
 }
 
@@ -266,8 +270,12 @@ export function fallbackQuery(query: string): string | undefined {
 }
 
 export function extractCityHint(text: string): string | undefined {
-  const match = text.match(SERVER_CITY_REGEX);
-  return match?.[1]?.replace(/\b\w/g, (c) => c.toUpperCase());
+  const stripped = text.replace(/\bgalle\s+(?:road|rd\.?|mawatha|street|st\.?)\b/gi, " ");
+  const cityRe = new RegExp(SERVER_CITY_REGEX.source, "gi");
+  const matches = [...stripped.matchAll(cityRe)];
+  if (matches.length === 0) return undefined;
+  const last = matches[matches.length - 1][1];
+  return last.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function extractOccasionHint(text: string): string | undefined {

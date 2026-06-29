@@ -14,7 +14,7 @@ const STEPS = [
   { label: "Greeting", message: "hey", expectNoProducts: true },
   { label: "Electronics breadth", message: "Show me electronics on Kapruka", expectProducts: true },
   { label: "Budget search", message: "chocolate under 3000 to Kandy", expectProducts: true },
-  { label: "Personality repair", message: "I messed up wife is angry need to send flowers", expectNoProducts: true },
+  { label: "Personality repair", message: "I messed up wife is angry need to send flowers", expectProducts: true },
   { label: "Rush delivery", message: "need roses delivered today to Colombo urgent", expectProducts: true },
   { label: "Ready to checkout", message: "I am ready to checkout", cart: true, expectNoProducts: true },
   { label: "Reorder session", message: "order again", lastOrder: true, expectProducts: true },
