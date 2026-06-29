@@ -41,9 +41,10 @@ function nthSundayOfMonth(year: number, monthIndex: number, n: number): Date {
   return d;
 }
 
-function isWithinDaysOf(target: Date, now: Date, daysBefore: number, daysAfter = 0): boolean {
-  const diff = daysBetween(now, target);
-  return diff >= -daysBefore && diff <= daysAfter;
+/** True when `target` is 0–`daysBefore` calendar days ahead of `now` (inclusive). */
+function isApproachingOccasion(target: Date, now: Date, daysBefore: number): boolean {
+  const daysUntil = daysBetween(now, target);
+  return daysUntil >= 0 && daysUntil <= daysBefore;
 }
 
 const EVERGREEN_CHIPS: OccasionChip[] = [
@@ -77,12 +78,12 @@ export function getOccasionChips(now = new Date()): OccasionChip[] {
   }
 
   const mothersDay = nthSundayOfMonth(year, 4, 2); // May, 2nd Sunday
-  if (isWithinDaysOf(mothersDay, now, 14, 0)) {
+  if (isApproachingOccasion(mothersDay, now, 14)) {
     return [{ label: "💝 Mother's Day gift", value: "I need a Mother's Day gift for amma", urgent: true }, ...EVERGREEN_CHIPS];
   }
 
   const fathersDay = nthSundayOfMonth(year, 5, 3); // June, 3rd Sunday
-  if (isWithinDaysOf(fathersDay, now, 14, 0)) {
+  if (isApproachingOccasion(fathersDay, now, 14)) {
     return [{ label: "👨 Father's Day gift", value: "I need a Father's Day gift for my dad", urgent: true }, ...EVERGREEN_CHIPS];
   }
 
@@ -108,7 +109,7 @@ export function getStarterPrompts(now = new Date()): StarterPrompt[] {
   ];
 
   const fathersDay = nthSundayOfMonth(year, 5, 3);
-  if (isWithinDaysOf(fathersDay, now, 14, 0)) {
+  if (isApproachingOccasion(fathersDay, now, 14)) {
     return [
       { label: "Father's Day gifts", value: "I need a Father's Day gift for my dad under LKR 5,000" },
       ...prompts.filter((p) => p.label !== "Popular now"),
@@ -116,7 +117,7 @@ export function getStarterPrompts(now = new Date()): StarterPrompt[] {
   }
 
   const mothersDay = nthSundayOfMonth(year, 4, 2);
-  if (isWithinDaysOf(mothersDay, now, 14, 0)) {
+  if (isApproachingOccasion(mothersDay, now, 14)) {
     return [
       { label: "Mother's Day gifts", value: "I need a Mother's Day gift for amma under LKR 5,000" },
       ...prompts.filter((p) => p.label !== "Popular now"),
@@ -238,12 +239,12 @@ function getUpcomingOccasionText(now = new Date()): string | null {
   }
 
   const mothersDay = nthSundayOfMonth(year, 4, 2);
-  if (isWithinDaysOf(mothersDay, now, 14, 0)) {
+  if (isApproachingOccasion(mothersDay, now, 14)) {
     return "Mother's Day is around the corner — shopping for amma?";
   }
 
   const fathersDay = nthSundayOfMonth(year, 5, 3);
-  if (isWithinDaysOf(fathersDay, now, 14, 0)) {
+  if (isApproachingOccasion(fathersDay, now, 14)) {
     return "Father's Day is coming up — looking for a gift for your dad?";
   }
 
