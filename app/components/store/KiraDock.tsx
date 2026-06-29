@@ -162,15 +162,9 @@ export default function KiraDock() {
                   </button>
                 </div>
 
-                {isExpanded ? (
-                  <div className="h-full min-h-0 overflow-hidden">
-                    <KiraExperience embedded seed={seed} />
-                  </div>
-                ) : (
-                  <KiraGlassShell radius={shellRadius}>
-                    <KiraExperience embedded seed={seed} />
-                  </KiraGlassShell>
-                )}
+                <KiraGlassShell radius={shellRadius}>
+                  <KiraExperience embedded glassChrome seed={seed} />
+                </KiraGlassShell>
               </motion.div>
             </motion.div>
           </>
