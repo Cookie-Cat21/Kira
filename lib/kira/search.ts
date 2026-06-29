@@ -1,8 +1,10 @@
 import { callMcpTool, getMcpClient } from "@/lib/mcp-client";
 import {
   extractProductDetailsFromMcp,
+  extractProductsFromMcp,
   formatMcpContentForModel,
 } from "@/lib/mcp-parsing";
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CartItem, DeliveryQuote, KiraProduct, TrackingItem } from "@/types";
 
 export const SERVER_CITY_REGEX =
@@ -142,6 +144,58 @@ export function dedupeProducts(products: KiraProduct[]): KiraProduct[] {
     seen.add(key);
     return true;
   });
+}
+
+export function productIds(products: KiraProduct[] | undefined): Set<string> {
+  return new Set((products ?? []).map((p) => p.id).filter(Boolean));
+}
+
+/** Rotate sorts/queries until we find items not already shown in this chat. */
+export async function fetchFreshMoreProducts({
+  mcpClient,
+  query,
+  maxPrice,
+  excludeIds,
+  onStep,
+}: {
+  mcpClient: Client;
+  query: string;
+  maxPrice?: number;
+  excludeIds: Set<string>;
+  onStep?: (label: string) => void;
+}): Promise<KiraProduct[]> {
+  const sorts = ["price_asc", "price_desc", "bestseller"] as const;
+  const queries = [query, fallbackQuery(query)].filter(
+    (q): q is string => Boolean(q)
+  );
+  const uniqueQueries = [...new Set(queries)];
+  const freshPool: KiraProduct[] = [];
+  const poolIds = new Set<string>();
+
+  for (const q of uniqueQueries) {
+    for (const sort of sorts) {
+      onStep?.(`Searching Kapruka for "${q}" (${sort})`);
+      const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: 12,
+          in_stock_only: true,
+          sort,
+          ...(maxPrice ? { max_price: maxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
+      for (const product of batch) {
+        if (excludeIds.has(product.id) || poolIds.has(product.id)) continue;
+        poolIds.add(product.id);
+        freshPool.push(product);
+        if (freshPool.length >= 6) return freshPool;
+      }
+    }
+  }
+
+  return freshPool;
 }
 
 export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {

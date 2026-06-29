@@ -32,7 +32,9 @@ import {
   extractProductKeyword,
   extractRecipientHint,
   fallbackQuery,
+  fetchFreshMoreProducts,
   parseSearchIntent,
+  productIds,
   productsFromTrackingItems,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
@@ -65,6 +67,7 @@ export async function tryHandleDeterministicPrompt({
   deliveryCity,
   deliveryDate,
   lastProducts,
+  shownProducts,
   lastOrder,
   language,
   mcpClient,
@@ -80,6 +83,7 @@ export async function tryHandleDeterministicPrompt({
   deliveryCity?: string;
   deliveryDate?: string;
   lastProducts?: KiraProduct[];
+  shownProducts?: KiraProduct[];
   lastOrder?: LastOrder;
   language: string;
   mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
@@ -944,34 +948,22 @@ export async function tryHandleDeterministicPrompt({
 
   if (isPureMoreRequest) {
     const ctx = extractLastSearchContext(messages, trimmed);
-    const sorts = ["price_asc", "bestseller", "price_desc"] as const;
-    let moreProducts: KiraProduct[] = [];
-    for (const sort of sorts) {
-      controller.enqueue(sse("step", `Searching Kapruka for "${ctx.query}" (${sort})`));
-      const moreResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-        params: {
-          q: ctx.query,
-          limit: 9,
-          in_stock_only: true,
-          sort,
-          ...(ctx.maxPrice ? { max_price: ctx.maxPrice } : {}),
-          response_format: "json",
-        },
-      });
-      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
-      if (batch.length > 0) {
-        moreProducts = batch;
-        break;
-      }
-    }
-    const seenIds = new Set((lastProducts ?? []).map((p) => p.id));
-    if (seenIds.size > 0) {
-      const fresh = moreProducts.filter((p) => !seenIds.has(p.id));
-      if (fresh.length > 0) moreProducts = fresh;
-    }
+    const excludeIds = productIds(shownProducts ?? lastProducts);
+    const moreProducts = await fetchFreshMoreProducts({
+      mcpClient,
+      query: ctx.query,
+      maxPrice: ctx.maxPrice,
+      excludeIds,
+      onStep: (label) => controller.enqueue(sse("step", label)),
+    });
 
     if (moreProducts.length === 0) {
-      await streamWords(controller, L("moreOptionsSamePicks", language));
+      await streamWords(
+        controller,
+        excludeIds.size > 0
+          ? L("moreOptionsSamePicks", language)
+          : Lf("moreOptionsAboutAll", language, { query: ctx.query })
+      );
     } else {
       const budgetText = ctx.maxPrice
         ? ` under LKR ${ctx.maxPrice.toLocaleString("en-LK")}`

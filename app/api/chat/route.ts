@@ -40,6 +40,7 @@ import {
   buildSessionContextReminder,
   COMPACT_RESUME_INSTRUCTION,
   validateLastProducts,
+  validateShownProducts,
 } from "@/lib/kira/session-context";
 import {
   CATEGORY_IRRELEVANCE_TERMS,
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
           occasion,
           recipient,
           lastProducts,
+          shownProducts,
           lastOrder,
         } = body;
         const language: string = body.language ?? "en";
@@ -103,6 +105,7 @@ export async function POST(req: NextRequest) {
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
         const checkoutConfirmed = isCheckoutConfirmation(latestUserText);
         const safeLastProducts = validateLastProducts(lastProducts);
+        const safeShownProducts = validateShownProducts(shownProducts, safeLastProducts);
 
         const sessionReminder = buildSessionContextReminder({
           cart,
@@ -133,6 +136,7 @@ export async function POST(req: NextRequest) {
             deliveryCity,
             deliveryDate,
             lastProducts: safeLastProducts,
+            shownProducts: safeShownProducts,
             lastOrder,
             language,
             mcpClient,

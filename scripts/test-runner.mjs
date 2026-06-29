@@ -194,6 +194,7 @@ function normalizeRequest(request = {}) {
     ...(request.occasion ? { occasion: request.occasion } : {}),
     ...(request.recipient ? { recipient: request.recipient } : {}),
     ...(request.lastProducts ? { lastProducts: request.lastProducts } : {}),
+    ...(request.shownProducts ? { shownProducts: request.shownProducts } : {}),
     ...(request.lastOrder ? { lastOrder: request.lastOrder } : {}),
     ...(request.internationalMode ? { internationalMode: request.internationalMode } : {}),
   };

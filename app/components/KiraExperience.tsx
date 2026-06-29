@@ -459,6 +459,12 @@ export default function KiraExperience({
         const lastWithProducts = [...allMsgs].reverse().find(
           (m) => m.role === "assistant" && m.products && m.products.length > 0
         );
+        const shownById = new Map<string, KiraProduct>();
+        for (const m of allMsgs) {
+          if (m.role !== "assistant" || !m.products?.length) continue;
+          for (const p of m.products) shownById.set(p.id, p);
+        }
+        const shownProducts = [...shownById.values()];
 
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -473,6 +479,7 @@ export default function KiraExperience({
             occasion: requestOccasion,
             recipient: requestRecipient,
             lastProducts: lastWithProducts?.products,
+            shownProducts,
             lastOrder,
             language,
             internationalMode: /\b(overseas|from (uk|us|australia|dubai|uae)|dollars|pounds|aud)\b/i.test(trimmed),
