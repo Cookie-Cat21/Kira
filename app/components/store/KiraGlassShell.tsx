@@ -12,8 +12,8 @@ type Props = {
 };
 
 /**
- * Chat chrome: soft animated noise + light blur. Glass material lives on the
- * individual UI components (input, chips) — not a full-panel displacement layer.
+ * Chat chrome: animated bar-noise fills the panel; a whisper of blur keeps it
+ * from overpowering the UI. Glass material lives on individual components.
  */
 export default function KiraGlassShell({
   children,
@@ -28,17 +28,17 @@ export default function KiraGlassShell({
         className={`relative h-full w-full overflow-hidden ${className}`}
         style={{ borderRadius: radius }}
       >
-        <div className="absolute inset-0 opacity-[0.28]">
-          <VerticalBarsNoise
-            backgroundColor="#0a0612"
-            lineColor="#1a1428"
-            barColor="#4a3868"
-            animationSpeed={0.00022}
-            intensity={0.45}
-          />
-        </div>
+        {/* Animated background — full strength, always on */}
+        <VerticalBarsNoise
+          backgroundColor="#0a0612"
+          lineColor="#2a1f42"
+          barColor="#6b4fa8"
+          animationSpeed={0.00028}
+          intensity={0.72}
+        />
+        {/* Light soften — visible bars, not a flat wipe */}
         <div
-          className="pointer-events-none absolute inset-0 bg-[#0a0612]/72 backdrop-blur-[14px]"
+          className="pointer-events-none absolute inset-0 bg-[#0a0612]/20 backdrop-blur-[5px]"
           aria-hidden="true"
         />
         <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>
