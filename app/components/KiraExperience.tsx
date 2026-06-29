@@ -451,9 +451,12 @@ export default function KiraExperience({
       if (parsedDeliveryDate) setDeliveryDate(parsedDeliveryDate);
 
       try {
-        const history = [...messages, userMsg]
-          .filter((m) => m.id !== "opening")
-          .map((m) => ({ role: m.role, content: m.content }));
+        // Include the client-side opening bubble so the LLM knows Kira already
+        // greeted — avoids a second "Hey, I'm Kira" after "Welcome back!".
+        const history = [...messages, userMsg].map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
 
         const allMsgs = [...messages, userMsg];
         const lastWithProducts = [...allMsgs].reverse().find(

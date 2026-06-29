@@ -86,14 +86,6 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  // ── Bare greeting ────────────────────────────────────────────────────────
-  const GREETING_RE = /^(hi|hello|hey|yo|ayubowan|ආයුබෝවන්|வணக்கம்)[\s!.]*$/i;
-  if (GREETING_RE.test(trimmed)) {
-    await streamWords(controller, L("greetingQuick", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
   // ── Cart contents ────────────────────────────────────────────────────────
   const CART_CONTENTS_RE =
     /\b(what'?s in (?:my )?(?:cart|tray|basket)|show (?:my )?(?:cart|tray)|cart contents|my tray)\b/i;
