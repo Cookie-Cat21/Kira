@@ -24,7 +24,7 @@ import {
 } from "@/lib/kira/catalog-guard";
 import { buildCompactSummary, trimContextIfNeeded } from "@/lib/kira/context";
 import { tryHandleDeterministicPrompt } from "@/lib/kira/fast-paths";
-import { getGroq, getGroqKeys } from "@/lib/kira/groq";
+import { getGroq, getGroqKeys, hasGroqKeys, pickStartingKeyIndex } from "@/lib/kira/groq";
 import { coerceArgTypes, relaxSchema, resolveSchema } from "@/lib/kira/groq-schema";
 import { L, Lf } from "@/lib/kira/localization";
 import {
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
           ? "\n\nSender is overseas — quote LKR prices and approximate USD (LKR 300 ≈ USD 1). Reassure: Kapruka delivers islandwide; need recipient's Sri Lanka address."
           : "";
 
-        if (!process.env.GROQ_API_KEY) {
+        if (!hasGroqKeys()) {
           controller.enqueue(sse("error", "Demo mode limited: Set GROQ_API_KEY in .env.local"));
           controller.close();
           return;
@@ -291,8 +291,8 @@ export async function POST(req: NextRequest) {
           | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
-        let keyIndex = 0;
-        const groqKeys = getGroqKeys();
+        const groqKeys = getGroqKeys().filter((k) => k.length > 0);
+        let keyIndex = pickStartingKeyIndex();
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
         let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
         let streamedText = false;     // true once real streaming emits the first token

@@ -49,6 +49,8 @@ The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `ap
 2. `meta-llama/llama-4-scout-17b-16e-instruct` — first fallback on 429
 3. `llama-3.1-8b-instant` — last resort; tool schemas are **dropped** and it is told not to invent products
 
+**Groq key rotation** (`lib/kira/groq.ts`): set `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GROQ_API_KEY_3` in `.env.local`. Each request round-robins the starting key; on 429/413 the route tries every key on the current model before dropping to the next model.
+
 **Deterministic fast-paths** (`tryHandleDeterministicPrompt` in `lib/kira/fast-paths.ts`): stateful or safety-critical patterns bypass the LLM loop. Product search, vague queries, delivery policy, COD, and out-of-scope are handled by Groq + tools. Fast-paths that remain:
 
 1. Empty input → friendly prompt

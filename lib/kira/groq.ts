@@ -1,7 +1,6 @@
 import Groq from "groq-sdk";
 
 // Read all keys: GROQ_API_KEY, GROQ_API_KEY_2, GROQ_API_KEY_3, …
-// Falls back to a single empty string so callers always get an array.
 let _keys: string[] | undefined;
 export function getGroqKeys(): string[] {
   if (_keys) return _keys;
@@ -14,6 +13,21 @@ export function getGroqKeys(): string[] {
   }
   _keys = keys.length > 0 ? keys : [""];
   return _keys;
+}
+
+/** True when at least one non-empty Groq key is configured. */
+export function hasGroqKeys(): boolean {
+  return getGroqKeys().some((k) => k.length > 0);
+}
+
+/** Spread load across keys — each request starts on the next slot (still 70B first). */
+let _nextKeySlot = 0;
+export function pickStartingKeyIndex(): number {
+  const count = getGroqKeys().filter((k) => k.length > 0).length;
+  if (count <= 1) return 0;
+  const idx = _nextKeySlot % count;
+  _nextKeySlot = (_nextKeySlot + 1) % count;
+  return idx;
 }
 
 // One cached client per key to avoid re-creating TLS connections.
