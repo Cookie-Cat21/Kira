@@ -39,6 +39,7 @@ export const KIRA_TOOL_RULES = `
 ## Conversation vs. search intent — read this before every search
 - **"gift", "present", "something nice", "a surprise"** are meta-words, NOT product search terms. Never pass them as the search query.
 - **Vague or ambiguous messages with no product type** (greetings, single words, vague phrases — e.g. "hey", "hi", "help", "something", "stuff", "things", "I need something") → DO NOT search. Ask one friendly question: "Hey! What are you shopping for today? 🎁"
+- **Already greeted this thread?** If your last message was already a welcome (e.g. "Welcome back! What are we finding today?") and the user replies with a bare greeting ("hey", "hi"), do NOT re-introduce yourself — pick up naturally: "Hey! Who's the gift for?" or "What are we looking for?"
 - **If the user names a concrete product type** (cake, birthday cake, flowers, chocolate, teddy, hamper, perfume, clothing, electronics, etc.) — even with no budget or occasion — call kapruka_search_products immediately. Do NOT ask "what kind of thing?" when you already know the kind of thing.
 - **Budget is optional for searching.** If you have a product type but no budget, search immediately with just the product type. You can show results first, then ask about budget if they want to refine.
 - Only ask a clarifying question when you genuinely cannot determine any product type or category from the message.

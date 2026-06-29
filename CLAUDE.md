@@ -49,19 +49,20 @@ The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `ap
 2. `meta-llama/llama-4-scout-17b-16e-instruct` — first fallback on 429
 3. `llama-3.1-8b-instant` — last resort; tool schemas are **dropped** and it is told not to invent products
 
-**Deterministic fast-paths** (`tryHandleDeterministicPrompt` in `route.ts`): certain message patterns bypass the LLM loop entirely and call MCP tools (or return a hardcoded reply) directly. They run in this order:
+**Deterministic fast-paths** (`tryHandleDeterministicPrompt` in `lib/kira/fast-paths.ts`): stateful or safety-critical patterns bypass the LLM loop. Product search, vague queries, delivery policy, COD, and out-of-scope are handled by Groq + tools. Fast-paths that remain:
 
-1. `JAILBREAK_RE` — "pretend you're a different AI" → in-character redirect, no tools
-2. `TRUST_RE` — "is Kapruka legit?" → brand affirmation, no tools
-3. Tracking — "track order KP12345" → `kapruka_track_order`
-4. Checkout — "ready to checkout" → collect fields, then `kapruka_create_order`
-5. Re-show — "show me those again" → re-emit cached `lastProducts`
-6. More products — "more", "other options" → re-search with rotated sort
-7. `POPULAR_RE` — "what's popular/trending?" → search `sort:"bestseller"` with fallback queries
-8. `GIFT_INTENT_RE` — gift keyword + (budget OR occasion OR city) → search `q:"gift"`
-9. `parseSearchIntent` — any other recognisable category keyword
+1. Empty input → friendly prompt
+2. `JAILBREAK_RE` — persona-change → in-character redirect, no tools
+3. `TRUST_RE` — "is Kapruka legit?" → brand affirmation, no tools
+4. Cart contents — reads client-side cart state
+5. "Tell me about" — storefront seed products MCP can't resolve
+6. Tracking — "track order KP12345" → `kapruka_track_order`
+7. Reorder by ref / session reorder
+8. Cart delivery check — fee quote for items in tray
+9. Re-show / more options / add-to-cart / list-as-text — referential on `lastProducts`
+10. Checkout — "ready to checkout" + checkout fill-in state machine
 
-**Gift fast-path guard:** `hasFamilyHint` (SL family terms like "amma ta") is in the trigger but **not** in the guard — a bare family term with no budget/occasion/city falls through to the LLM so it can ask what to get, rather than blindly searching `q:"gift"` and returning nothing.
+Bare greetings (`hey`, `hi`) go to the LLM. The client opening bubble is included in API history so Kira doesn't re-introduce after "Welcome back!"
 
 **MCP tool handling quirks:**
 - All 7 tools have `response_format: "json"` injected before calling
