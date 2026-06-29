@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, ArrowUp, Square, X, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import LiquidGlass from "@/app/components/glass/LiquidGlass";
 
 /* --- UTILS --- */
 const formatFileSize = (bytes: number) => {
@@ -322,17 +321,7 @@ export function KiraChatInput({
       }}
     >
       {glass ? (
-        <LiquidGlass
-          radius={16}
-          blur={10}
-          frosted
-          variant="regular"
-          interactive={false}
-          className="w-full shadow-[0_4px_20px_rgba(0,0,0,0.28)]"
-          contentClassName="p-0"
-        >
-          {inputBody}
-        </LiquidGlass>
+        <div className="kira-glass-surface flex flex-col">{inputBody}</div>
       ) : (
         <div
           className={cn(

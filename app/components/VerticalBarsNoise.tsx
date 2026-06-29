@@ -11,6 +11,10 @@ interface VerticalBarsNoiseProps {
   removeWaveLine?: boolean;
   /** Multiplier for bar/line opacity (0–1). Lower = subtler background. */
   intensity?: number;
+  /** Gentler motion — less horizontal wobble on bars. */
+  calm?: boolean;
+  /** Draw the horizontal rules (can read as harsh scanlines on chat). */
+  showLines?: boolean;
   className?: string;
 }
 
@@ -31,6 +35,8 @@ export default function VerticalBarsNoise({
   animationSpeed = 0.0005,
   removeWaveLine = true,
   intensity: intensityScale = 1,
+  calm = false,
+  showLines = true,
   className = "",
 }: VerticalBarsNoiseProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -146,7 +152,7 @@ export default function VerticalBarsNoise({
       return;
     }
 
-    const numLines = Math.floor(canvasHeight / 11);
+    const numLines = Math.floor(canvasHeight / (showLines ? 11 : 22));
     const lineSpacing = canvasHeight / numLines;
 
     ctx.fillStyle = backgroundColor;
@@ -154,22 +160,25 @@ export default function VerticalBarsNoise({
 
     for (let i = 0; i < numLines; i++) {
       const y = i * lineSpacing + lineSpacing / 2;
-      const mouseInfluence = getMouseInfluence(canvasWidth / 2, y);
-      const lineAlpha = Math.max(0.15, (0.3 + mouseInfluence * 0.7) * intensityScale);
 
-      ctx.beginPath();
-      const lineRgb = hexToRgb(lineColor);
-      ctx.strokeStyle = `rgba(${lineRgb.r}, ${lineRgb.g}, ${lineRgb.b}, ${lineAlpha})`;
-      ctx.lineWidth = lineWidth + mouseInfluence * 2;
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvasWidth, y);
-      ctx.stroke();
+      if (showLines) {
+        const mouseInfluence = getMouseInfluence(canvasWidth / 2, y);
+        const lineAlpha = Math.max(0.15, (0.3 + mouseInfluence * 0.7) * intensityScale);
+        ctx.beginPath();
+        const lineRgb = hexToRgb(lineColor);
+        ctx.strokeStyle = `rgba(${lineRgb.r}, ${lineRgb.g}, ${lineRgb.b}, ${lineAlpha})`;
+        ctx.lineWidth = lineWidth + mouseInfluence * 2;
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvasWidth, y);
+        ctx.stroke();
+      }
 
       for (let x = 0; x < canvasWidth; x += 8) {
         const noiseVal = noise(x, y, timeRef.current);
         const mouseInfl = getMouseInfluence(x, y);
         const rippleInfl = getRippleInfluence(x, y, currentTime);
         const totalInfluence = mouseInfl + rippleInfl;
+        const mouseInfluence = getMouseInfluence(canvasWidth / 2, y);
         const threshold = Math.max(
           0.2,
           0.5 - mouseInfl * 0.2 - Math.abs(rippleInfl) * 0.1
@@ -178,8 +187,9 @@ export default function VerticalBarsNoise({
         if (noiseVal > threshold) {
           const barWidth = 3 + noiseVal * 10 + totalInfluence * 5;
           const barHeight = 2 + noiseVal * 3 + totalInfluence * 3;
+          const wobble = calm ? 8 : 20;
           const baseAnimation =
-            Math.sin(timeRef.current + y * 0.0375) * 20 * noiseVal;
+            Math.sin(timeRef.current + y * 0.0375) * wobble * noiseVal;
           const mouseAnimation = mouseRef.current.isDown
             ? Math.sin(timeRef.current * 3 + x * 0.01) * 10 * mouseInfl
             : 0;
@@ -229,6 +239,8 @@ export default function VerticalBarsNoise({
     lineWidth,
     removeWaveLine,
     intensityScale,
+    calm,
+    showLines,
   ]);
 
   useEffect(() => {

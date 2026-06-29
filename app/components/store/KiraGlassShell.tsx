@@ -1,8 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LiquidGlassFilters } from "@/app/components/glass/LiquidGlass";
-import KiraFrostedFilter from "@/app/components/glass/KiraFrostedFilter";
 import VerticalBarsNoise from "@/app/components/VerticalBarsNoise";
 
 type Props = {
@@ -12,8 +10,8 @@ type Props = {
 };
 
 /**
- * Chat chrome: animated bar-noise fills the panel; a whisper of blur keeps it
- * from overpowering the UI. Glass material lives on individual components.
+ * Chat shell: soft animated bar field behind the UI. One blur layer max on
+ * components — never on the whole panel.
  */
 export default function KiraGlassShell({
   children,
@@ -21,28 +19,26 @@ export default function KiraGlassShell({
   className = "",
 }: Props) {
   return (
-    <>
-      <LiquidGlassFilters />
-      <KiraFrostedFilter />
-      <div
-        className={`relative h-full w-full overflow-hidden ${className}`}
-        style={{ borderRadius: radius }}
-      >
-        {/* Animated background — full strength, always on */}
+    <div
+      className={`relative h-full w-full overflow-hidden bg-[#0a0612] ${className}`}
+      style={{ borderRadius: radius }}
+    >
+      <div className="absolute inset-0 scale-[1.03] opacity-90 blur-[1.5px]">
         <VerticalBarsNoise
           backgroundColor="#0a0612"
-          lineColor="#2a1f42"
-          barColor="#6b4fa8"
-          animationSpeed={0.00028}
-          intensity={0.72}
+          lineColor="#221a34"
+          barColor="#8a7ab8"
+          animationSpeed={0.00016}
+          intensity={0.5}
+          calm
+          showLines={false}
         />
-        {/* Light soften — visible bars, not a flat wipe */}
-        <div
-          className="pointer-events-none absolute inset-0 bg-[#0a0612]/20 backdrop-blur-[5px]"
-          aria-hidden="true"
-        />
-        <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>
       </div>
-    </>
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(10,6,18,0.5)_100%)]"
+        aria-hidden="true"
+      />
+      <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>
+    </div>
   );
 }

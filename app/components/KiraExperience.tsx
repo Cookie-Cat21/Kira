@@ -39,8 +39,6 @@ import { useCart } from "../context/CartContext";
 import type { KiraDockSeed } from "../context/KiraDockContext";
 import { useKiraDock } from "../context/KiraDockContext";
 import { getContextualGreeting, getOccasionChips, getStarterPrompts } from "@/lib/kira-client";
-import GlassChip from "@/app/components/glass/GlassChip";
-import LiquidGlass from "@/app/components/glass/LiquidGlass";
 import {
   getColomboTodayIso,
   getColomboTomorrowIso,
@@ -902,6 +900,10 @@ export default function KiraExperience({
   const hasActiveOccasion = occasionChips.some((chip) => chip.urgent);
   const useComponentGlass = glassChrome;
 
+  const headerClass = glassChrome
+    ? "glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10"
+    : "liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10";
+
   return (
     <div
       className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")}
@@ -922,7 +924,7 @@ export default function KiraExperience({
         </>
       )}
 
-      <header className="liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
+      <header className={headerClass}>
         {/* Left cluster */}
         <div className="flex min-w-0 items-center gap-2.5">
           {!isOnlyOpening && (
@@ -1028,53 +1030,24 @@ export default function KiraExperience({
           </div>
 
           <div
-            className="mt-4 w-full max-w-2xl animate-fade-up"
+            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 backdrop-blur-md"
             style={{ animationDelay: "90ms" }}
           >
-            {useComponentGlass ? (
-              <LiquidGlass
-                radius={20}
-                blur={10}
-                frosted
-                variant="regular"
-                interactive={false}
-                className="w-full"
-                contentClassName="px-4 py-3"
-              >
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
-                  Start fast
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {starterPrompts.map((prompt) => (
-                    <GlassChip
-                      key={prompt.label}
-                      frosted
-                      onClick={() => sendMessage(prompt.value)}
-                    >
-                      {prompt.label}
-                    </GlassChip>
-                  ))}
-                </div>
-              </LiquidGlass>
-            ) : (
-              <div className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
-                  Start fast
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {starterPrompts.map((prompt) => (
-                    <button
-                      key={prompt.label}
-                      type="button"
-                      onClick={() => sendMessage(prompt.value)}
-                      className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:text-white"
-                    >
-                      {prompt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
+              Start fast
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {starterPrompts.map((prompt) => (
+                <button
+                  key={prompt.label}
+                  type="button"
+                  onClick={() => sendMessage(prompt.value)}
+                  className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/85 transition-colors hover:text-white"
+                >
+                  {prompt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div
@@ -1104,26 +1077,13 @@ export default function KiraExperience({
               })),
             ].map((option) => {
               const Icon = option.Icon;
-              if (useComponentGlass) {
-                return (
-                  <GlassChip
-                    key={option.label}
-                    frosted
-                    urgent={option.urgent}
-                    icon={Icon ? <Icon className="size-3 opacity-60" /> : undefined}
-                    onClick={() => sendMessage(option.value)}
-                  >
-                    {option.label}
-                  </GlassChip>
-                );
-              }
               return (
                 <button
                   key={option.label}
                   type="button"
                   onClick={() => sendMessage(option.value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap",
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap backdrop-blur-md",
                     option.urgent
                       ? "glass-chip-urgent text-[rgba(255,210,80,0.95)]"
                       : "glass-chip text-white/88"
