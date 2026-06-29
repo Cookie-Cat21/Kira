@@ -24,7 +24,7 @@ import {
 } from "@/lib/kira/catalog-guard";
 import { buildCompactSummary, trimContextIfNeeded } from "@/lib/kira/context";
 import { tryHandleDeterministicPrompt } from "@/lib/kira/fast-paths";
-import { getGroq } from "@/lib/kira/groq";
+import { getGroq, getGroqKeys } from "@/lib/kira/groq";
 import { coerceArgTypes, relaxSchema, resolveSchema } from "@/lib/kira/groq-schema";
 import { L, Lf } from "@/lib/kira/localization";
 import {
@@ -291,6 +291,8 @@ export async function POST(req: NextRequest) {
           | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
+        let keyIndex = 0;
+        const groqKeys = getGroqKeys();
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
         let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
         let streamedText = false;     // true once real streaming emits the first token
@@ -641,7 +643,7 @@ export async function POST(req: NextRequest) {
               // can still be rejected instead of leaking after a short lookahead.
               const pendingBuf: string[] = [];
 
-              const groqStream = await getGroq().chat.completions.create({
+              const groqStream = await getGroq(keyIndex).chat.completions.create({
                 model: MODELS[modelIndex],
                 messages: reqMessages,
                 tools: reqTools,
@@ -758,9 +760,16 @@ export async function POST(req: NextRequest) {
               }
 
               if (apiErr?.status === 429 || apiErr?.status === 413) {
+                // Try next key on the same model first.
+                if (keyIndex < groqKeys.length - 1) {
+                  keyIndex++;
+                  continue callLoop;
+                }
+                // All keys exhausted on this model — drop to next model, reset keys.
+                keyIndex = 0;
                 if (modelIndex < MODELS.length - 1) {
                   modelIndex++;
-                  continue callLoop; // retry same round with next model
+                  continue callLoop;
                 }
                 finalText = L("rateExhausted", language);
                 rateExhausted = true;
