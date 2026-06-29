@@ -230,12 +230,9 @@ function saveSession(
 
 export default function KiraExperience({
   embedded = false,
-  glassChrome = false,
   seed = null,
 }: {
   embedded?: boolean;
-  /** Transparent chrome — parent supplies glass + animated background. */
-  glassChrome?: boolean;
   seed?: KiraDockSeed | null;
 }) {
   // When docked inside the storefront we skip the full-screen loader splash.
@@ -894,37 +891,23 @@ export default function KiraExperience({
     if ("recipient" in updates) setRecipient(updates.recipient);
   };
 
-  const chromeTransparent = embedded || glassChrome;
   const occasionChips = useMemo(() => getOccasionChips(), []);
   const starterPrompts = useMemo(() => getStarterPrompts(), []);
   const hasActiveOccasion = occasionChips.some((chip) => chip.urgent);
-  const useComponentGlass = glassChrome;
-
-  const headerClass = glassChrome
-    ? "glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10"
-    : "liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10";
 
   return (
     <div
       className={cn("relative flex flex-col overflow-hidden", embedded ? "h-full" : "h-dvh min-h-dvh")}
-      style={
-        chromeTransparent
-          ? { background: "transparent", color: "rgba(255,255,255,0.92)" }
-          : { background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }
-      }
+      style={{ background: "linear-gradient(135deg, #0d0818 0%, #1a0f33 50%, #0f1629 100%)", color: "rgba(255,255,255,0.92)" }}
     >
       {!appReady && <KiraLoader onDone={() => setAppReady(true)} />}
       {/* Screen-reader live region for cart / order events */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">{a11yAnnounce}</span>
-      {!chromeTransparent && (
-        <>
-          <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
-          <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
-          <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
-        </>
-      )}
+      <div className="pointer-events-none absolute" style={{ top: "-80px", left: "-60px", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, rgba(64,41,112,0.65) 0%, transparent 70%)", filter: "blur(60px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ top: "30%", right: "20%", width: "280px", height: "280px", borderRadius: "50%", background: "radial-gradient(circle, rgba(148,100,255,0.12) 0%, transparent 70%)", filter: "blur(80px)", zIndex: 0 }} />
+      <div className="pointer-events-none absolute" style={{ bottom: "60px", right: "-40px", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, rgba(248,218,8,0.1) 0%, transparent 70%)", filter: "blur(70px)", zIndex: 0 }} />
 
-      <header className={headerClass}>
+      <header className="liquid-glass-nav relative z-10 flex h-[52px] shrink-0 items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Left cluster */}
         <div className="flex min-w-0 items-center gap-2.5">
           {!isOnlyOpening && (
@@ -1025,12 +1008,11 @@ export default function KiraExperience({
               onCancel={cancelActiveResponse}
               language={language}
               onLanguageChange={setLanguage}
-              glass={useComponentGlass}
             />
           </div>
 
           <div
-            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 backdrop-blur-md"
+            className="mt-4 w-full max-w-2xl animate-fade-up rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3"
             style={{ animationDelay: "90ms" }}
           >
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/45">
@@ -1083,7 +1065,7 @@ export default function KiraExperience({
                   type="button"
                   onClick={() => sendMessage(option.value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap backdrop-blur-md",
+                    "inline-flex items-center gap-1.5 rounded-full px-3.5 py-[7px] text-[13px] font-medium tracking-[-0.01em] whitespace-nowrap",
                     option.urgent
                       ? "glass-chip-urgent text-[rgba(255,210,80,0.95)]"
                       : "glass-chip text-white/88"

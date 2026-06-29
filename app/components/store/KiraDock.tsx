@@ -6,7 +6,6 @@ import { Maximize2, Minimize2, X } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import KiraExperience from "@/app/components/KiraExperience";
 import KiraOrb from "@/app/components/KiraOrb";
-import KiraGlassShell from "@/app/components/store/KiraGlassShell";
 
 /** Apple-style spring — stiffness 300, damping 30 per ultra-skills design ref. */
 const SHELL_SPRING = { type: "spring" as const, stiffness: 300, damping: 30 };
@@ -24,8 +23,6 @@ export default function KiraDock() {
   const hideLauncher = onRoot || pathname === "/shop";
 
   if (onRoot) return null;
-
-  const shellRadius = isExpanded ? 0 : 32;
 
   return (
     <>
@@ -134,7 +131,7 @@ export default function KiraDock() {
               style={{ originX: 1, originY: 1 }}
             >
               <motion.div
-                className="relative flex h-full min-h-0 flex-col"
+                className={`relative flex h-full min-h-0 flex-col overflow-hidden ${isExpanded ? "" : "rounded-[32px] shadow-2xl"}`}
                 layout
                 transition={SHELL_SPRING}
               >
@@ -162,9 +159,7 @@ export default function KiraDock() {
                   </button>
                 </div>
 
-                <KiraGlassShell radius={shellRadius}>
-                  <KiraExperience embedded glassChrome seed={seed} />
-                </KiraGlassShell>
+                <KiraExperience embedded seed={seed} />
               </motion.div>
             </motion.div>
           </>

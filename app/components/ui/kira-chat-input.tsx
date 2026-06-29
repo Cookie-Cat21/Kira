@@ -103,8 +103,6 @@ interface KiraChatInputProps {
   className?: string;
   language?: "en" | "si" | "ta";
   onLanguageChange?: (lang: "en" | "si" | "ta") => void;
-  /** Bespalov frosted glass shell (CodePen-style) — no full-panel displacement. */
-  glass?: boolean;
 }
 
 export function KiraChatInput({
@@ -115,7 +113,6 @@ export function KiraChatInput({
   className,
   language = "en" as "en" | "si" | "ta",
   onLanguageChange,
-  glass = false,
 }: KiraChatInputProps) {
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<AttachedFile[]>([]);
@@ -320,20 +317,16 @@ export function KiraChatInput({
         if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
       }}
     >
-      {glass ? (
-        <div className="kira-glass-surface flex flex-col">{inputBody}</div>
-      ) : (
-        <div
-          className={cn(
-            "flex flex-col rounded-xl border border-white/[0.12] bg-white/[0.07] backdrop-blur-xl",
-            "transition-all duration-200",
-            "focus-within:border-[rgba(156,132,198,0.55)] focus-within:shadow-[0_0_0_1px_rgba(156,132,198,0.25),0_4px_24px_rgba(0,0,0,0.35)]",
-            "shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
-          )}
-        >
-          {inputBody}
-        </div>
-      )}
+      <div
+        className={cn(
+          "flex flex-col rounded-xl border border-white/[0.12] bg-white/[0.07] backdrop-blur-xl",
+          "transition-all duration-200",
+          "focus-within:border-[rgba(156,132,198,0.55)] focus-within:shadow-[0_0_0_1px_rgba(156,132,198,0.25),0_4px_24px_rgba(0,0,0,0.35)]",
+          "shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+        )}
+      >
+        {inputBody}
+      </div>
 
       {/* Drag overlay */}
       {isDragging && (
