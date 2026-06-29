@@ -2,18 +2,21 @@
 
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { Maximize2, Minimize2, X } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
 import KiraExperience from "@/app/components/KiraExperience";
 import KiraOrb from "@/app/components/KiraOrb";
+import KiraGlassShell from "@/app/components/store/KiraGlassShell";
+
+/** Apple-style spring — stiffness 300, damping 30 per ultra-skills design ref. */
+const SHELL_SPRING = { type: "spring" as const, stiffness: 300, damping: 30 };
+const OPEN_SPRING = { type: "spring" as const, stiffness: 320, damping: 34 };
 
 export default function KiraDock() {
   const pathname = usePathname();
-  const { isOpen, open, close, seed, isThinking } = useKiraDock();
+  const { isOpen, isExpanded, open, close, expand, collapse, seed, isThinking } =
+    useKiraDock();
 
-  // The root route IS the full-screen Kira experience — the dock only exists
-  // on storefront pages (/shop, /product) as a way back into the conversation.
-  // /liquid-glass is a standalone material demo and stays uncluttered.
   const onRoot =
     pathname === "/" ||
     pathname?.startsWith("/kira") ||
@@ -22,9 +25,11 @@ export default function KiraDock() {
 
   if (onRoot) return null;
 
+  const shellRadius = isExpanded ? 0 : 32;
+
   return (
     <>
-      {/* Floating launcher — hidden on /shop landing (hero has Ask Kira CTA) */}
+      {/* Floating launcher */}
       <AnimatePresence>
         {!isOpen && !hideLauncher && (
           <motion.button
@@ -78,38 +83,96 @@ export default function KiraDock() {
         )}
       </AnimatePresence>
 
-      {/* Slide-over */}
+      {/* Floating glass panel — expands to full viewport on demand */}
       <AnimatePresence>
         {isOpen && (
           <>
             <motion.div
-              className="fixed inset-0 z-[95] bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-[95] bg-black/40 backdrop-blur-[2px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
               onClick={close}
             />
-            <motion.aside
-              className="fixed inset-y-0 right-0 z-[96] flex w-full flex-col overflow-hidden border-l border-white/10 shadow-2xl sm:w-[440px]"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 36 }}
+            <motion.div
               role="dialog"
               aria-label="Kira assistant"
+              className="fixed z-[96] flex flex-col overflow-hidden"
+              initial={{
+                opacity: 0,
+                scale: 0.93,
+                y: 32,
+                top: "8%",
+                left: "4%",
+                right: "4%",
+                bottom: "8%",
+              }}
+              animate={
+                isExpanded
+                  ? {
+                      opacity: 1,
+                      scale: 1,
+                      y: 0,
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                    }
+                  : {
+                      opacity: 1,
+                      scale: 1,
+                      y: 0,
+                      top: "5%",
+                      left: "3.5%",
+                      right: "3.5%",
+                      bottom: "5%",
+                    }
+              }
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              transition={isExpanded ? SHELL_SPRING : OPEN_SPRING}
+              style={{ originX: 1, originY: 1 }}
             >
-              <button
-                type="button"
-                onClick={close}
-                aria-label="Close Kira"
-                className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-white/10 text-white/80 backdrop-blur transition-colors hover:bg-white/20"
+              <motion.div
+                className="relative flex h-full min-h-0 flex-col"
+                layout
+                transition={SHELL_SPRING}
               >
-                <X className="size-4" />
-              </button>
-              <div className="min-h-0 flex-1">
-                <KiraExperience embedded seed={seed} />
-              </div>
-            </motion.aside>
+                {/* Chrome — expand / close */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-end gap-1.5 p-3">
+                  <button
+                    type="button"
+                    onClick={isExpanded ? collapse : expand}
+                    aria-label={isExpanded ? "Exit full screen" : "Expand to full screen"}
+                    className="pointer-events-auto flex size-9 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white/85 shadow-lg backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+                  >
+                    {isExpanded ? (
+                      <Minimize2 className="size-4" />
+                    ) : (
+                      <Maximize2 className="size-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    aria-label="Close Kira"
+                    className="pointer-events-auto flex size-9 items-center justify-center rounded-full border border-white/12 bg-black/35 text-white/85 shadow-lg backdrop-blur-md transition-colors hover:bg-black/50 hover:text-white"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+
+                {isExpanded ? (
+                  <div className="h-full min-h-0 overflow-hidden">
+                    <KiraExperience embedded seed={seed} />
+                  </div>
+                ) : (
+                  <KiraGlassShell radius={shellRadius}>
+                    <KiraExperience embedded seed={seed} />
+                  </KiraGlassShell>
+                )}
+              </motion.div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>

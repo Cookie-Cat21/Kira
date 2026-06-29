@@ -1,4 +1,5 @@
 export { default as LiquidGlass, LiquidGlassFilters } from "./LiquidGlass";
+export { default as KiraFrostedFilter } from "./KiraFrostedFilter";
 export type { GlassVariant } from "./LiquidGlass";
 export { default as GlassEffectContainer, concentric } from "./GlassEffectContainer";
 export { default as GlassButton } from "./GlassButton";
