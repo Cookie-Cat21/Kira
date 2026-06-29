@@ -27,6 +27,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { runCheck } from "./evaluate.mjs";
+import { scoreCeoLens } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
@@ -450,6 +451,15 @@ async function runPersona(persona, group) {
       result = await sendTestCase(testCase);
       evaluation = evaluate(persona, result);
     }
+    if (!evaluation.isError) {
+      evaluation.ceoLens = scoreCeoLens(
+        group,
+        persona,
+        result?.responseText ?? "",
+        result?.events ?? [],
+        evaluation.passed
+      );
+    }
     if (INTER_REQUEST_DELAY_MS) await sleep(INTER_REQUEST_DELAY_MS);
     return { persona, result, evaluation, error: null };
   } catch (err) {
@@ -487,6 +497,7 @@ function printGroupResults(groupChar, runs) {
     console.log(`${persona.id.padEnd(5)} ${persona.note.padEnd(38)} ${status} ${tools} ${c.dim}${preview}${c.reset}`);
     if (!evaluation.passed) for (const r of evaluation.reasons) console.log(`      ${c.red}-> ${r}${c.reset}`);
     if (evaluation.founderLens) console.log(`      ${c.dim}founder-lens: ${evaluation.founderLens.score}/10 [${evaluation.founderLens.flags.join(", ")}]${c.reset}`);
+    if (evaluation.ceoLens) console.log(`      ${c.dim}ceo-lens: ${evaluation.ceoLens.score}/10 exc ${evaluation.ceoLens.excitement}/10 — ${evaluation.ceoLens.verdict}${c.reset}`);
   }
   const color = pct >= 80 ? c.green : pct >= 50 ? c.yellow : c.red;
   const errNote = errored ? `${c.yellow} - ${errored} errored (re-run)${c.reset}` : "";
@@ -511,6 +522,7 @@ async function main() {
   const args = process.argv.slice(2);
   const groupFilter = args.includes("--group") ? args[args.indexOf("--group") + 1]?.toUpperCase() : null;
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
+  const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : RESULTS_PATH;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
   console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 165 personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
@@ -564,10 +576,11 @@ async function main() {
     toolCalls: r.evaluation.toolCalls ?? 0,
     response: r.result?.responseText?.slice(0, 300) ?? "",
     ...(r.evaluation.founderLens ? { founderLens: r.evaluation.founderLens } : {}),
+    ...(r.evaluation.ceoLens ? { ceoLens: r.evaluation.ceoLens } : {}),
   }));
-  await mkdir(dirname(RESULTS_PATH), { recursive: true });
-  await writeFile(RESULTS_PATH, `${JSON.stringify(jsonOut, null, 2)}\n`);
-  console.log(`${c.dim}\nFull results written to ${RESULTS_PATH}${c.reset}\n`);
+  await mkdir(dirname(outPath), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(jsonOut, null, 2)}\n`);
+  console.log(`${c.dim}\nFull results written to ${outPath}${c.reset}\n`);
   const genuineFailures = runs.filter((r) => !r.evaluation.passed && !r.evaluation.isError).length;
   process.exit(genuineFailures === 0 ? 0 : 1);
 }
