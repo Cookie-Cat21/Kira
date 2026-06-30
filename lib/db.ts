@@ -14,9 +14,6 @@ type PoolCtor = new (config: {
   idleTimeoutMillis: number;
 }) => PoolLike;
 
-const require = createRequire(path.join(process.cwd(), "package.json"));
-const { Pool } = require("pg") as { Pool: PoolCtor };
-
 type DbGlobal = typeof globalThis & {
   __kiraPool?: PoolLike;
 };
@@ -29,6 +26,8 @@ function getPool(): PoolLike {
 
   const globalRef = globalThis as DbGlobal;
   if (!globalRef.__kiraPool) {
+    const require = createRequire(path.join(process.cwd(), "package.json"));
+    const { Pool } = require("pg") as { Pool: PoolCtor };
     globalRef.__kiraPool = new Pool({
       connectionString: databaseUrl,
       max: 5,
