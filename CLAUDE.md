@@ -63,8 +63,7 @@ The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `ap
 8. Cart delivery check — fee quote for items in tray
 9. Re-show / more options / add-to-cart / list-as-text — referential on `lastProducts`
 10. Checkout — "ready to checkout" + checkout fill-in state machine
-
-Bare greetings (`hey`, `hi`) go to the LLM. The client opening bubble is included in API history so Kira doesn't re-introduce after "Welcome back!"
+11. **Search fast-paths** (`lib/kira/search-fast-paths.ts`) — demo-critical searches bypass the LLM when intent is clear: popular/trending, repair+flowers, gift+budget/city, rush/sale/hamper, bakery brands, bare budget queries, and `parseSearchIntent` ("show me X on Kapruka"). Ambiguous/vague queries still go to Groq.
 
 **MCP tool handling quirks:**
 - All 7 tools have `response_format: "json"` injected before calling
