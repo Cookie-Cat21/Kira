@@ -5,7 +5,7 @@
 
 const KAPRUKA_RE = /kapruka|gift|shop|browse|catalog|order|deliver/i;
 const WARM_RE =
-  /machang|oof|sweet|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්|pulled live|tap a card|tray|checkout link|secure checkout/i;
+  /machang|oof|sweet|lovely|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්|pulled live|tap a card|tray|checkout link|secure checkout/i;
 const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that request/i;
 const PREACHY_RE =
   /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
@@ -144,9 +144,12 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "F": {
-      if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 2; }
+      if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 3; }
       else { score -= 3; excitement -= 2; }
-      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { flags.push("polished"); score += 1; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) {
+        flags.push("polished"); score += 1; excitement += 1;
+      }
+      if (hasProducts(events)) { flags.push("f_catalog"); excitement += 1; }
       if (toolCount(events) === 0 && /\bcash\b|\bcod\b|payment|pay\b/i.test(msg)) {
         flags.push("policy_no_tools"); score += 1; excitement += 2;
       }

@@ -138,6 +138,15 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // ── Same-day / cut-off delivery policy — zero tools ──────────────────────
+  const DELIVERY_POLICY_RE =
+    /\b(cut[- ]?off|same[- ]day|how (?:fast|soon)|when do you (?:deliver|stop)|delivery (?:time|window|hours|cutoff))\b/i;
+  if (DELIVERY_POLICY_RE.test(lower) && !extractProductKeyword(lower)) {
+    await streamWords(controller, L("deliveryPolicy", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // ── "Tell me about <product>" with the product already in hand ───────────
   // The storefront "Ask Kira about this" button seeds exactly this prompt.
   // Storefront catalog (Neon/seed JSON) is separate from live Kapruka MCP so
