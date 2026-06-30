@@ -319,7 +319,14 @@ export async function tryHandleSearchFastPath({
   // - "gift for dad under 3000" / "flowers for amma to Kandy" → fast-path is useful.
   // hasFamilyHint is intentionally NOT in the right-hand guard — a family term alone (no
   // budget/occasion/city) doesn't give us enough to search usefully.
-  if ((GIFT_INTENT_RE.test(lower) || hasFamilyHint) && (hasBudgetHint || hasOccasionHint || hasCityHint)) {
+  // City alone is not enough — need budget, occasion, or a concrete product type.
+  const hasConcreteProduct =
+    !!extractProductKeyword(lower) ||
+    /\b(flowers?|cakes?|chocolates?|roses?|hamper|teddy|perfume|electronics|bouquet)\b/i.test(lower);
+  if (
+    (GIFT_INTENT_RE.test(lower) || hasFamilyHint) &&
+    (hasBudgetHint || hasOccasionHint || (hasCityHint && hasConcreteProduct))
+  ) {
     const giftMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     const giftCityHint = extractCityHint(trimmed) ?? deliveryCity;
     const giftDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;

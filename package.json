@@ -18,6 +18,8 @@
     "test:fix": "node scripts/auto-fix.mjs",
     "test:retest": "node scripts/retest-failed.mjs",
     "test:full-cycle": "node scripts/run-tests.mjs && node scripts/report-issues.mjs && node scripts/auto-fix.mjs && node scripts/retest-failed.mjs",
+    "test:agent-loop": "node scripts/agent-loop.mjs",
+    "test:agent-loop:quick": "node scripts/agent-loop.mjs --duration 15 --batch 15 --edge 5",
     "setup:fonts": "node scripts/setup-sf-pro.mjs"
   },
   "dependencies": {
