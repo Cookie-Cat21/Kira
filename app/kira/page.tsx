@@ -1,7 +1,16 @@
-import { permanentRedirect } from "next/navigation";
+import { Suspense } from "react";
+import KiraPageClient from "./KiraPageClient";
 
-// The full-screen Kira experience moved back to the root route. Keep /kira
-// alive for old links and shared URLs.
+export const metadata = {
+  title: "Kira — Kapruka AI shopping companion",
+  description:
+    "Ask Kira to find gifts, check delivery, and checkout on Kapruka — Sri Lanka's gifting platform.",
+};
+
 export default function KiraPage() {
-  permanentRedirect("/");
+  return (
+    <Suspense fallback={null}>
+      <KiraPageClient />
+    </Suspense>
+  );
 }

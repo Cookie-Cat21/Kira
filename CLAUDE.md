@@ -27,7 +27,7 @@ Two automated test suites exist — see `docs/TESTING.md` for the full runbook.
 
 ## Architecture
 
-The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `app/components/KiraExperience.tsx`). The challenge brief explicitly demands an "immersive conversation as the main surface — not a tiny widget in a corner", so do not demote the chat. Secondary storefront surfaces: `/shop` (store home), `/shop/[slug]` (category), `/product/[id]` (detail) — all dark liquid-glass, sharing the chat's cart via `CartContext`. On store pages a `KiraDock` corner launcher opens the chat as a slide-over (`KiraExperience embedded`); the dock is hidden on `/`. `/kira` permanently redirects to `/`.
+The Kapruka glass landing is the main entry at `/` (`app/page.tsx` — horizon hero + glass search bar). Clicking the Kira orb or searching navigates to `/kira` (`KiraExperience` full-screen chat). Secondary storefront: `/shop/[slug]` (category), `/product/[id]` (detail) — dark liquid-glass, shared cart via `CartContext`. On category/product pages, `KiraDock` opens chat as a slide-over (`KiraExperience embedded`); the dock is hidden on `/` and `/kira`. `/shop` redirects to `/`; old `/kira` links now open the chat directly.
 
 **Data flow:**
 1. User message → `POST /api/chat` (`app/api/chat/route.ts`)

@@ -17,10 +17,10 @@ export default function KiraDock() {
     useKiraDock();
 
   const onRoot =
-    pathname === "/" ||
     pathname?.startsWith("/kira") ||
     pathname?.startsWith("/liquid-glass");
-  const hideLauncher = onRoot || pathname === "/shop";
+  const hideLauncher =
+    onRoot || pathname === "/" || pathname === "/shop";
 
   if (onRoot) return null;
 

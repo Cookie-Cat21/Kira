@@ -16,7 +16,6 @@ export default function StoreHero({
 }) {
   const reduceMotion = useReducedMotion();
   const topCategories = categories.slice(0, 6);
-  const shopHref = "/shop";
 
   const reveal = (delay: number) => ({
     initial: reduceMotion
@@ -61,7 +60,7 @@ export default function StoreHero({
           className="mt-8 w-full max-w-lg"
           {...reveal(1.28)}
         >
-          <ShopLandingSearch categories={categories} />
+          <ShopLandingSearch />
         </motion.div>
 
       </div>
