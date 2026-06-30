@@ -153,7 +153,7 @@ export const BAKERY_BRANDS: Record<string, string> = {
 };
 
 export const REORDER_SESSION_RE =
-  /\b(order again|buy again|same as last|same thing|what i had|repeat order|reorder)\b/i;
+  /\b(order again|buy again|same as last|same thing|what i had|repeat order|repeat (?:my |the )?last order|reorder please|reorder)\b/i;
 export const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
 // Matches relationship-repair scenarios in EITHER word order — "wife is mad" and
 // "got drunk, wife is upset" both fire. "sorry"/"fix" were dropped: too broad
@@ -364,28 +364,35 @@ export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
 }
 
 export function extractProductKeyword(lower: string): string | null {
-  if (/\bcake\b/.test(lower)) return "cake";
-  if (/\bflower|\brose|\bbouquet/.test(lower)) return "flowers";
-  if (/\blilies?\b/.test(lower)) return "flowers";
-  if (/\borchids?\b/.test(lower)) return "flowers";
-  if (/\bchocolat/.test(lower)) return "chocolate";
-  if (/\bhamper\b/.test(lower)) return "gift hamper";
-  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(lower)) return "electronics";
-  if (/\bphones?\b/.test(lower)) {
+  const text = lower
+    .replace(/\bflwoers\b/gi, "flowers")
+    .replace(/\bbirtday\b/gi, "birthday")
+    .replace(/\bcolmbo\b/gi, "colombo")
+    .replace(/\btomoro\b/gi, "tomorrow")
+    .replace(/\bchoclate\b/gi, "chocolate")
+    .replace(/\bbouqet\b/gi, "bouquet");
+  if (/\bcake\b/.test(text)) return "cake";
+  if (/\bflower|\brose|\bbouquet/.test(text)) return "flowers";
+  if (/\blilies?\b/.test(text)) return "flowers";
+  if (/\borchids?\b/.test(text)) return "flowers";
+  if (/\bchocolat/.test(text)) return "chocolate";
+  if (/\bhamper\b/.test(text)) return "gift hamper";
+  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(text)) return "electronics";
+  if (/\bphones?\b/.test(text)) {
     if (
       /\b(my phone|phone is|phone number|recipient phone|contact number|your phone|phone\s*[:=]?\s*(?:\+?94|0)\d)/i.test(
-        lower
+        text
       )
     ) {
       return null;
     }
     return "electronics";
   }
-  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
-  if (/\bgrocery\b/.test(lower)) return "grocery";
-  if (/\btoy\b|\bteddy\b/.test(lower)) return "soft toy";
-  if (/\bsweet\b/.test(lower)) return "chocolate";
-  if (/\bgift\b/.test(lower)) return "gift set";
+  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(text)) return "clothing";
+  if (/\bgrocery\b/.test(text)) return "grocery";
+  if (/\btoy\b|\bteddy\b/.test(text)) return "soft toy";
+  if (/\bsweet\b/.test(text)) return "chocolate";
+  if (/\bgift\b/.test(text)) return "gift set";
   return null;
 }
 

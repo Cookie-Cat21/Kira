@@ -2,6 +2,7 @@ import { parseRelativeDeliveryDate } from "@/lib/colombo-date";
 import { callMcpTool } from "@/lib/mcp-client";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
 import { L, Lf } from "@/lib/kira/localization";
+import { normalizeUserTypos } from "@/lib/kira/out-of-scope";
 import {
   BAKERY_BRANDS,
   GLOBAL_SHOP_RE,
@@ -61,7 +62,7 @@ export async function tryHandleSearchFastPath({
   occasion?: string;
   recipient?: string;
 }): Promise<boolean> {
-  const trimmed = text.trim();
+  const trimmed = normalizeUserTypos(text.trim());
   const lower = trimmed.toLowerCase();
   const filterContext = buildMessageFilterContext(trimmed, messages);
 
@@ -284,11 +285,19 @@ export async function tryHandleSearchFastPath({
     /\bto\s+(my\s+)?(wife|husband|her|him|gf|girlfriend|boyfriend|partner|office|home)\b/i.test(
       lower
     ) || /\bdeliver(?:y)?\s+to\b/i.test(lower);
+  const hasProductAndCity = !!simpleProductQuery && !!extractCityHint(trimmed);
+  const hasProductForRecipient =
+    !!simpleProductQuery &&
+    /\bfor\s+(?:my\s+)?(amma|mum|mom|dad|thaththa|wife|husband|friend|girlfriend|boyfriend|partner|her|him|daughter|son)\b/i.test(
+      lower
+    );
   const hasSimpleProductIntent =
     !!simpleProductQuery &&
     !(cart.length > 0 && hasPhone && (hasAddress || hasOrderCity) && /\b(place|order|recipient|deliver|gift message|address)\b/i.test(lower)) &&
     (/\b(show|search|want|need|looking for|send|buy|get|order|deliver)\b/i.test(lower) ||
       hasDeliveryToRecipient ||
+      hasProductAndCity ||
+      hasProductForRecipient ||
       /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
       /\b(vesak|birthday|anniversary)\b/i.test(lower) ||
       trimmed.toLowerCase() === simpleProductQuery ||

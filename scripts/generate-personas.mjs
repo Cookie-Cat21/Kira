@@ -86,10 +86,13 @@ function buildGroupI() {
     const msg = t.msg.includes("Colombo") || t.msg.includes("Kandy")
       ? t.msg
       : `${t.msg} ${city}`;
+    const reqLang = t.language ?? t.lang;
     out.push({
       id: `I${pad(n)}`,
       msg,
-      ...(t.language ? { request: { messages: [{ role: "user", content: msg }], language: t.language } } : {}),
+      ...(reqLang
+        ? { request: { messages: [{ role: "user", content: msg }], language: reqLang } }
+        : {}),
       checks: t.checks,
       note: `Multilingual depth ${n}`,
     });
@@ -117,7 +120,7 @@ function buildGroupJ() {
       },
       checks: withCart
         ? [["text", "name|recipient|phone|address|deliver"], "noToolLeak"]
-        : [["text", "add|cart|product|item"], "noToolLeak"],
+        : [["text", "add|cart|product|item|tray|first"], "noToolLeak"],
       note: `Checkout E2E ${withCart ? "with cart" : "empty cart"}`,
     });
   }

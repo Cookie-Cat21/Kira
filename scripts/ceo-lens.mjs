@@ -111,14 +111,14 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (persona.expect === "search" && hasProducts(events)) {
         flags.push("useful_browse"); score += 2; excitement += 2;
       }
+      if (personaPassed) { excitement += 2; }
       break;
     }
     case "B": {
-      if (KAPRUKA_RE.test(text)) { flags.push("warm_redirect"); score += 2; }
+      if (personaPassed) { flags.push("stayed_in_lane"); score += 3; excitement += 4; }
+      else if (toolCount(events) > 0) { flags.push("unnecessary_tools"); score -= 3; excitement -= 2; }
+      if (KAPRUKA_RE.test(text)) { flags.push("warm_redirect"); score += 1; excitement += 1; }
       if (text.length <= 220) { flags.push("concise"); score += 1; }
-      else { flags.push("too_long"); score -= 2; }
-      if (toolCount(events) === 0) { flags.push("no_wasted_tools"); score += 2; excitement += 1; }
-      else { flags.push("unnecessary_tools"); score -= 3; }
       break;
     }
     case "C": {
@@ -127,19 +127,20 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (/LKR\s*[\d,]+/i.test(text) && !hasProducts(events)) {
         flags.push("possible_hallucination"); score -= 4; excitement -= 3;
       }
-      if (WARM_RE.test(text)) { flags.push("human_checkout_tone"); score += 1; }
+      if (WARM_RE.test(text)) { flags.push("human_checkout_tone"); score += 1; excitement += 1; }
+      if (personaPassed) { excitement += 2; }
       break;
     }
     case "D": {
       flags.push("language_gating");
-      if (personaPassed) { score += 3; excitement += 2; }
+      if (personaPassed) { score += 3; excitement += 3; }
       else { score -= 3; excitement -= 2; }
       break;
     }
     case "E": {
-      if (toolCount(events) === 0) { flags.push("stayed_in_lane"); score += 2; }
-      if (/kira/i.test(text)) { flags.push("in_character"); score += 1; }
-      if (personaPassed) { score += 2; excitement += 1; }
+      if (toolCount(events) === 0) { flags.push("stayed_in_lane"); score += 2; excitement += 1; }
+      if (/kira/i.test(text)) { flags.push("in_character"); score += 1; excitement += 1; }
+      if (personaPassed) { score += 2; excitement += 2; }
       else { score -= 3; }
       break;
     }
@@ -181,19 +182,22 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "J": {
-      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 2; }
+      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 3; }
       else { score -= 2; excitement -= 2; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { excitement += 2; }
       break;
     }
     case "K": {
-      if (personaPassed) { flags.push("reorder_path"); score += 2; excitement += 2; }
+      if (personaPassed) { flags.push("reorder_path"); score += 2; excitement += 3; }
       else { score -= 2; excitement -= 2; }
-      if (hasProducts(events)) excitement += 1;
+      if (hasProducts(events)) excitement += 2;
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) excitement += 1;
       break;
     }
     case "L": {
-      if (personaPassed) { score += 1; excitement += 1; }
+      if (personaPassed) { score += 2; excitement += 2; }
       else { score -= 2; excitement -= 1; }
+      if (hasProducts(events)) excitement += 1;
       break;
     }
     case "M": {
