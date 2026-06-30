@@ -10,6 +10,32 @@ import type { CartItem, DeliveryQuote, KiraProduct, TrackingItem } from "@/types
 export const SERVER_CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
+/** User or MCP text signals a fresh-flower search — filter even when q is "gift" or "options". */
+export const FLOWER_INTENT_RE =
+  /\b(flowers?|roses?|bouquets?|floral|lilies?|orchids?|arrangements?|mixed\s+flower)\b/i;
+
+/** MCP q values that carry no category — inherit from prior user turns instead. */
+export const VAGUE_SEARCH_QUERY_RE =
+  /^(options?|gifts?|gift\s+ideas?|items?|stuff|things?|ideas?|picks?|something|more|anniversary|birthday)$/i;
+
+export function hasFlowerSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && FLOWER_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function buildSearchFilterContext(...texts: (string | undefined)[]): string {
+  return texts.filter(Boolean).join(" ");
+}
+
+export function buildMessageFilterContext(
+  currentText: string,
+  messages?: { role: string; content: string }[]
+): string {
+  const recentUser = (messages ?? [])
+    .filter((m) => m.role === "user")
+    .slice(-4)
+    .map((m) => m.content);
+  return buildSearchFilterContext(currentText, ...recentUser);
+}
 // When a query maps to a specific category, keep only products whose name OR
 // category contains at least one of these terms. Blocks off-category noise like
 // kids bags whose names happen to include the search keyword (e.g. "Sofia Flowers").
@@ -18,9 +44,9 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
 };
 
-/** Deliverable fresh flowers — not cards, keychains, or artificial decor. */
+/** Deliverable fresh flowers — not cards, keychains, artificial decor, or off-category gifts. */
 export const FLOWER_JUNK_RE =
-  /\b(greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i;
+  /\b(greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery|journal|pen\s*set|pen\s*gift|executive\s*pen|desk\s*pen|ballpoint|fountain\s*pen|notebook|diary|perfume|cologne|fragrance|belt|necktie|tie\s*clip|cufflink|jewell?ery|necklace|bracelet|earring|watch|electronic|smartphone|laptop|tablet|speaker|headphone|hand\s*wash|body\s*wash|soap|shampoo|lotion|sanitizer|cleanser)\b/i;
 
 // Products that pass RELEVANCE but are clearly not in the category — reject them.
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
@@ -92,26 +118,25 @@ export const SEARCH_SPELLING_MAP: Record<string, string> = {
   teddybear: "teddy bear",
 };
 
-/** Map MCP search `q` to a category filter key (flowers, roses, …). */
-export function resolveProductFilterKey(query: string): string | null {
+/** Map MCP search `q` (+ optional conversation context) to a category filter key. */
+export function resolveProductFilterKey(
+  query: string,
+  ...contextTexts: (string | undefined)[]
+): string | null {
   const q = normalizeProductQuery(query.toLowerCase().trim());
-  if (
-    /\b(flowers?|roses?|bouquets?|floral|lilies?|orchids?|arrangements?)\b/.test(q) ||
-    q === "flowers" ||
-    q === "roses"
-  ) {
-    return "flowers";
-  }
+  const context = buildSearchFilterContext(q, ...contextTexts);
+  if (hasFlowerSearchIntent(context)) return "flowers";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
   return null;
 }
 
-/** Drop greeting cards, key tags, artificial decor, etc. from flower search results. */
+/** Drop greeting cards, key tags, pens, perfumes, etc. from flower search results. */
 export function filterProductsForSearch(
   products: KiraProduct[],
-  query: string
+  query: string,
+  ...contextTexts: (string | undefined)[]
 ): KiraProduct[] {
-  const key = resolveProductFilterKey(query);
+  const key = resolveProductFilterKey(query, ...contextTexts);
   if (!key) return products;
   const rel = CATEGORY_RELEVANCE_TERMS[key];
   const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
@@ -194,12 +219,14 @@ export async function fetchFreshMoreProducts({
   maxPrice,
   excludeIds,
   onStep,
+  filterContext,
 }: {
   mcpClient: Client;
   query: string;
   maxPrice?: number;
   excludeIds: Set<string>;
   onStep?: (label: string) => void;
+  filterContext?: string;
 }): Promise<KiraProduct[]> {
   const sorts = ["price_asc", "price_desc", "bestseller"] as const;
   const queries = [query, fallbackQuery(query)].filter(
@@ -223,7 +250,11 @@ export async function fetchFreshMoreProducts({
         },
       });
       const batch = dedupeProducts(
-        filterProductsForSearch(extractProductsFromMcp(moreResult.content), q)
+        filterProductsForSearch(
+          extractProductsFromMcp(moreResult.content),
+          q,
+          filterContext ?? query
+        )
       );
       for (const product of batch) {
         if (excludeIds.has(product.id) || poolIds.has(product.id)) continue;

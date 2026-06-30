@@ -18,7 +18,11 @@ import {
   extractRecipientHint,
   fallbackQuery,
   filterProductsForSearch,
+  extractLastSearchContext,
+  buildMessageFilterContext,
+  hasFlowerSearchIntent,
   parseSearchIntent,
+  VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
 import {
@@ -55,6 +59,7 @@ export async function tryHandleSearchFastPath({
 }): Promise<boolean> {
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
+  const filterContext = buildMessageFilterContext(trimmed, messages);
 
   // ── Global Shop (coming soon) ────────────────────────────────────────────
   if (GLOBAL_SHOP_RE.test(lower)) {
@@ -74,7 +79,11 @@ export async function tryHandleSearchFastPath({
       const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: { q, limit: 6, in_stock_only: true, response_format: "json" },
       });
-      let batch = filterProductsForSearch(extractProductsFromMcp(repairResult.content), q);
+      let batch = filterProductsForSearch(
+        extractProductsFromMcp(repairResult.content),
+        q,
+        filterContext
+      );
       repairProducts = dedupeProducts([...repairProducts, ...batch]);
       if (repairProducts.length >= 3) break;
     }
@@ -150,7 +159,7 @@ export async function tryHandleSearchFastPath({
       params: { q: orderKw, limit: 6, in_stock_only: true, response_format: "json" },
     });
     const orderProducts = dedupeProducts(
-      filterProductsForSearch(extractProductsFromMcp(orderResult.content), orderKw)
+      filterProductsForSearch(extractProductsFromMcp(orderResult.content), orderKw, filterContext)
     );
     if (orderProducts.length > 0) {
       const cityText = orderCity ? ` to ${orderCity}` : "";
@@ -240,7 +249,11 @@ export async function tryHandleSearchFastPath({
       },
     });
     const products = dedupeProducts(
-      filterProductsForSearch(extractProductsFromMcp(searchResult.content), simpleProductQuery)
+      filterProductsForSearch(
+        extractProductsFromMcp(searchResult.content),
+        simpleProductQuery,
+        filterContext
+      )
     );
     if (productCity && products[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
@@ -340,8 +353,10 @@ export async function tryHandleSearchFastPath({
 
     const relationshipGift =
       /\b(girlfriend|boyfriend|wife|husband|partner)\b/i.test(giftRecipient ?? trimmed);
-    const searchQueries =
-      giftOccasion?.toLowerCase().includes("birthday") && relationshipGift
+    const flowerIntent = hasFlowerSearchIntent(filterContext);
+    const searchQueries = flowerIntent
+      ? ["flowers", "roses"]
+      : giftOccasion?.toLowerCase().includes("birthday") && relationshipGift
         ? ["flowers", "chocolate", "gift hamper", "cake"]
         : ["gift", "chocolate", "flowers", "hamper", "cake"];
     const giftProducts: KiraProduct[] = [];
@@ -357,7 +372,11 @@ export async function tryHandleSearchFastPath({
         },
       });
       giftProducts.push(
-        ...filterProductsForSearch(extractProductsFromMcp(giftResult.content), query)
+        ...filterProductsForSearch(
+          extractProductsFromMcp(giftResult.content),
+          query,
+          filterContext
+        )
       );
       if (dedupeProducts(giftProducts).length >= 6) break;
     }
@@ -474,7 +493,7 @@ export async function tryHandleSearchFastPath({
       params: { q: rushQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
     });
     let rushProducts = dedupeProducts(
-      filterProductsForSearch(extractProductsFromMcp(rushResult.content), rushQuery)
+      filterProductsForSearch(extractProductsFromMcp(rushResult.content), rushQuery, filterContext)
     );
     if (rushProducts[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
@@ -567,7 +586,7 @@ export async function tryHandleSearchFastPath({
           params: { q, limit: 6, in_stock_only: true, max_price: bareMaxPrice, response_format: "json" },
         });
         bareProducts = dedupeProducts(
-          filterProductsForSearch(extractProductsFromMcp(r.content), bareQuery)
+          filterProductsForSearch(extractProductsFromMcp(r.content), bareQuery, filterContext)
         );
         if (bareProducts.length > 0) break;
       }
@@ -600,12 +619,24 @@ export async function tryHandleSearchFastPath({
 
   const searchIntent = parseSearchIntent(trimmed);
   if (!searchIntent) return false;
-  const contextMaxPrice = searchIntent.maxPrice ?? parseBudgetAmount(budget);
+  let searchQuery = searchIntent.query;
+  let contextMaxPrice = searchIntent.maxPrice ?? parseBudgetAmount(budget);
+  if (VAGUE_SEARCH_QUERY_RE.test(searchQuery)) {
+    const ctx = extractLastSearchContext(messages, trimmed);
+    searchQuery = ctx.query;
+    contextMaxPrice = contextMaxPrice ?? ctx.maxPrice;
+  }
 
-  controller.enqueue(sse("step", `Searching Kapruka for "${searchIntent.query}"`));
+  controller.enqueue(sse("step", `Searching Kapruka for "${searchQuery}"`));
   let products: KiraProduct[] = [];
+  const flowerIntent = hasFlowerSearchIntent(filterContext);
+  const retryQueries = flowerIntent
+    ? [searchQuery, fallbackQuery(searchQuery), "roses"].filter(
+        (q): q is string => Boolean(q)
+      )
+    : [searchQuery, fallbackQuery(searchQuery)];
 
-  for (const query of [searchIntent.query, fallbackQuery(searchIntent.query)]) {
+  for (const query of retryQueries) {
     if (!query) continue;
     const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: {
@@ -617,13 +648,22 @@ export async function tryHandleSearchFastPath({
         response_format: "json",
       },
     });
-    let batch = filterProductsForSearch(extractProductsFromMcp(searchResult.content), query);
+    let batch = filterProductsForSearch(
+      extractProductsFromMcp(searchResult.content),
+      query,
+      filterContext
+    );
     products = dedupeProducts([...products, ...batch]);
     if (products.length >= 3) break;
   }
 
   if (products.length === 0 && contextMaxPrice) {
-    for (const query of [searchIntent.query, fallbackQuery(searchIntent.query), "chocolate"]) {
+    const budgetRetryQueries = flowerIntent
+      ? ["flowers", "roses"]
+      : [searchQuery, fallbackQuery(searchQuery), "chocolate"].filter(
+          (q): q is string => Boolean(q)
+        );
+    for (const query of budgetRetryQueries) {
       if (!query) continue;
       const retryResult = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: {
@@ -636,9 +676,10 @@ export async function tryHandleSearchFastPath({
       });
       let batch = filterProductsForSearch(
         extractProductsFromMcp(retryResult.content).filter(
-          (p) => p.price > 0 && p.price <= contextMaxPrice
+          (p) => p.price > 0 && p.price <= contextMaxPrice!
         ),
-        query
+        query,
+        filterContext
       );
       products = dedupeProducts([...products, ...batch]);
       if (products.length > 0) break;

@@ -36,10 +36,14 @@ export const FIXED_EDGE = [
   { id: "X19", msg: "more", checks: ["eitherProductsOrAsk"], note: "More options referential", history: [{ role: "user", content: "show me chocolates on Kapruka" }, { role: "assistant", content: "Here are chocolates." }] },
   { id: "X20", msg: "order again", lastOrder: true, checks: ["productsOrHonestEmpty"], note: "Session reorder" },
   {
-    id: "X21",
-    msg: "mixed flower bouquets under 3000 for anniversary",
+    id: "X22",
+    msg: "Show me options under LKR 3,000",
+    history: [
+      { role: "user", content: "mixed flower bouquets under 3000 for anniversary" },
+      { role: "assistant", content: "Here are picks for your anniversary." },
+    ],
     checks: ["productsOrHonestEmpty", "noFlowerJunk"],
-    note: "No greeting cards/key tags when user asks for bouquets",
+    note: "Budget chip after flower search must not show pens",
   },
 ];
 

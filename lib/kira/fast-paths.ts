@@ -18,7 +18,9 @@ import {
   extractCityHint,
   extractLastSearchContext,
   extractOrderNumber,
+  buildMessageFilterContext,
   fetchFreshMoreProducts,
+  filterProductsForSearch,
   productIds,
   productsFromTrackingItems,
 } from "@/lib/kira/search";
@@ -354,7 +356,13 @@ export async function tryHandleDeterministicPrompt({
         response_format: "json",
       },
     });
-    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    const reshowProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(reshowResult.content),
+        ctx.query,
+        buildMessageFilterContext(trimmed, messages)
+      )
+    );
     if (reshowProducts.length === 0) {
       await streamWords(controller, Lf("reshowNothingFoundQuery", language, { query: ctx.query }));
     } else {
@@ -389,7 +397,13 @@ export async function tryHandleDeterministicPrompt({
         response_format: "json",
       },
     });
-    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    const reshowProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(reshowResult.content),
+        ctx.query,
+        buildMessageFilterContext(trimmed, messages)
+      )
+    );
     if (reshowProducts.length === 0) {
       await streamWords(controller, L("reshowNothingInStock", language));
     } else {
@@ -420,6 +434,7 @@ export async function tryHandleDeterministicPrompt({
       query: ctx.query,
       maxPrice: ctx.maxPrice,
       excludeIds,
+      filterContext: buildMessageFilterContext(trimmed, messages),
       onStep: (label) => controller.enqueue(sse("step", label)),
     });
     if (moreProducts.length === 0) {

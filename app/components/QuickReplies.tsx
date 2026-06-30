@@ -56,8 +56,15 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     // Suggest a price filter if products are expensive
     const prices = last.products?.map((p) => p.price) ?? [];
     const maxPrice = Math.max(...prices);
+    const flowerContext =
+      text.includes("flower") || text.includes("bouquet") || text.includes("rose");
     if (maxPrice > 3000) {
-      chips.push({ label: "Under LKR 3,000", value: "Show me options under LKR 3,000" });
+      chips.push({
+        label: "Under LKR 3,000",
+        value: flowerContext
+          ? "Show me flower options under LKR 3,000"
+          : "Show me options under LKR 3,000",
+      });
     }
     chips.push({ label: "More options", value: "Show me more options like these" });
     return chips;
