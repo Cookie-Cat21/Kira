@@ -74,6 +74,30 @@ export const GROUP_H = [
   },
   {
     "id": "H07",
+    "msg": "your shop has hampers — show me gift hampers in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: hampers"
+  },
+  {
+    "id": "H08",
+    "msg": "I liked hampers on Kapruka shop, help me pick gift hampers",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: hampers"
+  },
+  {
+    "id": "H09",
     "msg": "I was on /shop/flowers — show me the best flower bouquets on Kapruka",
     "checks": [
       "noHallucination",
@@ -85,7 +109,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H08",
+    "id": "H10",
     "msg": "browsing flowers in the shop, need flower bouquets delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -97,7 +121,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H09",
+    "id": "H11",
     "msg": "saw flowers on your shop page, what should I get for under 5000",
     "checks": [
       "noHallucination",
@@ -109,7 +133,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H10",
+    "id": "H12",
     "msg": "from the flowers category, pick something nice for my wife",
     "checks": [
       "noHallucination",
@@ -121,7 +145,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H11",
+    "id": "H13",
     "msg": "shop/flowers looked good — help me choose one with delivery to Kandy",
     "checks": [
       "noHallucination",
@@ -133,7 +157,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H12",
+    "id": "H14",
     "msg": "I'm comparing flower bouquets on the storefront, show me live stock",
     "checks": [
       "noHallucination",
@@ -145,7 +169,31 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: flowers"
   },
   {
-    "id": "H13",
+    "id": "H15",
+    "msg": "your shop has flowers — show me flower bouquets in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noFlowerJunk"
+    ],
+    "note": "Storefront ↔ chat: flowers"
+  },
+  {
+    "id": "H16",
+    "msg": "I liked flowers on Kapruka shop, help me pick flower bouquets",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noFlowerJunk"
+    ],
+    "note": "Storefront ↔ chat: flowers"
+  },
+  {
+    "id": "H17",
     "msg": "I was on /shop/cakes — show me the best birthday cakes on Kapruka",
     "checks": [
       "noHallucination",
@@ -157,7 +205,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H14",
+    "id": "H18",
     "msg": "browsing cakes in the shop, need birthday cakes delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -169,7 +217,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H15",
+    "id": "H19",
     "msg": "saw cakes on your shop page, what should I get for under 5000",
     "checks": [
       "noHallucination",
@@ -181,7 +229,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H16",
+    "id": "H20",
     "msg": "from the cakes category, pick something nice for my wife",
     "checks": [
       "noHallucination",
@@ -193,7 +241,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H17",
+    "id": "H21",
     "msg": "shop/cakes looked good — help me choose one with delivery to Kandy",
     "checks": [
       "noHallucination",
@@ -205,7 +253,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H18",
+    "id": "H22",
     "msg": "I'm comparing birthday cakes on the storefront, show me live stock",
     "checks": [
       "noHallucination",
@@ -217,7 +265,31 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: cakes"
   },
   {
-    "id": "H19",
+    "id": "H23",
+    "msg": "your shop has cakes — show me birthday cakes in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: cakes"
+  },
+  {
+    "id": "H24",
+    "msg": "I liked cakes on Kapruka shop, help me pick birthday cakes",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: cakes"
+  },
+  {
+    "id": "H25",
     "msg": "I was on /shop/chocolates — show me the best chocolates on Kapruka",
     "checks": [
       "noHallucination",
@@ -229,7 +301,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H20",
+    "id": "H26",
     "msg": "browsing chocolates in the shop, need chocolates delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -241,7 +313,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H21",
+    "id": "H27",
     "msg": "saw chocolates on your shop page, what should I get for under 5000",
     "checks": [
       "noHallucination",
@@ -253,7 +325,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H22",
+    "id": "H28",
     "msg": "from the chocolates category, pick something nice for my wife",
     "checks": [
       "noHallucination",
@@ -265,7 +337,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H23",
+    "id": "H29",
     "msg": "shop/chocolates looked good — help me choose one with delivery to Kandy",
     "checks": [
       "noHallucination",
@@ -277,7 +349,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H24",
+    "id": "H30",
     "msg": "I'm comparing chocolates on the storefront, show me live stock",
     "checks": [
       "noHallucination",
@@ -289,7 +361,31 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: chocolates"
   },
   {
-    "id": "H25",
+    "id": "H31",
+    "msg": "your shop has chocolates — show me chocolates in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: chocolates"
+  },
+  {
+    "id": "H32",
+    "msg": "I liked chocolates on Kapruka shop, help me pick chocolates",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: chocolates"
+  },
+  {
+    "id": "H33",
     "msg": "I was on /shop/electronics — show me the best phone accessories on Kapruka",
     "checks": [
       "noHallucination",
@@ -301,7 +397,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H26",
+    "id": "H34",
     "msg": "browsing electronics in the shop, need phone accessories delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -313,7 +409,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H27",
+    "id": "H35",
     "msg": "saw electronics on your shop page, what should I get for under 5000",
     "checks": [
       "noHallucination",
@@ -325,7 +421,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H28",
+    "id": "H36",
     "msg": "from the electronics category, pick something nice for my wife",
     "checks": [
       "noHallucination",
@@ -337,7 +433,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H29",
+    "id": "H37",
     "msg": "shop/electronics looked good — help me choose one with delivery to Kandy",
     "checks": [
       "noHallucination",
@@ -349,7 +445,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H30",
+    "id": "H38",
     "msg": "I'm comparing phone accessories on the storefront, show me live stock",
     "checks": [
       "noHallucination",
@@ -361,7 +457,31 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: electronics"
   },
   {
-    "id": "H31",
+    "id": "H39",
+    "msg": "your shop has electronics — show me phone accessories in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: electronics"
+  },
+  {
+    "id": "H40",
+    "msg": "I liked electronics on Kapruka shop, help me pick phone accessories",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: electronics"
+  },
+  {
+    "id": "H41",
     "msg": "I was on /shop/grocery — show me the best grocery hampers on Kapruka",
     "checks": [
       "noHallucination",
@@ -373,7 +493,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H32",
+    "id": "H42",
     "msg": "browsing grocery in the shop, need grocery hampers delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -385,7 +505,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H33",
+    "id": "H43",
     "msg": "saw grocery on your shop page, what should I get for under 5000",
     "checks": [
       "noHallucination",
@@ -397,7 +517,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H34",
+    "id": "H44",
     "msg": "from the grocery category, pick something nice for my wife",
     "checks": [
       "noHallucination",
@@ -409,7 +529,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H35",
+    "id": "H45",
     "msg": "shop/grocery looked good — help me choose one with delivery to Kandy",
     "checks": [
       "noHallucination",
@@ -421,7 +541,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H36",
+    "id": "H46",
     "msg": "I'm comparing grocery hampers on the storefront, show me live stock",
     "checks": [
       "noHallucination",
@@ -433,7 +553,31 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: grocery"
   },
   {
-    "id": "H37",
+    "id": "H47",
+    "msg": "your shop has grocery — show me grocery hampers in stock",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: grocery"
+  },
+  {
+    "id": "H48",
+    "msg": "I liked grocery on Kapruka shop, help me pick grocery hampers",
+    "checks": [
+      "noHallucination",
+      "productsOrHonestEmpty",
+      "noFamilyUnsafe",
+      "noToolLeak",
+      "noCategoryJunk"
+    ],
+    "note": "Storefront ↔ chat: grocery"
+  },
+  {
+    "id": "H49",
     "msg": "I was on /shop/kids — show me the best soft toys on Kapruka",
     "checks": [
       "noHallucination",
@@ -445,7 +589,7 @@ export const GROUP_H = [
     "note": "Storefront ↔ chat: kids"
   },
   {
-    "id": "H38",
+    "id": "H50",
     "msg": "browsing kids in the shop, need soft toys delivered to Colombo",
     "checks": [
       "noHallucination",
@@ -455,126 +599,6 @@ export const GROUP_H = [
       "noCategoryJunk"
     ],
     "note": "Storefront ↔ chat: kids"
-  },
-  {
-    "id": "H39",
-    "msg": "saw kids on your shop page, what should I get for under 5000",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: kids"
-  },
-  {
-    "id": "H40",
-    "msg": "from the kids category, pick something nice for my wife",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: kids"
-  },
-  {
-    "id": "H41",
-    "msg": "shop/kids looked good — help me choose one with delivery to Kandy",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: kids"
-  },
-  {
-    "id": "H42",
-    "msg": "I'm comparing soft toys on the storefront, show me live stock",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: kids"
-  },
-  {
-    "id": "H43",
-    "msg": "I was on /shop/home — show me the best home gifts on Kapruka",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
-  },
-  {
-    "id": "H44",
-    "msg": "browsing home in the shop, need home gifts delivered to Colombo",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
-  },
-  {
-    "id": "H45",
-    "msg": "saw home on your shop page, what should I get for under 5000",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
-  },
-  {
-    "id": "H46",
-    "msg": "from the home category, pick something nice for my wife",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
-  },
-  {
-    "id": "H47",
-    "msg": "shop/home looked good — help me choose one with delivery to Kandy",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
-  },
-  {
-    "id": "H48",
-    "msg": "I'm comparing home gifts on the storefront, show me live stock",
-    "checks": [
-      "noHallucination",
-      "productsOrHonestEmpty",
-      "noFamilyUnsafe",
-      "noToolLeak",
-      "noCategoryJunk"
-    ],
-    "note": "Storefront ↔ chat: home"
   }
 ];
 export const GROUP_I = [
@@ -1954,7 +1978,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -1986,7 +2010,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2006,7 +2030,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2038,7 +2062,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2058,7 +2082,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2090,7 +2114,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2110,7 +2134,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2142,7 +2166,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2162,7 +2186,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2194,7 +2218,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2214,7 +2238,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2246,7 +2270,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2266,7 +2290,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2298,7 +2322,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2318,7 +2342,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2350,7 +2374,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2370,7 +2394,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2402,7 +2426,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2422,7 +2446,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2454,7 +2478,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2474,7 +2498,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2506,7 +2530,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2526,7 +2550,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2558,7 +2582,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2578,7 +2602,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2610,7 +2634,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2630,7 +2654,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2662,7 +2686,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2682,7 +2706,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2714,7 +2738,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2734,7 +2758,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2766,7 +2790,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2786,7 +2810,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2818,7 +2842,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2838,7 +2862,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2870,7 +2894,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2890,7 +2914,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2922,7 +2946,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2942,7 +2966,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -2974,7 +2998,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -2994,7 +3018,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3026,7 +3050,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3046,7 +3070,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3078,7 +3102,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3098,7 +3122,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3130,7 +3154,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3150,7 +3174,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3182,7 +3206,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3202,7 +3226,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3234,7 +3258,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3254,7 +3278,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3286,7 +3310,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3306,7 +3330,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3338,7 +3362,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3358,7 +3382,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3390,7 +3414,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3410,7 +3434,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3442,7 +3466,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3462,7 +3486,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "add|cart|product|item"
       ],
       "noToolLeak"
     ],
@@ -3494,7 +3518,7 @@ export const GROUP_J = [
     "checks": [
       [
         "text",
-        {}
+        "name|recipient|phone|address|deliver"
       ],
       "noToolLeak"
     ],
@@ -3514,7 +3538,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3548,7 +3572,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3576,7 +3600,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3594,7 +3618,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3628,7 +3652,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3656,7 +3680,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3674,7 +3698,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3708,7 +3732,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3736,7 +3760,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3754,7 +3778,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3788,7 +3812,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3816,7 +3840,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3834,7 +3858,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3868,7 +3892,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3896,7 +3920,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3914,7 +3938,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3948,7 +3972,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -3976,7 +4000,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -3994,7 +4018,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4028,7 +4052,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4056,7 +4080,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4074,7 +4098,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4108,7 +4132,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4136,7 +4160,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4154,7 +4178,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4188,7 +4212,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4216,7 +4240,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4234,7 +4258,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4268,7 +4292,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4296,7 +4320,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4314,7 +4338,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4348,7 +4372,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4376,7 +4400,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4394,7 +4418,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4428,7 +4452,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4456,7 +4480,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4474,7 +4498,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4508,7 +4532,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4536,7 +4560,7 @@ export const GROUP_K = [
     "checks": [
       [
         "text",
-        {}
+        "order|previous|first|KP-"
       ],
       "noToolLeak"
     ],
@@ -4554,7 +4578,7 @@ export const GROUP_K = [
       ],
       "lastOrder": {
         "orderRef": "KP-GEN-001",
-        "placedAt": 1782817650158,
+        "placedAt": 1782827138935,
         "items": [
           {
             "product": {
@@ -4635,7 +4659,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 6"
@@ -4718,7 +4742,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 14"
@@ -4801,7 +4825,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 22"
@@ -4884,7 +4908,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 30"
@@ -4967,7 +4991,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 38"
@@ -5050,7 +5074,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 46"
@@ -5133,7 +5157,7 @@ export const GROUP_L = [
     "checks": [
       [
         "text",
-        {}
+        "\\?|gift|help|kapruka"
       ]
     ],
     "note": "Messy/adversarial 54"
@@ -5655,4 +5679,4 @@ export const GROUP_M = [
     "note": "CEO gold — corporate hamper (50)"
   }
 ];
-export const GENERATED_PERSONA_COUNT = 333;
+export const GENERATED_PERSONA_COUNT = 335;

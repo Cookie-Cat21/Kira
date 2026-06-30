@@ -420,10 +420,14 @@ function applyToken(token, arg, events, text) {
         pass: !/<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i.test(text),
         reason: "Tool markup leaked into visible reply",
       };
-    case "text":
-      return { pass: arg.test(text), reason: `Response did not match ${arg}` };
-    case "noText":
-      return { pass: !arg.test(text), reason: `Response unexpectedly matched ${arg}` };
+    case "text": {
+      const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
+      return { pass: re.test(text), reason: `Response did not match ${re}` };
+    }
+    case "noText": {
+      const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
+      return { pass: !re.test(text), reason: `Response unexpectedly matched ${re}` };
+    }
     case "lang":
       return { pass: SCRIPT_RANGES[arg].test(text), reason: `Expected ${arg} Unicode in response` };
     case "noLang":
