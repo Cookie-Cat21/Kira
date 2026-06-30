@@ -10,7 +10,10 @@ const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that r
 const PREACHY_RE =
   /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
 const LEAK_RE =
-  /you are kira|core flow|kapruka_search_products|sinhala mirroring|tryHandleDeterministic/i;
+  /you are kira|core flow|sinhala mirroring|tryHandleDeterministic|tryhandleDeterministic/i;
+const TOOL_MARKUP_RE = /<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i;
+const GENERIC_CAROUSEL_RE =
+  /^here are \d+ picks\b|^here are kapruka'?s top picks right now/i;
 
 function hasFamilyUnsafeProduct(events) {
   const products = (events ?? []).find((e) => e.t === "products")?.v;
@@ -68,6 +71,21 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
     score = 0;
     excitement = 0;
     return { score, excitement, flags, pass: false, verdict: "Leaked internals — trust killer." };
+  }
+  if (TOOL_MARKUP_RE.test(text)) {
+    flags.push("tool_markup_leak");
+    return {
+      score: 0,
+      excitement: 0,
+      flags,
+      pass: false,
+      verdict: "Tool markup leaked into user-visible reply.",
+    };
+  }
+  if (GENERIC_CAROUSEL_RE.test(text) && hasProducts(events)) {
+    flags.push("generic_carousel_copy");
+    score -= 2;
+    excitement -= 3;
   }
   if (hasFamilyUnsafeProduct(events)) {
     flags.push("family_unsafe_carousel");
@@ -163,4 +181,20 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
     : "Needs fix before a founder demo.";
 
   return { score: rounded, excitement: exc, flags, pass, verdict };
+}
+
+/** Map 0–10 CEO lens to 0–100 for pass gates (target ≥90). */
+export function ceoScorePercent(ceoLens) {
+  if (!ceoLens) return 0;
+  const base = ceoLens.excitement ?? ceoLens.score ?? 0;
+  let pct = Math.round(base * 10);
+  if (ceoLens.flags?.includes("generic_carousel_copy")) pct = Math.min(pct, 79);
+  if (ceoLens.flags?.includes("tool_markup_leak") || ceoLens.flags?.includes("family_unsafe_carousel")) {
+    pct = 0;
+  }
+  return Math.max(0, Math.min(100, pct));
+}
+
+export function ceoPassAt90(ceoLens) {
+  return ceoScorePercent(ceoLens) >= 90 && ceoLens?.pass !== false;
 }

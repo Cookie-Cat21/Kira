@@ -582,7 +582,7 @@ export async function tryHandleSearchFastPath({
     if (popularProducts.length === 0) {
       await streamWords(controller, "Nothing jumping out as a bestseller right now — want me to search a specific category?");
     } else {
-      await streamWords(controller, `Here are Kapruka's top picks right now — all in stock. 🛍️`);
+      await streamWords(controller, `Machang, pulled Kapruka's top sellers — all in stock right now. 🛍️`);
       controller.enqueue(sse("products", popularProducts));
     }
     controller.enqueue(sse("done"));

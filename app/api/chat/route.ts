@@ -48,6 +48,7 @@ import {
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
 import { sse, TOOL_STEPS } from "@/lib/kira/sse";
+import { sanitizeAssistantText } from "@/lib/kira/sanitize-response";
 import {
   CONCURRENT_SAFE_TOOLS,
   generateToolSummary,
@@ -859,9 +860,7 @@ export async function POST(req: NextRequest) {
 
           if (choice.finish_reason === "stop" || !msg.tool_calls?.length) {
             const raw = msg.content ?? "";
-            finalText = raw
-              .replace(/<function=[^>]+>[\s\S]*?<\/function>/g, "")
-              .trim();
+            finalText = sanitizeAssistantText(raw);
 
             // ── Hallucination stop-hook ───────────────────────────────────────
             // Guarded catalog text is buffered until this validation passes, so

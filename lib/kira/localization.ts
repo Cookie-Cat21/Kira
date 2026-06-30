@@ -95,9 +95,9 @@ export const LS: Record<string, Record<string, string>> = {
     ta: "ஒரு option{budget}{city}{date} — stock இல் உள்ளது:",
   },
   searchFoundMany: {
-    en: "Here are {n} picks{budget}{city}{date} — all in stock on Kapruka right now.",
-    si: "Kapruka {n} options{budget}{city}{date} — stock හිඳිනා.",
-    ta: "Kapruka-இல் {n} options{budget}{city}{date} — stock இல் உள்ளவை.",
+    en: "Machang, pulled {n} live options{budget}{city}{date} from Kapruka — tap a card to add to your tray.",
+    si: "Kapruka live options {n}{budget}{city}{date} — card tap කරලා tray එකට add කරන්න.",
+    ta: "Kapruka live options {n}{budget}{city}{date} — card tap செய்து tray-க்கு add செய்யுங்கள்.",
   },
   rateExhausted: {
     en: "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?",

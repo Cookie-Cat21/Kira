@@ -1,3 +1,5 @@
+import { sanitizeAssistantText } from "@/lib/kira/sanitize-response";
+
 export const enc = new TextEncoder();
 export function sse(t: string, v?: unknown): Uint8Array {
   return enc.encode(
@@ -17,7 +19,8 @@ export async function streamWords(
   controller: ReadableStreamDefaultController<Uint8Array>,
   text: string
 ) {
-  const words = text.match(/\S+\s*/g) ?? [];
+  const clean = sanitizeAssistantText(text);
+  const words = clean.match(/\S+\s*/g) ?? [];
   for (const word of words) {
     controller.enqueue(sse("token", word));
     await new Promise((resolve) => setTimeout(resolve, 12));
