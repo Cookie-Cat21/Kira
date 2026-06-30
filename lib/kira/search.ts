@@ -359,6 +359,40 @@ export async function fetchFreshMoreProducts({
   return freshPool;
 }
 
+/** Single bestseller search — fallback when rotated "more options" pool is empty. */
+export async function fetchBaselineSearchProducts({
+  mcpClient,
+  query,
+  maxPrice,
+  onStep,
+  filterContext,
+}: {
+  mcpClient: Client;
+  query: string;
+  maxPrice?: number;
+  onStep?: (label: string) => void;
+  filterContext?: string;
+}): Promise<KiraProduct[]> {
+  onStep?.(`Searching Kapruka for "${query}"`);
+  const result = await callMcpTool(mcpClient, "kapruka_search_products", {
+    params: {
+      q: query,
+      limit: 6,
+      in_stock_only: true,
+      sort: "bestseller",
+      ...(maxPrice ? { max_price: maxPrice } : {}),
+      response_format: "json",
+    },
+  });
+  return dedupeProducts(
+    filterProductsForSearch(
+      extractProductsFromMcp(result.content),
+      query,
+      filterContext ?? query
+    )
+  );
+}
+
 export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
   return items.map((item) => item.product);
 }

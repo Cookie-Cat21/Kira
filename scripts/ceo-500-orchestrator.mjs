@@ -40,7 +40,7 @@ function parseArgs() {
     shard,
     target: Number(get("--target", "90")),
     llmReview: args.includes("--llm"),
-    delayMs: Number(get("--delay", "1200")),
+    delayMs: Number(get("--delay", "2200")),
   };
 }
 

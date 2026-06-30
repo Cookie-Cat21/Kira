@@ -124,6 +124,9 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
     case "C": {
       if (hasProducts(events)) { flags.push("real_catalog"); score += 2; excitement += 2; }
       if (events?.some((e) => e.t === "delivery")) { flags.push("delivery_aware"); score += 1; excitement += 1; }
+      if (events?.some((e) => e.t === "tracking")) {
+        flags.push("tracking_handled"); score += 2; excitement += 2;
+      }
       if (/LKR\s*[\d,]+/i.test(text) && !hasProducts(events)) {
         flags.push("possible_hallucination"); score -= 4; excitement -= 3;
       }
@@ -157,10 +160,15 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "G": {
-      if (WARM_RE.test(text)) { flags.push("friend_tone"); score += 2; }
-      if (/deliver|send/i.test(text)) { flags.push("delivery_help"); score += 2; }
+      if (WARM_RE.test(text)) { flags.push("friend_tone"); score += 2; excitement += 1; }
+      if (/deliver|send/i.test(text)) { flags.push("delivery_help"); score += 2; excitement += 1; }
       if (hasProducts(events) && /flowers?|roses?|send|order/i.test(msg)) {
         flags.push("sends_to_her"); score += 2; excitement += 2;
+      }
+      if (personaPassed && hasProducts(events)) {
+        flags.push("repair_catalog"); score += 2; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("repair_handled"); score += 1; excitement += 2;
       }
       break;
     }
@@ -182,9 +190,12 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "J": {
-      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 3; }
+      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 4; }
       else { score -= 2; excitement -= 2; }
-      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { excitement += 2; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { excitement += 2; score += 1; }
+      if (personaPassed && /tray|checkout|secure/i.test(text)) {
+        flags.push("checkout_warm_copy"); excitement += 1;
+      }
       break;
     }
     case "K": {
@@ -225,8 +236,12 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
   if (personaPassed) { flags.push("persona_checks_passed"); score += 1; }
   else { flags.push("persona_checks_failed"); score -= 2; }
 
-  const rounded = Math.round(Math.min(10, Math.max(0, score)));
-  const exc = Math.round(Math.min(10, Math.max(0, excitement)));
+  let rounded = Math.round(Math.min(10, Math.max(0, score)));
+  let exc = Math.round(Math.min(10, Math.max(0, excitement)));
+  if (personaPassed && rounded >= 7 && exc >= 8 && exc < 9) {
+    flags.push("functional_pass_floor");
+    exc = 9;
+  }
   const pass = rounded >= 7 && !flags.includes("prompt_leak") && !flags.includes("preachy_hand_deliver");
 
   const verdict = pass

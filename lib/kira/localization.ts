@@ -15,9 +15,9 @@ export const LS: Record<string, Record<string, string>> = {
     ta: "Order {orderNumber} track செய்ய முடியவில்லை. {reason}",
   },
   checkoutEmptyCart: {
-    en: "Add a product first and I'll help you checkout.",
-    si: "පළමුව product එකක් add කරන්නකෝ, ඊට පස්සේ checkout කරමු.",
-    ta: "முதலில் ஒரு பொருளை சேர்க்கவும், பிறகு checkout செய்யலாம்.",
+    en: "Your Kapruka cart is empty — add something from the carousel first and I'll walk you through a secure checkout.",
+    si: "Kapruka cart empty — carousel එකෙන් product එකක් add කරන්න, secure checkout එකට help කරන්නම්.",
+    ta: "Kapruka cart காலியாக உள்ளது — carousel-இல் ஒரு product add செய்து secure checkout-க்கு help செய்கிறேன்.",
   },
   checkoutNeedName: {
     en: "Lovely. Before I create a live Kapruka checkout link, I need the recipient's full name.",
