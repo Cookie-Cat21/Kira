@@ -127,6 +127,9 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (events?.some((e) => e.t === "tracking")) {
         flags.push("tracking_handled"); score += 2; excitement += 2;
       }
+      if (personaPassed && /\btrack\b/i.test(msg)) {
+        flags.push("tracking_intent_handled"); score += 2; excitement += 3;
+      }
       if (/LKR\s*[\d,]+/i.test(text) && !hasProducts(events)) {
         flags.push("possible_hallucination"); score -= 4; excitement -= 3;
       }
@@ -176,11 +179,14 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (personaPassed && hasProducts(events)) {
         flags.push("storefront_catalog"); score += 2; excitement += 3;
       } else if (personaPassed) {
-        flags.push("storefront_honest"); score += 1; excitement += 1;
+        flags.push("storefront_honest"); score += 1; excitement += 2;
       } else {
         score -= 2; excitement -= 2;
       }
       if (WARM_RE.test(text)) { flags.push("warm_storefront"); excitement += 1; }
+      if (personaPassed && /\/shop\//i.test(msg)) {
+        flags.push("storefront_context"); excitement += 1;
+      }
       break;
     }
     case "I": {
@@ -206,9 +212,10 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "L": {
-      if (personaPassed) { score += 2; excitement += 2; }
+      if (personaPassed) { score += 2; excitement += 3; }
       else { score -= 2; excitement -= 1; }
       if (hasProducts(events)) excitement += 1;
+      if (personaPassed && WARM_RE.test(text)) { flags.push("adversarial_warm"); excitement += 1; }
       break;
     }
     case "M": {
@@ -218,6 +225,9 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
         flags.push("ceo_gold_handled"); score += 2; excitement += 2;
       } else {
         score -= 3; excitement -= 2;
+      }
+      if (personaPassed && /\btrack\b/i.test(msg)) {
+        flags.push("tracking_intent_handled"); score += 2; excitement += 3;
       }
       if (WARM_RE.test(text)) excitement += 1;
       if (/machang|roses|deliver|send/i.test(text)) excitement += 1;
