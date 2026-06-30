@@ -79,7 +79,7 @@ async function runGenerate() {
 
 async function runPersonaBatch(ids) {
   const outPath = join(OUT_DIR, `batch-${ids[0]}-${ids[ids.length - 1]}.json`);
-  await new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
       [join(__dirname, "test-personas.mjs"), "--id", ids.join(","), "--concurrency", "1", "--out", outPath],
