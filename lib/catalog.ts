@@ -8,7 +8,7 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { KiraProduct, KiraProductDetails } from "@/types";
 import type { ProductRail, StoreCategory, StoreSort } from "@/types/store";
-import { filterFamilySafeProducts } from "@/lib/kira/search";
+import { filterFamilySafeProducts, filterProductsForSearch } from "@/lib/kira/search";
 import { isDbConfigured, query } from "@/lib/db";
 
 // ── Seed (fallback) ────────────────────────────────────────────────────────
@@ -183,6 +183,19 @@ export async function getFeaturedProducts(limit = 12): Promise<KiraProduct[]> {
   );
 }
 
+const CATEGORY_FILTER_QUERY: Record<string, string> = {
+  hampers: "gift hamper",
+  flowers: "flowers",
+  chocolates: "chocolate",
+  cakes: "cake",
+};
+
+function applyCategoryCatalogFilter(slug: string, items: KiraProduct[]): KiraProduct[] {
+  const query = CATEGORY_FILTER_QUERY[slug];
+  if (query) return filterProductsForSearch(items, query);
+  return filterFamilySafeProducts(items);
+}
+
 export async function getProductsByCategory(
   slug: string,
   opts: { limit?: number; offset?: number; sort?: StoreSort } = {}
@@ -199,16 +212,17 @@ export async function getProductsByCategory(
         [slug]
       );
       return {
-        items: rows.map(rowToProduct),
+        items: applyCategoryCatalogFilter(slug, rows.map(rowToProduct)),
         total: Number(totalRows[0]?.count ?? rows.length),
       };
     },
     () => {
       let items = seed().products.filter((p) => p.categorySlug === slug);
       items = sortSeed(items, sort);
+      items = applyCategoryCatalogFilter(slug, items.map(seedToProduct));
       const total = items.length;
       return {
-        items: items.slice(offset, offset + limit).map(seedToProduct),
+        items: items.slice(offset, offset + limit),
         total,
       };
     }

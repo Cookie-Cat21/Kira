@@ -7,9 +7,11 @@ import {
   FLOWER_JUNK_RE,
   CHOCOLATE_JUNK_RE,
   CAKE_JUNK_RE,
+  HAMPER_JUNK_RE,
   FLOWER_INTENT_RE,
   CHOCOLATE_INTENT_RE,
   CAKE_INTENT_RE,
+  HAMPER_INTENT_RE,
   FAMILY_UNSAFE_RE,
   filterFamilySafeProducts,
 } from "./lib/flower-filter.mjs";
@@ -19,12 +21,15 @@ const CATEGORY_RELEVANCE_TERMS = {
   chocolate:
     /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
   cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
+  hampers:
+    /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i,
 };
 
 const CATEGORY_IRRELEVANCE_TERMS = {
   flowers: FLOWER_JUNK_RE,
   chocolate: CHOCOLATE_JUNK_RE,
   cake: CAKE_JUNK_RE,
+  hampers: HAMPER_JUNK_RE,
 };
 
 function resolveProductFilterKey(query, ...contextTexts) {
@@ -33,6 +38,8 @@ function resolveProductFilterKey(query, ...contextTexts) {
   if (FLOWER_INTENT_RE.test(context)) return "flowers";
   if (CAKE_INTENT_RE.test(context)) return "cake";
   if (CHOCOLATE_INTENT_RE.test(context)) return "chocolate";
+  if (HAMPER_INTENT_RE.test(context)) return "hampers";
+  if (q === "gift hamper" || q === "gift set") return "hampers";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
   return null;
 }
@@ -45,6 +52,16 @@ function filterProductsForSearch(products, query, ...contextTexts) {
     const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
     if (rel) {
       result = products.filter((p) => {
+        if (key === "hampers") {
+          const name = p.name ?? "";
+          const body = `${name} ${p.summary ?? ""}`;
+          const HAMPER_NAME =
+            /\b(hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|pantry|cravings|family\s*pack|munch|celebration|fitness|hygienic|golden\s*crunch|grocery\s*hamper|joyful|classic\s*craving|luxury\s*pantry|nutty)\b/i;
+          if (!HAMPER_NAME.test(name)) return false;
+          if (HAMPER_JUNK_RE.test(body)) return false;
+          if (/confectionery and biscuits/i.test(body) && !/\bhamper/i.test(name)) return false;
+          return true;
+        }
         const txt = `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
         return rel.test(txt) && !(irrel?.test(txt));
       });
@@ -157,6 +174,37 @@ assert(
 assert(
   resolveProductFilterKey("options", "mixed flower bouquets under 3000") === "flowers",
   "vague options inherit flower context"
+);
+
+const hamperGood = [
+  { id: "40", name: "Luxury Pantry Goals Hamper - Top Selling Hampers In Sri Lanka", price: 23500, currency: "LKR" },
+  { id: "41", name: "The Classic Cravings Hamper Box", price: 23000, currency: "LKR" },
+  { id: "42", name: "Family Pack Hamper - Top Selling Hampers In Sri Lanka", price: 13500, currency: "LKR" },
+];
+const hamperJunk = [
+  { id: "43", name: "Lifebuoy Cool Fresh Body Soap 75g - Cleansers", price: 110, currency: "LKR" },
+  { id: "44", name: "Ceylon Hampers Pvt Ltd", price: 140, currency: "LKR" },
+  { id: "45", name: "Munchee Kalo Chocolate Biscuit 140g - Confectionery And Biscuits", price: 300, currency: "LKR" },
+  { id: "46", name: "King Coconut", price: 310, currency: "LKR" },
+];
+
+assert(
+  filterProductsForSearch([...hamperJunk, ...hamperGood], "gift hamper").length === hamperGood.length,
+  "hamper category drops soap, coconut, biscuits, brand pages"
+);
+
+const cakeCardJunk = [
+  { id: "50", name: "Pretty Pink Mini Bday Greeting Card", price: 80, currency: "LKR", summary: "Birthdaycake, Cupcake, Greetingcard" },
+];
+const cakeReal = [{ id: "51", name: "Chocolate Fudge Birthday Cake 2lb", price: 4500, currency: "LKR" }];
+assert(
+  filterProductsForSearch([...cakeCardJunk, ...cakeReal], "cake").length === cakeReal.length,
+  "cake category drops greeting cards even when summary mentions cupcake"
+);
+
+assert(
+  filterFamilySafeProducts([{ id: "60", name: "Wine Opener", price: 1200, currency: "LKR" }]).length === 1,
+  "wine opener is family-safe kitchen item"
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

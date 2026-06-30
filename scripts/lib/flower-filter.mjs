@@ -6,7 +6,7 @@ export const CHOCOLATE_JUNK_RE =
   /\b(candle|candles|lip\s*balm|body\s*butter|lotion|soap|hand\s*wash|body\s*wash|shampoo|air\s*freshener|room\s*spray|dog|pet\s*treat|cat\s*treat|mug|poster|t-?shirt|pillow|duvet|curtain|phone\s*case|key\s*chain)\b/i;
 
 export const CAKE_JUNK_RE =
-  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set)\b/i;
+  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set|greeting\s*card|greetingcard|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|handcrafted\s*(greeting\s*)?card)\b/i;
 
 export const FLOWER_INTENT_RE =
   /\b(flowers?|roses?|bouquets?|floral|lilies?|orchids?|arrangements?|mixed\s+flower)\b/i;
@@ -17,8 +17,14 @@ export const CHOCOLATE_INTENT_RE =
 export const CAKE_INTENT_RE =
   /\b(cakes?|birthday\s+cake|cupcakes?|pastry|bakery|bday\s+cake)\b/i;
 
+export const HAMPER_INTENT_RE =
+  /\b(hampers?|gift\s*hamper|gift\s*set|combo\s*pack|gift\s*box|gift\s*basket)\b/i;
+
+export const HAMPER_JUNK_RE =
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka)\b/i;
+
 export const FAMILY_UNSAFE_RE =
-  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
+  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b(?!\s*opener)|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
 
 export function productText(p) {
   return `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
@@ -36,5 +42,9 @@ export function hasFamilyUnsafeProduct(products) {
 
 export function filterFamilySafeProducts(products) {
   if (!Array.isArray(products)) return [];
-  return products.filter((p) => !FAMILY_UNSAFE_RE.test(productText(p)));
+  return products.filter((p) => {
+    const name = p.name ?? "";
+    if (/\bwine\s*opener\b/i.test(name)) return true;
+    return !FAMILY_UNSAFE_RE.test(productText(p));
+  });
 }

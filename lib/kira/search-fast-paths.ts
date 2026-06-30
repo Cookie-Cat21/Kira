@@ -463,8 +463,12 @@ export async function tryHandleSearchFastPath({
     const hamperResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: "gift set", limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
     });
-    const hamperProducts = filterFamilySafeProducts(
-      dedupeProducts(extractProductsFromMcp(hamperResult.content))
+    const hamperProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(hamperResult.content),
+        "gift hamper",
+        filterContext
+      )
     );
     if (hamperProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: "gift set" }));

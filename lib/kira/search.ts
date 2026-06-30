@@ -35,6 +35,13 @@ export function hasCakeSearchIntent(...texts: (string | undefined)[]): boolean {
   return texts.some((t) => t && CAKE_INTENT_RE.test(t.toLowerCase()));
 }
 
+export const HAMPER_INTENT_RE =
+  /\b(hampers?|gift\s*hamper|gift\s*set|combo\s*pack|gift\s*box|gift\s*basket)\b/i;
+
+export function hasHamperSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && HAMPER_INTENT_RE.test(t.toLowerCase()));
+}
+
 export function buildSearchFilterContext(...texts: (string | undefined)[]): string {
   return texts.filter(Boolean).join(" ");
 }
@@ -58,15 +65,28 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   chocolate:
     /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
   cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
+  hampers:
+    /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i,
 };
+
+/** Single grocery items / brand pages — not curated hampers. Test name+summary only (not category). */
+export const HAMPER_JUNK_RE =
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka)\b/i;
+
+/** Standalone biscuit SKUs miscategorized because the category slug says "hamper". */
+export const HAMPER_STANDALONE_JUNK_RE = /\bconfectionery and biscuits\b/i;
+
+/** Real hampers always say so in the product title — not just the category badge. */
+export const HAMPER_NAME_RE =
+  /\b(hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|pantry|cravings|family\s*pack|munch|celebration|fitness|hygienic|golden\s*crunch|grocery\s*hamper|joyful|classic\s*craving|luxury\s*pantry|nutty)\b/i;
 
 /** Non-edible chocolate-adjacent noise from Kapruka keyword search. */
 export const CHOCOLATE_JUNK_RE =
   /\b(candle|candles|lip\s*balm|body\s*butter|lotion|soap|hand\s*wash|body\s*wash|shampoo|air\s*freshener|room\s*spray|dog|pet\s*treat|cat\s*treat|mug|poster|t-?shirt|pillow|duvet|curtain|phone\s*case|key\s*chain)\b/i;
 
-/** Cake toppers/candles — not deliverable cakes. */
+/** Cake toppers/candles/cards — not deliverable cakes. */
 export const CAKE_JUNK_RE =
-  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set)\b/i;
+  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set|greeting\s*card|greetingcard|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|handcrafted\s*(greeting\s*)?card)\b/i;
 
 /** Deliverable fresh flowers — not cards, keychains, artificial decor, or off-category gifts. */
 export const FLOWER_JUNK_RE =
@@ -78,17 +98,20 @@ export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   roses: FLOWER_JUNK_RE,
   chocolate: CHOCOLATE_JUNK_RE,
   cake: CAKE_JUNK_RE,
+  hampers: HAMPER_JUNK_RE,
 };
 
 /** Adult / intimate / age-restricted — never surface in Kira carousels. */
 export const FAMILY_UNSAFE_RE =
-  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
+  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b(?!\s*opener)|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
 
 export function productDisplayText(p: KiraProduct): string {
   return `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
 }
 
 export function isFamilySafeProduct(p: KiraProduct): boolean {
+  const name = p.name ?? "";
+  if (/\bwine\s*opener\b/i.test(name)) return true;
   return !FAMILY_UNSAFE_RE.test(productDisplayText(p));
 }
 
@@ -169,9 +192,11 @@ export function resolveProductFilterKey(
   const q = normalizeProductQuery(query.toLowerCase().trim());
   const context = buildSearchFilterContext(q, ...contextTexts);
   if (hasFlowerSearchIntent(context)) return "flowers";
+  if (hasHamperSearchIntent(context)) return "hampers";
   if (hasCakeSearchIntent(context)) return "cake";
   if (hasChocolateSearchIntent(context)) return "chocolate";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  if (q === "gift hamper" || q === "gift set") return "hampers";
   return null;
 }
 
@@ -197,6 +222,14 @@ export function filterProductsForSearch(
     const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
     if (rel) {
       result = products.filter((p) => {
+        if (key === "hampers") {
+          const name = p.name ?? "";
+          const body = `${name} ${p.summary ?? ""}`;
+          if (!HAMPER_NAME_RE.test(name)) return false;
+          if (HAMPER_JUNK_RE.test(body)) return false;
+          if (HAMPER_STANDALONE_JUNK_RE.test(body) && !/\bhamper/i.test(name)) return false;
+          return true;
+        }
         const txt = productDisplayText(p);
         return rel.test(txt) && !(irrel?.test(txt));
       });
