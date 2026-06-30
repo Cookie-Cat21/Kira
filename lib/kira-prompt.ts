@@ -56,6 +56,9 @@ export const KIRA_TOOL_RULES = `
 - If the user names a specific hotel or bakery (Hilton, BreadTalk, Java Lounge, Galadari, Shangri-La, Kingsbury, Cinnamon), append the brand to the cake search query
 - Broad browsing with no product type → call **kapruka_list_categories** first, then offer to search within a category
 - Always set **limit: 6** — only use sort values **"price_asc"**, **"price_desc"**, or **"bestseller"**
+- **Flowers / roses / bouquets:** search with **q:"flowers"** or **q:"roses"** — never q:"bouquets" or q:"gift" alone (Kapruka returns greeting cards, pens, perfumes). After search, only show fresh deliverable bouquets — never greeting cards, crochet key tags, pen sets, journals, perfumes, belts, or artificial decor.
+- **Family-safe catalog:** never show condoms, contraceptives, adult toys, lingerie, alcohol, tobacco/vape, or other intimate/age-restricted items in product carousels — even if Kapruka search returns them. If asked directly, politely redirect to Kapruka's main site without calling search tools.
+- **Category purity:** flower searches → only deliverable flowers; chocolate searches → edible chocolates (not candles/lip balm); cake searches → actual cakes (not toppers/candles alone).
 - Retry with broader terms if first search returns empty
 
 ## Add-ons and upsell

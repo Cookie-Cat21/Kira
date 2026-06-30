@@ -43,8 +43,8 @@ import {
   validateShownProducts,
 } from "@/lib/kira/session-context";
 import {
-  CATEGORY_IRRELEVANCE_TERMS,
-  CATEGORY_RELEVANCE_TERMS,
+  filterProductsForSearch,
+  buildMessageFilterContext,
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
 import { sse, TOOL_STEPS } from "@/lib/kira/sse";
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
         const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const searchFilterContext = buildMessageFilterContext(latestUserText, messages);
         const checkoutConfirmed = isCheckoutConfirmation(latestUserText);
         const safeLastProducts = validateLastProducts(lastProducts);
         const safeShownProducts = validateShownProducts(shownProducts, safeLastProducts);
@@ -495,15 +496,12 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
               const rawForLlm = extractProductsFromMcp(resultContent);
               const queryKey = String(toolArgs.q ?? "").toLowerCase().trim();
-              const relFilter = CATEGORY_RELEVANCE_TERMS[queryKey];
-              const irrelFilter = CATEGORY_IRRELEVANCE_TERMS[queryKey];
-              const filteredForLlm = relFilter
-                ? rawForLlm.filter((p) => {
-                    const txt = `${p.name} ${p.category ?? ""}`;
-                    return relFilter.test(txt) && !(irrelFilter?.test(txt));
-                  })
-                : rawForLlm;
-              collectedProducts.push(...(filteredForLlm.length > 0 ? filteredForLlm : rawForLlm));
+              const filteredForLlm = filterProductsForSearch(
+                rawForLlm,
+                queryKey,
+                searchFilterContext
+              );
+              collectedProducts.push(...filteredForLlm);
             }
             if (toolName === "kapruka_create_order") {
               if (!sandboxCheckout) {
@@ -1016,13 +1014,17 @@ export async function POST(req: NextRequest) {
 
         // Dedup + cap carousel
         const seenIds = new Set<string>();
-        const dedupedProducts = collectedProducts
-          .filter((p) => {
-            if (seenIds.has(p.id)) return false;
-            seenIds.add(p.id);
-            return true;
-          })
-          .slice(0, 8);
+        const dedupedProducts = filterProductsForSearch(
+          collectedProducts
+            .filter((p) => {
+              if (seenIds.has(p.id)) return false;
+              seenIds.add(p.id);
+              return true;
+            })
+            .slice(0, 8),
+          latestUserText,
+          searchFilterContext
+        );
         if (dedupedProducts.length > 0)
           controller.enqueue(sse("products", dedupedProducts));
         if (checkoutInfo) {

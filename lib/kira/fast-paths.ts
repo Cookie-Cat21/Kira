@@ -18,7 +18,10 @@ import {
   extractCityHint,
   extractLastSearchContext,
   extractOrderNumber,
+  buildMessageFilterContext,
   fetchFreshMoreProducts,
+  filterFamilySafeProducts,
+  filterProductsForSearch,
   productIds,
   productsFromTrackingItems,
 } from "@/lib/kira/search";
@@ -216,7 +219,7 @@ export async function tryHandleDeterministicPrompt({
           controller,
           Lf("reorderFromRef", language, { orderNumber: tracking.orderNumber || orderNumber })
         );
-        controller.enqueue(sse("products", products));
+        controller.enqueue(sse("products", filterFamilySafeProducts(products)));
         controller.enqueue(sse("tracking", tracking));
       } else {
         await streamWords(controller, Lf("reorderRefNotFound", language, { orderNumber }));
@@ -239,7 +242,7 @@ export async function tryHandleDeterministicPrompt({
     if (source?.items?.length) {
       const products = cartItemsToProducts(source.items);
       await streamWords(controller, L("reorderSessionFound", language));
-      controller.enqueue(sse("products", products));
+      controller.enqueue(sse("products", filterFamilySafeProducts(products)));
     } else {
       await streamWords(controller, L("reorderNoHistory", language));
     }
@@ -339,7 +342,7 @@ export async function tryHandleDeterministicPrompt({
           ? L(reshowKey, language)
           : Lf(reshowKey, language, { n: lastProducts.length })
       );
-      controller.enqueue(sse("products", lastProducts));
+      controller.enqueue(sse("products", filterFamilySafeProducts(lastProducts)));
       controller.enqueue(sse("done"));
       return true;
     }
@@ -354,7 +357,13 @@ export async function tryHandleDeterministicPrompt({
         response_format: "json",
       },
     });
-    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    const reshowProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(reshowResult.content),
+        ctx.query,
+        buildMessageFilterContext(trimmed, messages)
+      )
+    );
     if (reshowProducts.length === 0) {
       await streamWords(controller, Lf("reshowNothingFoundQuery", language, { query: ctx.query }));
     } else {
@@ -389,7 +398,13 @@ export async function tryHandleDeterministicPrompt({
         response_format: "json",
       },
     });
-    const reshowProducts = dedupeProducts(extractProductsFromMcp(reshowResult.content));
+    const reshowProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(reshowResult.content),
+        ctx.query,
+        buildMessageFilterContext(trimmed, messages)
+      )
+    );
     if (reshowProducts.length === 0) {
       await streamWords(controller, L("reshowNothingInStock", language));
     } else {
@@ -420,6 +435,7 @@ export async function tryHandleDeterministicPrompt({
       query: ctx.query,
       maxPrice: ctx.maxPrice,
       excludeIds,
+      filterContext: buildMessageFilterContext(trimmed, messages),
       onStep: (label) => controller.enqueue(sse("step", label)),
     });
     if (moreProducts.length === 0) {

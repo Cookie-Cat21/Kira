@@ -10,27 +10,102 @@ import type { CartItem, DeliveryQuote, KiraProduct, TrackingItem } from "@/types
 export const SERVER_CITY_REGEX =
   /\b(colombo|kandy|galle|negombo|jaffna|kurunegala|ratnapura|anuradhapura|batticaloa|trincomalee|matara|hambantota|vavuniya|polonnaruwa|kegalle|nuwara eliya|badulla|kalutara|gampaha)\b/i;
 
+/** User or MCP text signals a fresh-flower search — filter even when q is "gift" or "options". */
+export const FLOWER_INTENT_RE =
+  /\b(flowers?|roses?|bouquets?|floral|lilies?|orchids?|arrangements?|mixed\s+flower)\b/i;
+
+/** MCP q values that carry no category — inherit from prior user turns instead. */
+export const VAGUE_SEARCH_QUERY_RE =
+  /^(options?|gifts?|gift\s+ideas?|items?|stuff|things?|ideas?|picks?|something|more|anniversary|birthday)$/i;
+
+export function hasFlowerSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && FLOWER_INTENT_RE.test(t.toLowerCase()));
+}
+
+export const CHOCOLATE_INTENT_RE =
+  /\b(chocolates?|choc\b|sweet\s*box|truffle|praline|fudge|brownie)\b/i;
+export const CAKE_INTENT_RE =
+  /\b(cakes?|birthday\s+cake|cupcakes?|pastry|bakery|bday\s+cake)\b/i;
+
+export function hasChocolateSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && CHOCOLATE_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function hasCakeSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && CAKE_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function buildSearchFilterContext(...texts: (string | undefined)[]): string {
+  return texts.filter(Boolean).join(" ");
+}
+
+export function buildMessageFilterContext(
+  currentText: string,
+  messages?: { role: string; content: string }[]
+): string {
+  const recentUser = (messages ?? [])
+    .filter((m) => m.role === "user")
+    .slice(-4)
+    .map((m) => m.content);
+  return buildSearchFilterContext(currentText, ...recentUser);
+}
 // When a query maps to a specific category, keep only products whose name OR
 // category contains at least one of these terms. Blocks off-category noise like
 // kids bags whose names happen to include the search keyword (e.g. "Sofia Flowers").
 export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   flowers: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
   roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
+  chocolate:
+    /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
+  cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
 };
 
+/** Non-edible chocolate-adjacent noise from Kapruka keyword search. */
+export const CHOCOLATE_JUNK_RE =
+  /\b(candle|candles|lip\s*balm|body\s*butter|lotion|soap|hand\s*wash|body\s*wash|shampoo|air\s*freshener|room\s*spray|dog|pet\s*treat|cat\s*treat|mug|poster|t-?shirt|pillow|duvet|curtain|phone\s*case|key\s*chain)\b/i;
+
+/** Cake toppers/candles — not deliverable cakes. */
+export const CAKE_JUNK_RE =
+  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set)\b/i;
+
+/** Deliverable fresh flowers — not cards, keychains, artificial decor, or off-category gifts. */
+export const FLOWER_JUNK_RE =
+  /\b(greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery|journal|pen\s*set|pen\s*gift|executive\s*pen|desk\s*pen|ballpoint|fountain\s*pen|notebook|diary|perfume|cologne|fragrance|belt|necktie|tie\s*clip|cufflink|jewell?ery|necklace|bracelet|earring|watch|electronic|smartphone|laptop|tablet|speaker|headphone|hand\s*wash|body\s*wash|soap|shampoo|lotion|sanitizer|cleanser)\b/i;
+
 // Products that pass RELEVANCE but are clearly not in the category — reject them.
-// "3D Kids Preschool Bag Double Pocket Sofia Flower" passes the flowers filter
-// because "Flower" appears in the name, but it's a bag, not a flower.
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
-  flowers: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
-  roses: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
+  flowers: FLOWER_JUNK_RE,
+  roses: FLOWER_JUNK_RE,
+  chocolate: CHOCOLATE_JUNK_RE,
+  cake: CAKE_JUNK_RE,
 };
+
+/** Adult / intimate / age-restricted — never surface in Kira carousels. */
+export const FAMILY_UNSAFE_RE =
+  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
+
+export function productDisplayText(p: KiraProduct): string {
+  return `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
+}
+
+export function isFamilySafeProduct(p: KiraProduct): boolean {
+  return !FAMILY_UNSAFE_RE.test(productDisplayText(p));
+}
+
+/** Strip adult/intimate catalog items from any carousel — always run before showing products. */
+export function filterFamilySafeProducts(products: KiraProduct[]): KiraProduct[] {
+  return products.filter(isFamilySafeProduct);
+}
 
 export const CATEGORY_QUERY_MAP: Record<string, string> = {
   cakes: "cake",
   cake: "cake",
   flowers: "flowers",
   flower: "flowers",
+  bouquet: "flowers",
+  bouquets: "flowers",
+  roses: "roses",
+  rose: "roses",
   chocolates: "chocolate",
   chocolate: "chocolate",
   electronics: "electronics",
@@ -85,6 +160,51 @@ export const SEARCH_SPELLING_MAP: Record<string, string> = {
   ballon: "balloon",
   teddybear: "teddy bear",
 };
+
+/** Map MCP search `q` (+ optional conversation context) to a category filter key. */
+export function resolveProductFilterKey(
+  query: string,
+  ...contextTexts: (string | undefined)[]
+): string | null {
+  const q = normalizeProductQuery(query.toLowerCase().trim());
+  const context = buildSearchFilterContext(q, ...contextTexts);
+  if (hasFlowerSearchIntent(context)) return "flowers";
+  if (hasCakeSearchIntent(context)) return "cake";
+  if (hasChocolateSearchIntent(context)) return "chocolate";
+  if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  return null;
+}
+
+/** Single entry point before any carousel SSE — category relevance + family-safe. */
+export function sanitizeCarouselProducts(
+  products: KiraProduct[],
+  query = "",
+  ...contextTexts: (string | undefined)[]
+): KiraProduct[] {
+  return filterProductsForSearch(products, query, ...contextTexts);
+}
+
+/** Category relevance + family-safe filter for carousel display. */
+export function filterProductsForSearch(
+  products: KiraProduct[],
+  query: string,
+  ...contextTexts: (string | undefined)[]
+): KiraProduct[] {
+  const key = resolveProductFilterKey(query, ...contextTexts);
+  let result = products;
+  if (key) {
+    const rel = CATEGORY_RELEVANCE_TERMS[key];
+    const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+    if (rel) {
+      result = products.filter((p) => {
+        const txt = productDisplayText(p);
+        return rel.test(txt) && !(irrel?.test(txt));
+      });
+    }
+  }
+  return filterFamilySafeProducts(result);
+}
+
 // Scan recent user messages to find what was last searched (query + budget).
 // Used by the re-show deterministic handler when the user says "show me" / "can i see them".
 export function extractLastSearchContext(
@@ -157,12 +277,14 @@ export async function fetchFreshMoreProducts({
   maxPrice,
   excludeIds,
   onStep,
+  filterContext,
 }: {
   mcpClient: Client;
   query: string;
   maxPrice?: number;
   excludeIds: Set<string>;
   onStep?: (label: string) => void;
+  filterContext?: string;
 }): Promise<KiraProduct[]> {
   const sorts = ["price_asc", "price_desc", "bestseller"] as const;
   const queries = [query, fallbackQuery(query)].filter(
@@ -185,7 +307,13 @@ export async function fetchFreshMoreProducts({
           response_format: "json",
         },
       });
-      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
+      const batch = dedupeProducts(
+        filterProductsForSearch(
+          extractProductsFromMcp(moreResult.content),
+          q,
+          filterContext ?? query
+        )
+      );
       for (const product of batch) {
         if (excludeIds.has(product.id) || poolIds.has(product.id)) continue;
         poolIds.add(product.id);
@@ -204,7 +332,7 @@ export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
 
 export function extractProductKeyword(lower: string): string | null {
   if (/\bcake\b/.test(lower)) return "cake";
-  if (/\bflower|\brose|\bbouquet\b/.test(lower)) return "roses";
+  if (/\bflower|\brose|\bbouquet/.test(lower)) return "flowers";
   if (/\blilies?\b/.test(lower)) return "flowers";
   if (/\borchids?\b/.test(lower)) return "flowers";
   if (/\bchocolat/.test(lower)) return "chocolate";

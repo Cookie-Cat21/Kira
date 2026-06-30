@@ -8,6 +8,7 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { KiraProduct, KiraProductDetails } from "@/types";
 import type { ProductRail, StoreCategory, StoreSort } from "@/types/store";
+import { filterFamilySafeProducts } from "@/lib/kira/search";
 import { isDbConfigured, query } from "@/lib/db";
 
 // ── Seed (fallback) ────────────────────────────────────────────────────────
@@ -247,19 +248,21 @@ export async function searchProducts(q: string, limit = 24): Promise<KiraProduct
         `select ${PRODUCT_COLS} from products where name ilike $1 or summary ilike $1 order by is_featured desc, rank asc limit $2`,
         [`%${term}%`, limit]
       );
-      return rows.map(rowToProduct);
+      return filterFamilySafeProducts(rows.map(rowToProduct));
     },
     () => {
       const t = term.toLowerCase();
-      return seed()
-        .products.filter(
-          (p) =>
-            p.name.toLowerCase().includes(t) ||
-            (p.summary ?? "").toLowerCase().includes(t) ||
-            (p.category ?? "").toLowerCase().includes(t)
-        )
-        .slice(0, limit)
-        .map(seedToProduct);
+      return filterFamilySafeProducts(
+        seed()
+          .products.filter(
+            (p) =>
+              p.name.toLowerCase().includes(t) ||
+              (p.summary ?? "").toLowerCase().includes(t) ||
+              (p.category ?? "").toLowerCase().includes(t)
+          )
+          .slice(0, limit)
+          .map(seedToProduct)
+      );
     }
   );
 }
