@@ -236,6 +236,12 @@ const GROUP_F = [
   ] }, checks: [["text", /name|recipient|deliver|address/i]], note: "Checkout handoff starts without card collection language" },
   { id: "F19", msg: "add this gift note: Happy birthday Amma, love you lots", checks: ["notEmpty"], note: "Gift-message readback path" },
   { id: "F20", request: { messages: [{ role: "user", content: "show me gift hampers" }], language: "si" }, checks: [["lang", "si"], "productsOrHonestEmpty"], note: "Sinhala judge demo — gift search" },
+  {
+    id: "F21",
+    msg: "mixed flower bouquets under 3000 for anniversary",
+    checks: ["noHallucination", "productsOrHonestEmpty", "noFlowerJunk"],
+    note: "Bouquet search must not show greeting cards or key tags",
+  },
 ];
 
 // Group G — founder / friend / delivery repair. Kapruka delivery help, not hand-deliver advice.
@@ -318,6 +324,18 @@ function applyToken(token, arg, events, text) {
         pass: (!!products && products.length > 0) || HONEST_EMPTY_RE.test(text),
         reason: "Expected real products OR an honest 'nothing found' message",
       };
+    case "noFlowerJunk": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const junk = products.filter((p) =>
+        /\b(greeting\s*card|key\s*tag|keytag|key\s*chain|crochet|everbloom|mini\s*flora|flora\s*bunch|artificial)\b/i.test(
+          `${p.name ?? ""} ${p.category ?? ""}`
+        )
+      );
+      return {
+        pass: junk.length === 0,
+        reason: junk.length ? `Non-flower junk in carousel: ${junk.map((p) => p.name).join(", ")}` : "",
+      };
+    }
     case "asksClarifying":
       return { pass: /\?/.test(text) && !(products && products.length), reason: "Expected a clarifying question, no products" };
     case "asksClarifyingOrProducts": {

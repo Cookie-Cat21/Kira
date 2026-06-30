@@ -43,8 +43,7 @@ import {
   validateShownProducts,
 } from "@/lib/kira/session-context";
 import {
-  CATEGORY_IRRELEVANCE_TERMS,
-  CATEGORY_RELEVANCE_TERMS,
+  filterProductsForSearch,
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
 import { sse, TOOL_STEPS } from "@/lib/kira/sse";
@@ -495,15 +494,8 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
               const rawForLlm = extractProductsFromMcp(resultContent);
               const queryKey = String(toolArgs.q ?? "").toLowerCase().trim();
-              const relFilter = CATEGORY_RELEVANCE_TERMS[queryKey];
-              const irrelFilter = CATEGORY_IRRELEVANCE_TERMS[queryKey];
-              const filteredForLlm = relFilter
-                ? rawForLlm.filter((p) => {
-                    const txt = `${p.name} ${p.category ?? ""}`;
-                    return relFilter.test(txt) && !(irrelFilter?.test(txt));
-                  })
-                : rawForLlm;
-              collectedProducts.push(...(filteredForLlm.length > 0 ? filteredForLlm : rawForLlm));
+              const filteredForLlm = filterProductsForSearch(rawForLlm, queryKey);
+              collectedProducts.push(...filteredForLlm);
             }
             if (toolName === "kapruka_create_order") {
               if (!sandboxCheckout) {

@@ -18,12 +18,14 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
 };
 
+/** Deliverable fresh flowers — not cards, keychains, or artificial decor. */
+export const FLOWER_JUNK_RE =
+  /\b(greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i;
+
 // Products that pass RELEVANCE but are clearly not in the category — reject them.
-// "3D Kids Preschool Bag Double Pocket Sofia Flower" passes the flowers filter
-// because "Flower" appears in the name, but it's a bag, not a flower.
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
-  flowers: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
-  roses: /\b(bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery)\b/i,
+  flowers: FLOWER_JUNK_RE,
+  roses: FLOWER_JUNK_RE,
 };
 
 export const CATEGORY_QUERY_MAP: Record<string, string> = {
@@ -31,6 +33,10 @@ export const CATEGORY_QUERY_MAP: Record<string, string> = {
   cake: "cake",
   flowers: "flowers",
   flower: "flowers",
+  bouquet: "flowers",
+  bouquets: "flowers",
+  roses: "roses",
+  rose: "roses",
   chocolates: "chocolate",
   chocolate: "chocolate",
   electronics: "electronics",
@@ -85,6 +91,37 @@ export const SEARCH_SPELLING_MAP: Record<string, string> = {
   ballon: "balloon",
   teddybear: "teddy bear",
 };
+
+/** Map MCP search `q` to a category filter key (flowers, roses, …). */
+export function resolveProductFilterKey(query: string): string | null {
+  const q = normalizeProductQuery(query.toLowerCase().trim());
+  if (
+    /\b(flowers?|roses?|bouquets?|floral|lilies?|orchids?|arrangements?)\b/.test(q) ||
+    q === "flowers" ||
+    q === "roses"
+  ) {
+    return "flowers";
+  }
+  if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  return null;
+}
+
+/** Drop greeting cards, key tags, artificial decor, etc. from flower search results. */
+export function filterProductsForSearch(
+  products: KiraProduct[],
+  query: string
+): KiraProduct[] {
+  const key = resolveProductFilterKey(query);
+  if (!key) return products;
+  const rel = CATEGORY_RELEVANCE_TERMS[key];
+  const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+  if (!rel) return products;
+  return products.filter((p) => {
+    const txt = `${p.name} ${p.category ?? ""} ${p.summary ?? ""}`;
+    return rel.test(txt) && !(irrel?.test(txt));
+  });
+}
+
 // Scan recent user messages to find what was last searched (query + budget).
 // Used by the re-show deterministic handler when the user says "show me" / "can i see them".
 export function extractLastSearchContext(
@@ -185,7 +222,9 @@ export async function fetchFreshMoreProducts({
           response_format: "json",
         },
       });
-      const batch = dedupeProducts(extractProductsFromMcp(moreResult.content));
+      const batch = dedupeProducts(
+        filterProductsForSearch(extractProductsFromMcp(moreResult.content), q)
+      );
       for (const product of batch) {
         if (excludeIds.has(product.id) || poolIds.has(product.id)) continue;
         poolIds.add(product.id);
@@ -204,7 +243,7 @@ export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
 
 export function extractProductKeyword(lower: string): string | null {
   if (/\bcake\b/.test(lower)) return "cake";
-  if (/\bflower|\brose|\bbouquet\b/.test(lower)) return "roses";
+  if (/\bflower|\brose|\bbouquet/.test(lower)) return "flowers";
   if (/\blilies?\b/.test(lower)) return "flowers";
   if (/\borchids?\b/.test(lower)) return "flowers";
   if (/\bchocolat/.test(lower)) return "chocolate";

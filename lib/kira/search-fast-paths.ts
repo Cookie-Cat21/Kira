@@ -4,8 +4,6 @@ import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
 import { L, Lf } from "@/lib/kira/localization";
 import {
   BAKERY_BRANDS,
-  CATEGORY_IRRELEVANCE_TERMS,
-  CATEGORY_RELEVANCE_TERMS,
   GLOBAL_SHOP_RE,
   HAMPER_RE,
   REPAIR_GIFT_RE,
@@ -19,6 +17,7 @@ import {
   extractProductKeyword,
   extractRecipientHint,
   fallbackQuery,
+  filterProductsForSearch,
   parseSearchIntent,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
@@ -75,15 +74,7 @@ export async function tryHandleSearchFastPath({
       const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: { q, limit: 6, in_stock_only: true, response_format: "json" },
       });
-      let batch = extractProductsFromMcp(repairResult.content);
-      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[q];
-      const irrelevanceFilter = CATEGORY_IRRELEVANCE_TERMS[q];
-      if (relevanceFilter) {
-        batch = batch.filter((p) => {
-          const txt = `${p.name} ${p.category ?? ""}`;
-          return relevanceFilter.test(txt) && !(irrelevanceFilter?.test(txt));
-        });
-      }
+      let batch = filterProductsForSearch(extractProductsFromMcp(repairResult.content), q);
       repairProducts = dedupeProducts([...repairProducts, ...batch]);
       if (repairProducts.length >= 3) break;
     }
@@ -158,7 +149,9 @@ export async function tryHandleSearchFastPath({
     const orderResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: orderKw, limit: 6, in_stock_only: true, response_format: "json" },
     });
-    const orderProducts = dedupeProducts(extractProductsFromMcp(orderResult.content));
+    const orderProducts = dedupeProducts(
+      filterProductsForSearch(extractProductsFromMcp(orderResult.content), orderKw)
+    );
     if (orderProducts.length > 0) {
       const cityText = orderCity ? ` to ${orderCity}` : "";
       const dateText = orderDate ? ` on ${orderDate}` : "";
@@ -246,7 +239,9 @@ export async function tryHandleSearchFastPath({
         response_format: "json",
       },
     });
-    const products = dedupeProducts(extractProductsFromMcp(searchResult.content));
+    const products = dedupeProducts(
+      filterProductsForSearch(extractProductsFromMcp(searchResult.content), simpleProductQuery)
+    );
     if (productCity && products[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
       const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
@@ -361,7 +356,9 @@ export async function tryHandleSearchFastPath({
           response_format: "json",
         },
       });
-      giftProducts.push(...extractProductsFromMcp(giftResult.content));
+      giftProducts.push(
+        ...filterProductsForSearch(extractProductsFromMcp(giftResult.content), query)
+      );
       if (dedupeProducts(giftProducts).length >= 6) break;
     }
     const dedupedGiftProducts = dedupeProducts(giftProducts).slice(0, 6);
@@ -476,7 +473,9 @@ export async function tryHandleSearchFastPath({
     const rushResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: rushQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
     });
-    let rushProducts = dedupeProducts(extractProductsFromMcp(rushResult.content));
+    let rushProducts = dedupeProducts(
+      filterProductsForSearch(extractProductsFromMcp(rushResult.content), rushQuery)
+    );
     if (rushProducts[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
       const rushDeliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
@@ -567,7 +566,9 @@ export async function tryHandleSearchFastPath({
         const r = await callMcpTool(mcpClient, "kapruka_search_products", {
           params: { q, limit: 6, in_stock_only: true, max_price: bareMaxPrice, response_format: "json" },
         });
-        bareProducts = dedupeProducts(extractProductsFromMcp(r.content));
+        bareProducts = dedupeProducts(
+          filterProductsForSearch(extractProductsFromMcp(r.content), bareQuery)
+        );
         if (bareProducts.length > 0) break;
       }
       const cityHint = extractCityHint(trimmed) ?? deliveryCity;
@@ -616,13 +617,7 @@ export async function tryHandleSearchFastPath({
         response_format: "json",
       },
     });
-    let batch = extractProductsFromMcp(searchResult.content);
-    const relevanceFilter = CATEGORY_RELEVANCE_TERMS[query];
-    if (relevanceFilter) {
-      batch = batch.filter(
-        (p) => relevanceFilter.test(p.name) || relevanceFilter.test(p.category ?? "")
-      );
-    }
+    let batch = filterProductsForSearch(extractProductsFromMcp(searchResult.content), query);
     products = dedupeProducts([...products, ...batch]);
     if (products.length >= 3) break;
   }
@@ -639,15 +634,12 @@ export async function tryHandleSearchFastPath({
           response_format: "json",
         },
       });
-      let batch = extractProductsFromMcp(retryResult.content).filter(
-        (p) => p.price > 0 && p.price <= contextMaxPrice
+      let batch = filterProductsForSearch(
+        extractProductsFromMcp(retryResult.content).filter(
+          (p) => p.price > 0 && p.price <= contextMaxPrice
+        ),
+        query
       );
-      const relevanceFilter = CATEGORY_RELEVANCE_TERMS[query];
-      if (relevanceFilter) {
-        batch = batch.filter(
-          (p) => relevanceFilter.test(p.name) || relevanceFilter.test(p.category ?? "")
-        );
-      }
       products = dedupeProducts([...products, ...batch]);
       if (products.length > 0) break;
     }

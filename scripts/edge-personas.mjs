@@ -35,6 +35,12 @@ export const FIXED_EDGE = [
   { id: "X18", msg: "flowers for my wife", language: "ta", checks: [["text", /[\u0B80-\u0BFF]/]], note: "Tamil mode output" },
   { id: "X19", msg: "more", checks: ["eitherProductsOrAsk"], note: "More options referential", history: [{ role: "user", content: "show me chocolates on Kapruka" }, { role: "assistant", content: "Here are chocolates." }] },
   { id: "X20", msg: "order again", lastOrder: true, checks: ["productsOrHonestEmpty"], note: "Session reorder" },
+  {
+    id: "X21",
+    msg: "mixed flower bouquets under 3000 for anniversary",
+    checks: ["productsOrHonestEmpty", "noFlowerJunk"],
+    note: "No greeting cards/key tags when user asks for bouquets",
+  },
 ];
 
 let _seq = 0;

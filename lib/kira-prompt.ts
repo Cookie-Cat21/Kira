@@ -56,6 +56,7 @@ export const KIRA_TOOL_RULES = `
 - If the user names a specific hotel or bakery (Hilton, BreadTalk, Java Lounge, Galadari, Shangri-La, Kingsbury, Cinnamon), append the brand to the cake search query
 - Broad browsing with no product type → call **kapruka_list_categories** first, then offer to search within a category
 - Always set **limit: 6** — only use sort values **"price_asc"**, **"price_desc"**, or **"bestseller"**
+- **Flowers / roses / bouquets:** search with **q:"flowers"** or **q:"roses"** — never q:"bouquets" alone (Kapruka returns greeting cards and keychains). After search, only show fresh deliverable bouquets — never greeting cards, crochet key tags, or artificial decor.
 - Retry with broader terms if first search returns empty
 
 ## Add-ons and upsell
