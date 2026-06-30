@@ -101,3 +101,20 @@ npx playwright test
 ```
 
 Sinhala copy still needs a native-speaker review for final submission quality; automated script checks only confirm that Sinhala mode stays in Sinhala and avoids obvious fallbacks.
+
+---
+
+## Agent Loop (CEO-scored continuous QA)
+
+Runs for ~90 minutes (configurable): judge dry-run each round, core suite every 3rd round, rotating persona batches + random edge scenarios, CEO lens scoring, and safe auto-fix notes.
+
+```bash
+npx next dev --port 3107
+export KIRA_API_URL=http://localhost:3107/api/chat
+npm run test:agent-loop              # 90 min default
+npm run test:agent-loop:quick          # 15 min smoke
+node scripts/agent-loop.mjs --duration 90 --batch 25 --edge 10 --target-pass 93 --target-ceo 8
+```
+
+Results: `test-results/agent-loop/iteration-NNN.json` and `summary.json`.
+Stops early if two consecutive rounds hit pass-rate and CEO score targets with judge 10/10.

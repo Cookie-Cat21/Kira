@@ -24,7 +24,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { runCheck } from "./evaluate.mjs";
 import { scoreCeoLens } from "./ceo-lens.mjs";
@@ -585,7 +585,31 @@ async function main() {
   process.exit(genuineFailures === 0 ? 0 : 1);
 }
 
-main().catch((err) => {
-  console.error(`\n${c.red}Fatal: ${err.message}${c.reset}`);
-  process.exit(1);
-});
+// --- Exports for agent-loop ---
+export {
+  GROUPS,
+  GROUP_A,
+  GROUP_B,
+  GROUP_C,
+  GROUP_D,
+  GROUP_E,
+  GROUP_F,
+  GROUP_G,
+  runPersona,
+  buildRequest,
+  evaluatorFor,
+  evaluateA,
+  evaluateB,
+  evaluateG,
+  evaluateChecks,
+};
+
+const isMain =
+  process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+
+if (isMain) {
+  main().catch((err) => {
+    console.error(`\n${c.red}Fatal: ${err.message}${c.reset}`);
+    process.exit(1);
+  });
+}
