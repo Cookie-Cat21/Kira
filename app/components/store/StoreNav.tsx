@@ -13,9 +13,11 @@ import { cn } from "@/lib/utils";
 export default function StoreNav({
   categories,
   minimal = false,
+  homeHref = "/",
 }: {
   categories: StoreCategory[];
   minimal?: boolean;
+  homeHref?: string;
 }) {
   const { cartCount, openCart } = useCart();
   const { open: openKira } = useKiraDock();
@@ -40,7 +42,7 @@ export default function StoreNav({
       <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center gap-4 px-5 sm:px-8">
         {/* Brand */}
         <Link
-          href="/shop"
+          href={homeHref}
           className={cn(
             "flex shrink-0 items-center gap-2 transition-opacity duration-300",
             scrolled ? "opacity-100" : "opacity-85"

@@ -68,7 +68,7 @@ async function _chatOnce(page: Page, text: string, timeoutMs: number): Promise<s
  * not a .prose bubble.  Only wait for the textarea — that is always present.
  */
 async function reset(page: Page) {
-  await page.goto("/");
+  await page.goto("/kira");
   await page.evaluate(() => { try { localStorage.clear(); } catch {} });
   await page.reload();
   await page.locator("textarea").waitFor({ state: "visible", timeout: 20_000 });
@@ -84,7 +84,7 @@ async function reset(page: Page) {
 // ---------------------------------------------------------------------------
 test.describe("Smoke", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/kira");
     await page.locator("textarea").waitFor({ state: "visible", timeout: 15_000 });
   });
 

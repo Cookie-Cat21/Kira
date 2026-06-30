@@ -975,11 +975,11 @@ export default function KiraExperience({
           </div>
           {!embedded && (
             <Link
-              href="/shop"
+              href="/"
               className="glass-chip flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white/80 transition-colors hover:text-white"
             >
               <Store className="size-3.5 text-kap-yellow/80" />
-              <span>Browse store</span>
+              <span>Home</span>
             </Link>
           )}
         </div>

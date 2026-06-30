@@ -5,11 +5,12 @@ import { X } from "lucide-react";
 import LiquidGlass from "./LiquidGlass";
 import { KiraOrb } from "@/app/components/KiraOrb";
 
-
 type DiscoverGlassBarProps = {
   query: string;
   onQueryChange: (value: string) => void;
   onSearch: (value: string) => void;
+  /** Click orb / empty bar — e.g. navigate to full-screen Kira */
+  onActivate?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
   placeholder?: string;
@@ -40,6 +41,7 @@ export default function DiscoverGlassBar({
   query,
   onQueryChange,
   onSearch,
+  onActivate,
   onFocus,
   onBlur,
   placeholder = "Search cakes, flowers, gifts…",
@@ -61,7 +63,14 @@ export default function DiscoverGlassBar({
     <div className={`flex h-[60px] items-center gap-3 ${className}`}>
       <GlassCapsule className="w-full flex-1">
         <div className="flex w-full items-center overflow-hidden px-[1.125rem]">
-          <KiraOrb size={28} className="shrink-0" />
+          <button
+            type="button"
+            onClick={() => onActivate?.()}
+            aria-label="Open Kira"
+            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+          >
+            <KiraOrb size={28} />
+          </button>
           <div className="ml-3 flex min-w-0 flex-1 items-center">
             <input
               ref={inputRef}
