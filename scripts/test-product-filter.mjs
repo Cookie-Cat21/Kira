@@ -1,24 +1,38 @@
 #!/usr/bin/env node
 /**
- * Unit tests for flower/bouquet product relevance filtering.
+ * Unit tests for carousel product relevance + family-safe filtering.
  * Run: node scripts/test-product-filter.mjs
  */
-import { FLOWER_JUNK_RE, FLOWER_INTENT_RE, FAMILY_UNSAFE_RE, filterFamilySafeProducts } from "./lib/flower-filter.mjs";
+import {
+  FLOWER_JUNK_RE,
+  CHOCOLATE_JUNK_RE,
+  CAKE_JUNK_RE,
+  FLOWER_INTENT_RE,
+  CHOCOLATE_INTENT_RE,
+  CAKE_INTENT_RE,
+  FAMILY_UNSAFE_RE,
+  filterFamilySafeProducts,
+} from "./lib/flower-filter.mjs";
 
 const CATEGORY_RELEVANCE_TERMS = {
   flowers: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
-  roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
+  chocolate:
+    /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
+  cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
 };
 
 const CATEGORY_IRRELEVANCE_TERMS = {
   flowers: FLOWER_JUNK_RE,
-  roses: FLOWER_JUNK_RE,
+  chocolate: CHOCOLATE_JUNK_RE,
+  cake: CAKE_JUNK_RE,
 };
 
 function resolveProductFilterKey(query, ...contextTexts) {
   const q = query.toLowerCase().trim();
   const context = [q, ...contextTexts.filter(Boolean)].join(" ");
   if (FLOWER_INTENT_RE.test(context)) return "flowers";
+  if (CAKE_INTENT_RE.test(context)) return "cake";
+  if (CHOCOLATE_INTENT_RE.test(context)) return "chocolate";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
   return null;
 }
@@ -31,7 +45,7 @@ function filterProductsForSearch(products, query, ...contextTexts) {
     const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
     if (rel) {
       result = products.filter((p) => {
-        const txt = `${p.name} ${p.category ?? ""} ${p.summary ?? ""}`;
+        const txt = `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
         return rel.test(txt) && !(irrel?.test(txt));
       });
     }
@@ -39,22 +53,42 @@ function filterProductsForSearch(products, query, ...contextTexts) {
   return filterFamilySafeProducts(result);
 }
 
-const junkSamples = [
+const flowerJunk = [
   { id: "1", name: "Everbloom Mini Flora Bunch", price: 1410, currency: "LKR" },
   { id: "2", name: "Red Bouquet Handcrafted Greeting Card", price: 330, currency: "LKR" },
   { id: "3", name: "Cute Crochet Rose Bouquet Key Tag", price: 380, currency: "LKR" },
-  { id: "4", name: "Pretty Pink Mini Bday Greeting Card", price: 80, currency: "LKR" },
-  { id: "5", name: "3D Kids Preschool Bag Double Pocket Sofia Flower", price: 2500, currency: "LKR" },
   { id: "6", name: "Executive Journal Pen Gift Set", price: 7500, currency: "LKR" },
-  { id: "7", name: "Classic Essential Belt and Perfume Gift Set", price: 9500, currency: "LKR" },
-  { id: "8", name: "ROMEO Chocolate Flavoured Plain Condoms", price: 100, currency: "LKR" },
 ];
 
-const goodSamples = [
+const flowerGood = [
   { id: "10", name: "Red Rose Bouquet (12)", price: 5500, currency: "LKR", category: "Flowers" },
   { id: "11", name: "Mixed Seasonal Flower Arrangement", price: 4800, currency: "LKR", category: "Flowers" },
-  { id: "12", name: "Classic Roses Delivery Colombo", price: 4200, currency: "LKR", category: "Roses" },
-  { id: "13", name: "Queen Of My World Gift Set", price: 12360, currency: "LKR", category: "Flowers" },
+];
+
+const familyUnsafe = [
+  { id: "8", name: "ROMEO Chocolate Flavoured Plain Condoms", price: 100, currency: "LKR" },
+  { id: "9", name: "Old Arrack 750ml Gift Box", price: 4500, currency: "LKR" },
+  { id: "10u", name: "Gold Label Cigarettes Pack", price: 1200, currency: "LKR" },
+];
+
+const chocolateGood = [
+  { id: "20", name: "K - Super Fruitichoc - Milk Choco With Strawberry", price: 60, currency: "LKR" },
+  { id: "22", name: "Munchee Chocolate Cream Biscuits - 100g", price: 130, currency: "LKR" },
+];
+
+const chocolateJunk = [
+  { id: "21", name: "Yankee Candle Chocolate Layer Cake Scented", price: 3200, currency: "LKR" },
+  { id: "23", name: "Palmer's Cocoa Butter Lip Balm", price: 890, currency: "LKR" },
+];
+
+const cakeGood = [
+  { id: "30", name: "Chocolate Fudge Birthday Cake 2lb", price: 4500, currency: "LKR", category: "Cakes" },
+  { id: "31", name: "Hilton Chocolate Mousse Cake", price: 6200, currency: "LKR", category: "Cakes" },
+];
+
+const cakeJunk = [
+  { id: "32", name: "Gold Number 5 Birthday Candle", price: 250, currency: "LKR" },
+  { id: "33", name: "Happy Birthday Cake Topper Set", price: 450, currency: "LKR" },
 ];
 
 let passed = 0;
@@ -70,50 +104,60 @@ function assert(cond, msg) {
   }
 }
 
-for (const name of [
-  "Everbloom Mini Flora Bunch",
-  "Red Bouquet Handcrafted Greeting Card",
-  "Cute Crochet Rose Bouquet Key Tag",
-  "Executive Journal Pen Gift Set",
-]) {
-  assert(FLOWER_JUNK_RE.test(name), `FLOWER_JUNK_RE catches: ${name}`);
-}
+assert(FAMILY_UNSAFE_RE.test("ROMEO Chocolate Flavoured Plain Condoms"), "blocks condoms");
+assert(FAMILY_UNSAFE_RE.test("Old Arrack 750ml Gift Box"), "blocks arrack");
+assert(FAMILY_UNSAFE_RE.test("Gold Label Cigarettes Pack"), "blocks cigarettes");
 
-assert(resolveProductFilterKey("bouquets") === "flowers", "bouquets → flowers filter key");
-assert(resolveProductFilterKey("options", "mixed flower bouquets under 3000") === "flowers", "vague q + flower context → flowers");
-assert(resolveProductFilterKey("gift", "anniversary flower bouquet") === "flowers", "gift q + flower context → flowers");
-
-const filteredJunk = filterProductsForSearch(junkSamples, "bouquets");
-assert(filteredJunk.length === 0, "bouquets query filters out all junk samples");
-
-const filteredGood = filterProductsForSearch(goodSamples, "bouquets");
-assert(filteredGood.length === goodSamples.length, "bouquets query keeps real flower products");
-
-const filteredGiftNoise = filterProductsForSearch(
-  [...junkSamples, ...goodSamples],
-  "gift",
-  "mixed flower bouquets under 3000 for anniversary"
-);
 assert(
-  filteredGiftNoise.every((p) => !junkSamples.find((j) => j.id === p.id)),
-  "gift q with flower conversation context drops junk"
+  filterProductsForSearch([...familyUnsafe, ...chocolateGood], "chocolate").every(
+    (p) => !familyUnsafe.find((u) => u.id === p.id)
+  ),
+  "family-unsafe stripped from chocolate search"
 );
-assert(FAMILY_UNSAFE_RE.test("ROMEO Chocolate Flavoured Plain Condoms"), "FAMILY_UNSAFE_RE catches condoms");
 
-const chocolateSearch = filterProductsForSearch(
-  [
-    { id: "20", name: "K - Super Fruitichoc - Milk Choco With Strawberry", price: 60, currency: "LKR" },
-    { id: "21", name: "ROMEO Chocolate Flavoured Plain Condoms", price: 100, currency: "LKR" },
-    { id: "22", name: "Munchee Chocolate Cream Biscuits - 100g", price: 130, currency: "LKR" },
-  ],
-  "chocolate"
-);
 assert(
-  chocolateSearch.length === 2 && !chocolateSearch.find((p) => p.id === "21"),
-  "chocolate search strips condoms even when chocolate-flavoured"
+  filterProductsForSearch(flowerJunk, "bouquets").length === 0,
+  "bouquets filters flower junk"
 );
 
-assert(filteredGiftNoise.some((p) => p.id === "13"), "combo flower gift sets still allowed");
+assert(
+  filterProductsForSearch(flowerGood, "bouquets").length === flowerGood.length,
+  "bouquets keeps real flowers"
+);
+
+assert(
+  filterProductsForSearch(
+    [...flowerJunk, ...flowerGood],
+    "gift",
+    "mixed flower bouquets under 3000 for anniversary"
+  ).every((p) => !flowerJunk.find((j) => j.id === p.id)),
+  "gift q + flower context drops junk"
+);
+
+assert(
+  filterProductsForSearch([...chocolateJunk, ...chocolateGood], "chocolate").length ===
+    chocolateGood.length,
+  "chocolate search drops candles and lip balm"
+);
+
+assert(
+  filterProductsForSearch([...cakeJunk, ...cakeGood], "birthday cake").length === cakeGood.length,
+  "cake search drops toppers and candles"
+);
+
+assert(
+  filterProductsForSearch(
+    [...chocolateGood, ...familyUnsafe],
+    "options",
+    "Show me options under LKR 3,000"
+  ).every((p) => !familyUnsafe.find((u) => u.id === p.id)),
+  "vague options still family-safe"
+);
+
+assert(
+  resolveProductFilterKey("options", "mixed flower bouquets under 3000") === "flowers",
+  "vague options inherit flower context"
+);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

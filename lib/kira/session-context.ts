@@ -1,5 +1,6 @@
 import type { CartItem, KiraProduct } from "@/types";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
+import { filterFamilySafeProducts } from "@/lib/kira/search";
 
 export function sanitizeField(s: unknown, maxLen: number): string {
   if (typeof s !== "string") return "";
@@ -8,12 +9,14 @@ export function sanitizeField(s: unknown, maxLen: number): string {
 
 export function validateLastProducts(lastProducts?: KiraProduct[]): KiraProduct[] {
   if (!Array.isArray(lastProducts)) return [];
-  return lastProducts.filter(
-    (p): p is KiraProduct =>
-      p != null &&
-      typeof p === "object" &&
-      typeof p.name === "string" &&
-      typeof p.price === "number"
+  return filterFamilySafeProducts(
+    lastProducts.filter(
+      (p): p is KiraProduct =>
+        p != null &&
+        typeof p === "object" &&
+        typeof p.name === "string" &&
+        typeof p.price === "number"
+    )
   );
 }
 

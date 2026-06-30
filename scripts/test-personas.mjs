@@ -248,6 +248,18 @@ const GROUP_F = [
     checks: ["noHallucination", "productsOrHonestEmpty", "noFamilyUnsafe"],
     note: "Budget browse must never surface adult/intimate items",
   },
+  {
+    id: "F23",
+    msg: "Show me chocolates under LKR 3,000",
+    checks: ["noHallucination", "productsOrHonestEmpty", "noFamilyUnsafe", "noCategoryJunk"],
+    note: "Chocolate search must not show condoms or scented candles",
+  },
+  {
+    id: "F24",
+    msg: "birthday cake under 2000",
+    checks: ["noHallucination", "productsOrHonestEmpty", "noCategoryJunk"],
+    note: "Cake search must not show cake toppers or candles only",
+  },
 ];
 
 // Group G — founder / friend / delivery repair. Kapruka delivery help, not hand-deliver advice.
@@ -345,13 +357,25 @@ function applyToken(token, arg, events, text) {
     case "noFamilyUnsafe": {
       if (!products?.length) return { pass: true, reason: "" };
       const unsafe = products.filter((p) =>
-        /\b(condom|condoms|contraceptive|lubricant|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|viagra|cialis)\b/i.test(
+        /\b(condom|condoms|contraceptive|lubricant|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|viagra|cialis|cigarette|tobacco|nicotine|vape|whisky|whiskey|vodka|wine\b|beer\b|champagne|liquor|arrack)\b/i.test(
           `${p.name ?? ""} ${p.category ?? ""}`
         )
       );
       return {
         pass: unsafe.length === 0,
-        reason: unsafe.length ? `Adult/intimate items in carousel: ${unsafe.map((p) => p.name).join(", ")}` : "",
+        reason: unsafe.length ? `Adult/age-restricted items in carousel: ${unsafe.map((p) => p.name).join(", ")}` : "",
+      };
+    }
+    case "noCategoryJunk": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const junk = products.filter((p) =>
+        /\b(greeting\s*card|key\s*tag|crochet|everbloom|journal|pen\s*set|pen\s*gift|executive\s*pen|cake\s*topper|birthday\s*candle|number\s*candle|scented\s*candle|lip\s*balm|hand\s*wash)\b/i.test(
+          `${p.name ?? ""} ${p.category ?? ""}`
+        )
+      );
+      return {
+        pass: junk.length === 0,
+        reason: junk.length ? `Off-category junk in carousel: ${junk.map((p) => p.name).join(", ")}` : "",
       };
     }
     case "asksClarifying":

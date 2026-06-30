@@ -22,6 +22,19 @@ export function hasFlowerSearchIntent(...texts: (string | undefined)[]): boolean
   return texts.some((t) => t && FLOWER_INTENT_RE.test(t.toLowerCase()));
 }
 
+export const CHOCOLATE_INTENT_RE =
+  /\b(chocolates?|choc\b|sweet\s*box|truffle|praline|fudge|brownie)\b/i;
+export const CAKE_INTENT_RE =
+  /\b(cakes?|birthday\s+cake|cupcakes?|pastry|bakery|bday\s+cake)\b/i;
+
+export function hasChocolateSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && CHOCOLATE_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function hasCakeSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && CAKE_INTENT_RE.test(t.toLowerCase()));
+}
+
 export function buildSearchFilterContext(...texts: (string | undefined)[]): string {
   return texts.filter(Boolean).join(" ");
 }
@@ -42,7 +55,18 @@ export function buildMessageFilterContext(
 export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   flowers: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
   roses: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
+  chocolate:
+    /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
+  cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
 };
+
+/** Non-edible chocolate-adjacent noise from Kapruka keyword search. */
+export const CHOCOLATE_JUNK_RE =
+  /\b(candle|candles|lip\s*balm|body\s*butter|lotion|soap|hand\s*wash|body\s*wash|shampoo|air\s*freshener|room\s*spray|dog|pet\s*treat|cat\s*treat|mug|poster|t-?shirt|pillow|duvet|curtain|phone\s*case|key\s*chain)\b/i;
+
+/** Cake toppers/candles — not deliverable cakes. */
+export const CAKE_JUNK_RE =
+  /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set)\b/i;
 
 /** Deliverable fresh flowers — not cards, keychains, artificial decor, or off-category gifts. */
 export const FLOWER_JUNK_RE =
@@ -52,11 +76,13 @@ export const FLOWER_JUNK_RE =
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   flowers: FLOWER_JUNK_RE,
   roses: FLOWER_JUNK_RE,
+  chocolate: CHOCOLATE_JUNK_RE,
+  cake: CAKE_JUNK_RE,
 };
 
-/** Adult / intimate items — never surface in Kira carousels (family gifting surface). */
+/** Adult / intimate / age-restricted — never surface in Kira carousels. */
 export const FAMILY_UNSAFE_RE =
-  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b)\b/i;
+  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
 
 export function productDisplayText(p: KiraProduct): string {
   return `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
@@ -143,8 +169,19 @@ export function resolveProductFilterKey(
   const q = normalizeProductQuery(query.toLowerCase().trim());
   const context = buildSearchFilterContext(q, ...contextTexts);
   if (hasFlowerSearchIntent(context)) return "flowers";
+  if (hasCakeSearchIntent(context)) return "cake";
+  if (hasChocolateSearchIntent(context)) return "chocolate";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
   return null;
+}
+
+/** Single entry point before any carousel SSE — category relevance + family-safe. */
+export function sanitizeCarouselProducts(
+  products: KiraProduct[],
+  query = "",
+  ...contextTexts: (string | undefined)[]
+): KiraProduct[] {
+  return filterProductsForSearch(products, query, ...contextTexts);
 }
 
 /** Category relevance + family-safe filter for carousel display. */

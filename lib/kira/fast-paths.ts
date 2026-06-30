@@ -219,7 +219,7 @@ export async function tryHandleDeterministicPrompt({
           controller,
           Lf("reorderFromRef", language, { orderNumber: tracking.orderNumber || orderNumber })
         );
-        controller.enqueue(sse("products", products));
+        controller.enqueue(sse("products", filterFamilySafeProducts(products)));
         controller.enqueue(sse("tracking", tracking));
       } else {
         await streamWords(controller, Lf("reorderRefNotFound", language, { orderNumber }));
@@ -242,7 +242,7 @@ export async function tryHandleDeterministicPrompt({
     if (source?.items?.length) {
       const products = cartItemsToProducts(source.items);
       await streamWords(controller, L("reorderSessionFound", language));
-      controller.enqueue(sse("products", products));
+      controller.enqueue(sse("products", filterFamilySafeProducts(products)));
     } else {
       await streamWords(controller, L("reorderNoHistory", language));
     }

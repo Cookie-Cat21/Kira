@@ -22,6 +22,8 @@ import {
   extractLastSearchContext,
   buildMessageFilterContext,
   hasFlowerSearchIntent,
+  hasCakeSearchIntent,
+  hasChocolateSearchIntent,
   parseSearchIntent,
   VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
@@ -355,11 +357,17 @@ export async function tryHandleSearchFastPath({
     const relationshipGift =
       /\b(girlfriend|boyfriend|wife|husband|partner)\b/i.test(giftRecipient ?? trimmed);
     const flowerIntent = hasFlowerSearchIntent(filterContext);
+    const cakeIntent = hasCakeSearchIntent(filterContext);
+    const chocolateIntent = hasChocolateSearchIntent(filterContext);
     const searchQueries = flowerIntent
       ? ["flowers", "roses"]
-      : giftOccasion?.toLowerCase().includes("birthday") && relationshipGift
-        ? ["flowers", "chocolate", "gift hamper", "cake"]
-        : ["gift", "chocolate", "flowers", "hamper", "cake"];
+      : cakeIntent
+        ? ["cake", "birthday cake"]
+        : chocolateIntent
+          ? ["chocolate", "chocolates"]
+          : giftOccasion?.toLowerCase().includes("birthday") && relationshipGift
+            ? ["flowers", "chocolate", "gift hamper", "cake"]
+            : ["gift", "chocolate", "flowers", "hamper", "cake"];
     const giftProducts: KiraProduct[] = [];
     for (const query of searchQueries) {
       controller.enqueue(sse("step", `Searching Kapruka for "${query}"`));
@@ -639,11 +647,15 @@ export async function tryHandleSearchFastPath({
   controller.enqueue(sse("step", `Searching Kapruka for "${searchQuery}"`));
   let products: KiraProduct[] = [];
   const flowerIntent = hasFlowerSearchIntent(filterContext);
+  const cakeIntent = hasCakeSearchIntent(filterContext);
+  const chocolateIntent = hasChocolateSearchIntent(filterContext);
   const retryQueries = flowerIntent
-    ? [searchQuery, fallbackQuery(searchQuery), "roses"].filter(
-        (q): q is string => Boolean(q)
-      )
-    : [searchQuery, fallbackQuery(searchQuery)];
+    ? [searchQuery, fallbackQuery(searchQuery), "roses"].filter((q): q is string => Boolean(q))
+    : cakeIntent
+      ? [searchQuery, fallbackQuery(searchQuery), "birthday cake"].filter((q): q is string => Boolean(q))
+      : chocolateIntent
+        ? [searchQuery, "chocolate", "chocolates"].filter((q): q is string => Boolean(q))
+        : [searchQuery, fallbackQuery(searchQuery)];
 
   for (const query of retryQueries) {
     if (!query) continue;
@@ -669,9 +681,13 @@ export async function tryHandleSearchFastPath({
   if (products.length === 0 && contextMaxPrice) {
     const budgetRetryQueries = flowerIntent
       ? ["flowers", "roses"]
-      : [searchQuery, fallbackQuery(searchQuery), "chocolate"].filter(
-          (q): q is string => Boolean(q)
-        );
+      : cakeIntent
+        ? ["cake", "birthday cake"]
+        : chocolateIntent
+          ? ["chocolate", "chocolates"]
+          : [searchQuery, fallbackQuery(searchQuery), "chocolate"].filter(
+              (q): q is string => Boolean(q)
+            );
     for (const query of budgetRetryQueries) {
       if (!query) continue;
       const retryResult = await callMcpTool(mcpClient, "kapruka_search_products", {
