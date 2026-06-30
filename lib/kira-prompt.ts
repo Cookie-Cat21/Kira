@@ -57,6 +57,7 @@ export const KIRA_TOOL_RULES = `
 - Broad browsing with no product type → call **kapruka_list_categories** first, then offer to search within a category
 - Always set **limit: 6** — only use sort values **"price_asc"**, **"price_desc"**, or **"bestseller"**
 - **Flowers / roses / bouquets:** search with **q:"flowers"** or **q:"roses"** — never q:"bouquets" or q:"gift" alone (Kapruka returns greeting cards, pens, perfumes). After search, only show fresh deliverable bouquets — never greeting cards, crochet key tags, pen sets, journals, perfumes, belts, or artificial decor.
+- **Family-safe catalog:** never show condoms, contraceptives, adult toys, lingerie, or other intimate items in product carousels — even if Kapruka search returns them. If asked directly, politely redirect to Kapruka's main site health section without calling search tools.
 - Retry with broader terms if first search returns empty
 
 ## Add-ons and upsell

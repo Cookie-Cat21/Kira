@@ -54,6 +54,23 @@ export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   roses: FLOWER_JUNK_RE,
 };
 
+/** Adult / intimate items — never surface in Kira carousels (family gifting surface). */
+export const FAMILY_UNSAFE_RE =
+  /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b)\b/i;
+
+export function productDisplayText(p: KiraProduct): string {
+  return `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
+}
+
+export function isFamilySafeProduct(p: KiraProduct): boolean {
+  return !FAMILY_UNSAFE_RE.test(productDisplayText(p));
+}
+
+/** Strip adult/intimate catalog items from any carousel — always run before showing products. */
+export function filterFamilySafeProducts(products: KiraProduct[]): KiraProduct[] {
+  return products.filter(isFamilySafeProduct);
+}
+
 export const CATEGORY_QUERY_MAP: Record<string, string> = {
   cakes: "cake",
   cake: "cake",
@@ -130,21 +147,25 @@ export function resolveProductFilterKey(
   return null;
 }
 
-/** Drop greeting cards, key tags, pens, perfumes, etc. from flower search results. */
+/** Category relevance + family-safe filter for carousel display. */
 export function filterProductsForSearch(
   products: KiraProduct[],
   query: string,
   ...contextTexts: (string | undefined)[]
 ): KiraProduct[] {
   const key = resolveProductFilterKey(query, ...contextTexts);
-  if (!key) return products;
-  const rel = CATEGORY_RELEVANCE_TERMS[key];
-  const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
-  if (!rel) return products;
-  return products.filter((p) => {
-    const txt = `${p.name} ${p.category ?? ""} ${p.summary ?? ""}`;
-    return rel.test(txt) && !(irrel?.test(txt));
-  });
+  let result = products;
+  if (key) {
+    const rel = CATEGORY_RELEVANCE_TERMS[key];
+    const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+    if (rel) {
+      result = products.filter((p) => {
+        const txt = productDisplayText(p);
+        return rel.test(txt) && !(irrel?.test(txt));
+      });
+    }
+  }
+  return filterFamilySafeProducts(result);
 }
 
 // Scan recent user messages to find what was last searched (query + budget).

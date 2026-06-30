@@ -3,7 +3,7 @@
  * Unit tests for flower/bouquet product relevance filtering.
  * Run: node scripts/test-product-filter.mjs
  */
-import { FLOWER_JUNK_RE, FLOWER_INTENT_RE } from "./lib/flower-filter.mjs";
+import { FLOWER_JUNK_RE, FLOWER_INTENT_RE, FAMILY_UNSAFE_RE, filterFamilySafeProducts } from "./lib/flower-filter.mjs";
 
 const CATEGORY_RELEVANCE_TERMS = {
   flowers: /flower|rose|bouquet|floral|arrangement|blossom|orchid|lily|tulip/i,
@@ -25,14 +25,18 @@ function resolveProductFilterKey(query, ...contextTexts) {
 
 function filterProductsForSearch(products, query, ...contextTexts) {
   const key = resolveProductFilterKey(query, ...contextTexts);
-  if (!key) return products;
-  const rel = CATEGORY_RELEVANCE_TERMS[key];
-  const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
-  if (!rel) return products;
-  return products.filter((p) => {
-    const txt = `${p.name} ${p.category ?? ""} ${p.summary ?? ""}`;
-    return rel.test(txt) && !(irrel?.test(txt));
-  });
+  let result = products;
+  if (key) {
+    const rel = CATEGORY_RELEVANCE_TERMS[key];
+    const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+    if (rel) {
+      result = products.filter((p) => {
+        const txt = `${p.name} ${p.category ?? ""} ${p.summary ?? ""}`;
+        return rel.test(txt) && !(irrel?.test(txt));
+      });
+    }
+  }
+  return filterFamilySafeProducts(result);
 }
 
 const junkSamples = [
@@ -43,6 +47,7 @@ const junkSamples = [
   { id: "5", name: "3D Kids Preschool Bag Double Pocket Sofia Flower", price: 2500, currency: "LKR" },
   { id: "6", name: "Executive Journal Pen Gift Set", price: 7500, currency: "LKR" },
   { id: "7", name: "Classic Essential Belt and Perfume Gift Set", price: 9500, currency: "LKR" },
+  { id: "8", name: "ROMEO Chocolate Flavoured Plain Condoms", price: 100, currency: "LKR" },
 ];
 
 const goodSamples = [
@@ -93,6 +98,21 @@ assert(
   filteredGiftNoise.every((p) => !junkSamples.find((j) => j.id === p.id)),
   "gift q with flower conversation context drops junk"
 );
+assert(FAMILY_UNSAFE_RE.test("ROMEO Chocolate Flavoured Plain Condoms"), "FAMILY_UNSAFE_RE catches condoms");
+
+const chocolateSearch = filterProductsForSearch(
+  [
+    { id: "20", name: "K - Super Fruitichoc - Milk Choco With Strawberry", price: 60, currency: "LKR" },
+    { id: "21", name: "ROMEO Chocolate Flavoured Plain Condoms", price: 100, currency: "LKR" },
+    { id: "22", name: "Munchee Chocolate Cream Biscuits - 100g", price: 130, currency: "LKR" },
+  ],
+  "chocolate"
+);
+assert(
+  chocolateSearch.length === 2 && !chocolateSearch.find((p) => p.id === "21"),
+  "chocolate search strips condoms even when chocolate-flavoured"
+);
+
 assert(filteredGiftNoise.some((p) => p.id === "13"), "combo flower gift sets still allowed");
 
 console.log(`\n${passed} passed, ${failed} failed`);

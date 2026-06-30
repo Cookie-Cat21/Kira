@@ -20,6 +20,7 @@ import {
   extractOrderNumber,
   buildMessageFilterContext,
   fetchFreshMoreProducts,
+  filterFamilySafeProducts,
   filterProductsForSearch,
   productIds,
   productsFromTrackingItems,
@@ -341,7 +342,7 @@ export async function tryHandleDeterministicPrompt({
           ? L(reshowKey, language)
           : Lf(reshowKey, language, { n: lastProducts.length })
       );
-      controller.enqueue(sse("products", lastProducts));
+      controller.enqueue(sse("products", filterFamilySafeProducts(lastProducts)));
       controller.enqueue(sse("done"));
       return true;
     }

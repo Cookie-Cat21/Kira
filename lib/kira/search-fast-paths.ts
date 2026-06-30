@@ -18,6 +18,7 @@ import {
   extractRecipientHint,
   fallbackQuery,
   filterProductsForSearch,
+  filterFamilySafeProducts,
   extractLastSearchContext,
   buildMessageFilterContext,
   hasFlowerSearchIntent,
@@ -454,7 +455,9 @@ export async function tryHandleSearchFastPath({
     const hamperResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: "gift set", limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
     });
-    const hamperProducts = dedupeProducts(extractProductsFromMcp(hamperResult.content));
+    const hamperProducts = filterFamilySafeProducts(
+      dedupeProducts(extractProductsFromMcp(hamperResult.content))
+    );
     if (hamperProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: "gift set" }));
     } else {
@@ -472,7 +475,9 @@ export async function tryHandleSearchFastPath({
     const saleResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: saleQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
     });
-    const saleProducts = dedupeProducts(extractProductsFromMcp(saleResult.content));
+    const saleProducts = filterFamilySafeProducts(
+      dedupeProducts(extractProductsFromMcp(saleResult.content))
+    );
     if (saleProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: saleQuery }));
     } else {
@@ -532,7 +537,9 @@ export async function tryHandleSearchFastPath({
     const brandResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: `${brandQuery} cake`, limit: 6, in_stock_only: true, response_format: "json" },
     });
-    const brandProducts = dedupeProducts(extractProductsFromMcp(brandResult.content));
+    const brandProducts = filterFamilySafeProducts(
+      dedupeProducts(extractProductsFromMcp(brandResult.content))
+    );
     if (brandProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: `${brandQuery} cake` }));
     } else {
@@ -555,7 +562,9 @@ export async function tryHandleSearchFastPath({
       const r = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: { q, limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
       });
-      popularProducts = dedupeProducts(extractProductsFromMcp(r.content));
+      popularProducts = filterFamilySafeProducts(
+        dedupeProducts(extractProductsFromMcp(r.content))
+      );
       if (popularProducts.length > 0) break;
     }
     if (popularProducts.length === 0) {

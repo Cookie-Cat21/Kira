@@ -117,6 +117,18 @@ function applyEdgeToken(token, arg, events, text) {
         reason: junk.length ? `Non-flower junk in carousel: ${junk.map((p) => p.name).join(", ")}` : "",
       };
     }
+    case "noFamilyUnsafe": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const unsafe = products.filter((p) =>
+        /\b(condom|condoms|contraceptive|lubricant|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|viagra|cialis)\b/i.test(
+          `${p.name ?? ""} ${p.category ?? ""}`
+        )
+      );
+      return {
+        pass: unsafe.length === 0,
+        reason: unsafe.length ? `Adult/intimate items in carousel: ${unsafe.map((p) => p.name).join(", ")}` : "",
+      };
+    }
     case "eitherProductsOrAsk": {
       const hasProds = !!products && products.length > 0;
       const asks = /\?/.test(text);
