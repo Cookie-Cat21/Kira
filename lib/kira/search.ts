@@ -35,6 +35,13 @@ export function hasCakeSearchIntent(...texts: (string | undefined)[]): boolean {
   return texts.some((t) => t && CAKE_INTENT_RE.test(t.toLowerCase()));
 }
 
+export const HAMPER_INTENT_RE =
+  /\b(hampers?|gift\s*hamper|gift\s*set|combo\s*pack|gift\s*box|gift\s*basket)\b/i;
+
+export function hasHamperSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && HAMPER_INTENT_RE.test(t.toLowerCase()));
+}
+
 export function buildSearchFilterContext(...texts: (string | undefined)[]): string {
   return texts.filter(Boolean).join(" ");
 }
@@ -58,7 +65,13 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   chocolate:
     /chocolate|choco|cocoa|truffle|praline|fudge|brownie|munchee|cadbury|ferrero|toffee|nestle|kitkat|snickers|mars\b|biscuit|sweet/i,
   cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
+  hampers:
+    /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i,
 };
+
+/** Single grocery items / brand pages — not curated hampers. */
+export const HAMPER_JUNK_RE =
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b(?!.*hamper)|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|confectionery and biscuits\b(?!.*hamper))\b/i;
 
 /** Non-edible chocolate-adjacent noise from Kapruka keyword search. */
 export const CHOCOLATE_JUNK_RE =
@@ -78,6 +91,7 @@ export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   roses: FLOWER_JUNK_RE,
   chocolate: CHOCOLATE_JUNK_RE,
   cake: CAKE_JUNK_RE,
+  hampers: HAMPER_JUNK_RE,
 };
 
 /** Adult / intimate / age-restricted — never surface in Kira carousels. */
@@ -169,9 +183,11 @@ export function resolveProductFilterKey(
   const q = normalizeProductQuery(query.toLowerCase().trim());
   const context = buildSearchFilterContext(q, ...contextTexts);
   if (hasFlowerSearchIntent(context)) return "flowers";
+  if (hasHamperSearchIntent(context)) return "hampers";
   if (hasCakeSearchIntent(context)) return "cake";
   if (hasChocolateSearchIntent(context)) return "chocolate";
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  if (q === "gift hamper" || q === "gift set") return "hampers";
   return null;
 }
 

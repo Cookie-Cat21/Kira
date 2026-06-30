@@ -17,6 +17,12 @@ export const CHOCOLATE_INTENT_RE =
 export const CAKE_INTENT_RE =
   /\b(cakes?|birthday\s+cake|cupcakes?|pastry|bakery|bday\s+cake)\b/i;
 
+export const HAMPER_INTENT_RE =
+  /\b(hampers?|gift\s*hamper|gift\s*set|combo\s*pack|gift\s*box|gift\s*basket)\b/i;
+
+export const HAMPER_JUNK_RE =
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b(?!.*hamper)|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|confectionery and biscuits\b(?!.*hamper))\b/i;
+
 export const FAMILY_UNSAFE_RE =
   /\b(condom|condoms|contraceptive|contraception|lubricant|lubrication|personal\s*lubric|sex\s*toy|adult\s*toy|vibrat|dildo|lingerie|intimate\s*wear|bondage|fetish|erotic|sensual\s*massage|libido|viagra|cialis|sperm|semen|pregnancy\s*test|ovulation|fertility\s*kit|plan\s*b|cigarette|cigarettes|tobacco|nicotine|vape|vaping|e-?cig|shisha|hookah|whisky|whiskey|brandy|vodka|gin\b|rum\b|wine\b|beer\b|lager|stout|champagne|liquor|alcohol|arrack)\b/i;
 

@@ -97,6 +97,16 @@ function resolveImage(inputProduct) {
   return undefined;
 }
 
+const HAMPER_RELEVANCE =
+  /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i;
+const HAMPER_JUNK =
+  /body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b(?!.*hamper)|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|confectionery and biscuits\b(?!.*hamper)/i;
+
+function isRealHamperCatalogProduct(product) {
+  const txt = `${product.name ?? ""} ${product.summary ?? ""}`;
+  return HAMPER_RELEVANCE.test(txt) && !HAMPER_JUNK.test(txt);
+}
+
 function normalizeProduct(inputProduct, category, rank, raw) {
   const price = readPrice(inputProduct.price);
   if (!price.amount || price.amount <= 0) return null;
@@ -250,16 +260,21 @@ async function main() {
           .map((raw, idx) => normalizeProduct(raw, category, idx, raw))
           .filter(Boolean);
 
+        const catalogReady =
+          category.slug === "hampers"
+            ? normalized.filter((product) => isRealHamperCatalogProduct(product))
+            : normalized;
+
         seedCategories.push({
           slug: category.slug,
           name: category.name,
           icon: category.icon,
           blurb: category.blurb,
-          productCount: normalized.length,
+          productCount: catalogReady.length,
           rank: category.rank,
         });
-        seedProducts.push(...normalized.map(({ raw, ...product }) => product));
-        counts.push({ slug: category.slug, name: category.name, count: normalized.length });
+        seedProducts.push(...catalogReady.map(({ raw, ...product }) => product));
+        counts.push({ slug: category.slug, name: category.name, count: catalogReady.length });
 
         if (pool) {
           await pool.query(
@@ -278,7 +293,7 @@ async function main() {
               category.icon,
               category.blurb,
               category.rank,
-              normalized.length,
+              catalogReady.length,
             ]
           );
 
@@ -286,7 +301,7 @@ async function main() {
             category.slug,
           ]);
 
-          for (const product of normalized) {
+          for (const product of catalogReady) {
             await pool.query(
               `insert into products (
                 id, name, summary, description, price, currency, compare_at_price,
