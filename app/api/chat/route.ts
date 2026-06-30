@@ -73,6 +73,8 @@ const MODELS = [
 ];
 const MAX_TOOL_ROUNDS = 4;
 const SSE_KEEPALIVE_MS = 15_000;
+/** Wall-clock budget for multi-round Groq+MCP loops (MCP alone can take 15s). */
+const AGENT_WALL_MS = 45_000;
 
 export const maxDuration = 60;
 
@@ -596,7 +598,7 @@ export async function POST(req: NextRequest) {
         // Agentic loop — uses Groq streaming so text tokens reach the client in real-time.
         const START_MS = Date.now();
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-          if (Date.now() - START_MS > 8000 && round >= 1) break;
+          if (Date.now() - START_MS > AGENT_WALL_MS && round >= 1) break;
           let response: Groq.Chat.Completions.ChatCompletion | undefined;
 
           // Emit "Thinking…" on the first call so the user sees immediate feedback.
@@ -948,7 +950,18 @@ export async function POST(req: NextRequest) {
         }
 
         if (!finalText) {
-          finalText = L("timeoutFallback", language);
+          if (collectedProducts.length > 0) {
+            const key =
+              collectedProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+            finalText = Lf(key, language, {
+              n: collectedProducts.length,
+              budget: "",
+              city: "",
+              date: "",
+            });
+          } else {
+            finalText = L("timeoutFallback", language);
+          }
         }
 
         // Hard intercept: 8b model has no tool access and will hallucinate product listings.
