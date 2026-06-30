@@ -97,14 +97,19 @@ function resolveImage(inputProduct) {
   return undefined;
 }
 
-const HAMPER_RELEVANCE =
-  /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i;
+const HAMPER_NAME_RE =
+  /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|pantry|cravings|family\s*pack|munch|celebration|fitness|hygienic|golden\s*crunch|grocery\s*hamper|joyful|classic\s*craving|luxury\s*pantry|nutty/i;
 const HAMPER_JUNK =
-  /body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b(?!.*hamper)|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|confectionery and biscuits\b(?!.*hamper)/i;
+  /body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka/i;
+const HAMPER_STANDALONE_JUNK = /confectionery and biscuits/i;
 
 function isRealHamperCatalogProduct(product) {
-  const txt = `${product.name ?? ""} ${product.summary ?? ""}`;
-  return HAMPER_RELEVANCE.test(txt) && !HAMPER_JUNK.test(txt);
+  const name = product.name ?? "";
+  const body = `${name} ${product.summary ?? ""}`;
+  if (!HAMPER_NAME_RE.test(name)) return false;
+  if (HAMPER_JUNK.test(body)) return false;
+  if (HAMPER_STANDALONE_JUNK.test(body) && !/\bhamper/i.test(name)) return false;
+  return true;
 }
 
 function normalizeProduct(inputProduct, category, rank, raw) {

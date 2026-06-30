@@ -52,6 +52,16 @@ function filterProductsForSearch(products, query, ...contextTexts) {
     const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
     if (rel) {
       result = products.filter((p) => {
+        if (key === "hampers") {
+          const name = p.name ?? "";
+          const body = `${name} ${p.summary ?? ""}`;
+          const HAMPER_NAME =
+            /\b(hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|pantry|cravings|family\s*pack|munch|celebration|fitness|hygienic|golden\s*crunch|grocery\s*hamper|joyful|classic\s*craving|luxury\s*pantry|nutty)\b/i;
+          if (!HAMPER_NAME.test(name)) return false;
+          if (HAMPER_JUNK_RE.test(body)) return false;
+          if (/confectionery and biscuits/i.test(body) && !/\bhamper/i.test(name)) return false;
+          return true;
+        }
         const txt = `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
         return rel.test(txt) && !(irrel?.test(txt));
       });
@@ -181,6 +191,20 @@ const hamperJunk = [
 assert(
   filterProductsForSearch([...hamperJunk, ...hamperGood], "gift hamper").length === hamperGood.length,
   "hamper category drops soap, coconut, biscuits, brand pages"
+);
+
+const cakeCardJunk = [
+  { id: "50", name: "Pretty Pink Mini Bday Greeting Card", price: 80, currency: "LKR", summary: "Birthdaycake, Cupcake, Greetingcard" },
+];
+const cakeReal = [{ id: "51", name: "Chocolate Fudge Birthday Cake 2lb", price: 4500, currency: "LKR" }];
+assert(
+  filterProductsForSearch([...cakeCardJunk, ...cakeReal], "cake").length === cakeReal.length,
+  "cake category drops greeting cards even when summary mentions cupcake"
+);
+
+assert(
+  filterFamilySafeProducts([{ id: "60", name: "Wine Opener", price: 1200, currency: "LKR" }]).length === 1,
+  "wine opener is family-safe kitchen item"
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);
