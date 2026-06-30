@@ -71,7 +71,7 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
 
 /** Single grocery items / brand pages — not curated hampers. Test name+summary only (not category). */
 export const HAMPER_JUNK_RE =
-  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka)\b/i;
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|pen\s*set|pen\s*gift|executive\s*pen|journal|stationery)\b/i;
 
 /** Standalone biscuit SKUs miscategorized because the category slug says "hamper". */
 export const HAMPER_STANDALONE_JUNK_RE = /\bconfectionery and biscuits\b/i;
@@ -429,6 +429,62 @@ export async function productsFromTrackingItems(
   return dedupeProducts(products);
 }
 
+/** Store category slugs from `/shop/{slug}` → Kapruka search query. */
+export const STOREFRONT_CATEGORY_SLUGS: Record<string, string> = {
+  hampers: "gift hamper",
+  flowers: "flowers",
+  cakes: "cake",
+  chocolates: "chocolate",
+  electronics: "electronics",
+  grocery: "grocery",
+  kids: "soft toy",
+  home: "home lifestyle",
+};
+
+const SHOP_CONTEXT_RE =
+  /\b(shop|storefront|shop page|\/shop\/|shop\/|category|browsing|comparing)\b/i;
+
+const STOREFRONT_SLUG_ALIASES: [RegExp, string][] = [
+  [/gift hampers?|\bhampers\b/, "hampers"],
+  [/flower bouquets?|\bbouquets?\b|\bflowers?\b/, "flowers"],
+  [/birthday cakes?|\bcakes?\b/, "cakes"],
+  [/\bchocolates?\b/, "chocolates"],
+  [/phone accessories|\belectronics?\b/, "electronics"],
+  [/\bgrocery\b/, "grocery"],
+  [/soft toys?|\bkids\b/, "kids"],
+  [/\bhome\b/, "home"],
+];
+
+function slugFromShopText(lower: string): string | null {
+  const pathSlug = lower.match(/(?:\/shop\/|shop\/)([a-z]+)/)?.[1];
+  if (pathSlug && STOREFRONT_CATEGORY_SLUGS[pathSlug]) return pathSlug;
+
+  const hasShopContext =
+    SHOP_CONTEXT_RE.test(lower) ||
+    /\b(on your shop page|in the shop|on the storefront)\b/.test(lower);
+
+  if (!hasShopContext) return null;
+
+  for (const [re, slug] of STOREFRONT_SLUG_ALIASES) {
+    if (re.test(lower)) return slug;
+  }
+  return null;
+}
+
+/** User was browsing the storefront — search immediately, don't ask clarifying questions. */
+export function parseStorefrontIntent(
+  text: string
+): { slug: string; query: string; maxPrice?: number } | null {
+  const lower = text.toLowerCase().trim();
+  const slug = slugFromShopText(lower);
+  if (!slug) return null;
+  const query = STOREFRONT_CATEGORY_SLUGS[slug];
+  if (!query) return null;
+  const priceMatch = lower.match(/\b(?:under|below|max|budget)\s+(?:lkr\s*)?([\d,]+)/);
+  const maxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+  return { slug, query, maxPrice };
+}
+
 export function parseSearchIntent(text: string):
   | {
       query: string;
@@ -442,8 +498,21 @@ export function parseSearchIntent(text: string):
     lower.includes("show me") ||
     lower.includes("search") ||
     lower.includes("catalog") ||
-    lower.includes("kapruka");
+    lower.includes("kapruka") ||
+    lower.includes("live stock");
   if (!isSearchy) return null;
+
+  const bestMatch = lower.match(/show me (?:the )?best (.+?) on kapruka/);
+  if (bestMatch?.[1]) {
+    const query = normalizeProductQuery(bestMatch[1].trim());
+    if (query.length >= 3) {
+      const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
+      return {
+        query,
+        maxPrice: priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined,
+      };
+    }
+  }
 
   // Referential messages ("show me those", "can u show me them as pictures") are
   // handled by the re-show fast-path — don't treat them as new searches.

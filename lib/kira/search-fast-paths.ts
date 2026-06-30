@@ -25,6 +25,7 @@ import {
   hasCakeSearchIntent,
   hasChocolateSearchIntent,
   parseSearchIntent,
+  parseStorefrontIntent,
   VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
@@ -67,6 +68,82 @@ export async function tryHandleSearchFastPath({
   // ── Global Shop (coming soon) ────────────────────────────────────────────
   if (GLOBAL_SHOP_RE.test(lower)) {
     await streamWords(controller, L("globalShopSoon", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Storefront /shop/{slug} — search immediately, no clarifying questions ─
+  const storefrontIntent = parseStorefrontIntent(trimmed);
+  if (storefrontIntent) {
+    const { slug, query, maxPrice } = storefrontIntent;
+    const productCity = extractCityHint(trimmed) ?? deliveryCity;
+    const productDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const wantsBest = /\bbest\b/i.test(lower);
+    const categoryLabel =
+      slug === "hampers"
+        ? "gift hampers"
+        : slug === "cakes"
+          ? "birthday cakes"
+          : slug === "flowers"
+            ? "flower bouquets"
+            : slug === "kids"
+              ? "soft toys"
+              : slug === "home"
+                ? "home gifts"
+                : slug;
+
+    controller.enqueue(sse("step", `Searching Kapruka for ${query}`));
+    let storefrontProducts: KiraProduct[] = [];
+    for (const q of [query, fallbackQuery(query)].filter((v): v is string => Boolean(v))) {
+      const storefrontResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: 6,
+          in_stock_only: true,
+          ...(maxPrice ? { max_price: maxPrice } : {}),
+          ...(wantsBest ? { sort: "bestseller" as const } : {}),
+          response_format: "json",
+        },
+      });
+      storefrontProducts = dedupeProducts(
+        filterProductsForSearch(
+          extractProductsFromMcp(storefrontResult.content),
+          q,
+          filterContext
+        )
+      );
+      if (storefrontProducts.length >= 3) break;
+    }
+
+    if (productCity && storefrontProducts[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: productCity,
+          product_id: storefrontProducts[0].id,
+          ...(productDate ? { delivery_date: productDate } : {}),
+          response_format: "json",
+        },
+      });
+      const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+      if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+    }
+
+    const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
+    const cityText = productCity ? ` to ${productCity}` : "";
+    if (storefrontProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: categoryLabel }));
+    } else {
+      await streamWords(
+        controller,
+        Lf("storefrontSearchIntro", language, {
+          category: categoryLabel,
+          budget: budgetText,
+          city: cityText,
+        })
+      );
+      controller.enqueue(sse("products", storefrontProducts));
+    }
     controller.enqueue(sse("done"));
     return true;
   }

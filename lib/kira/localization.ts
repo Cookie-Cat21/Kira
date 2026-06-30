@@ -219,6 +219,11 @@ export const LS: Record<string, Record<string, string>> = {
     si: "Global Shop coming soon! දැන් imported goods search කරන්නම්?",
     ta: "Global Shop coming soon! இப்போ imported goods search செய்யலாமா?",
   },
+  storefrontSearchIntro: {
+    en: "Machang, pulled live {category} from Kapruka{budget}{city} — tap a card to add to your tray.",
+    si: "Kapruka live {category}{budget}{city} — card tap කරලා tray එකට add කරන්න.",
+    ta: "Kapruka live {category}{budget}{city} — card tap செய்து tray-க்கு add செய்யுங்கள்.",
+  },
   postOrderSaved: {
     en: "Your order ref is {orderRef} — keep it for tracking or say 'order again'.",
     si: "ඔබේ order ref එක {orderRef} — track කරන්න තියාගන්න හෝ 'order again' කියන්න.",

@@ -129,6 +129,15 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // ── COD / payment policy — zero tools ────────────────────────────────────
+  const COD_RE =
+    /\b(cash\s+on\s+delivery|\bcod\b|pay\s+cash|cash\s+payment|can\s+i\s+pay\s+cash)\b/i;
+  if (COD_RE.test(lower)) {
+    await streamWords(controller, L("codPolicy", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // ── "Tell me about <product>" with the product already in hand ───────────
   // The storefront "Ask Kira about this" button seeds exactly this prompt.
   // Storefront catalog (Neon/seed JSON) is separate from live Kapruka MCP so

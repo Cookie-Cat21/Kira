@@ -5,7 +5,7 @@
 
 const KAPRUKA_RE = /kapruka|gift|shop|browse|catalog|order|deliver/i;
 const WARM_RE =
-  /machang|oof|sweet|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්/i;
+  /machang|oof|sweet|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්|pulled live|tap a card|tray|checkout link|secure checkout/i;
 const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that request/i;
 const PREACHY_RE =
   /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
@@ -147,6 +147,9 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 2; }
       else { score -= 3; excitement -= 2; }
       if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { flags.push("polished"); score += 1; }
+      if (toolCount(events) === 0 && /\bcash\b|\bcod\b|payment|pay\b/i.test(msg)) {
+        flags.push("policy_no_tools"); score += 1; excitement += 2;
+      }
       break;
     }
     case "G": {
@@ -157,8 +160,59 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       }
       break;
     }
+    case "H": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("storefront_catalog"); score += 2; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("storefront_honest"); score += 1; excitement += 1;
+      } else {
+        score -= 2; excitement -= 2;
+      }
+      if (WARM_RE.test(text)) { flags.push("warm_storefront"); excitement += 1; }
+      break;
+    }
+    case "I": {
+      if (personaPassed) { flags.push("multilingual_ok"); score += 2; excitement += 2; }
+      else { score -= 2; excitement -= 2; }
+      if (WARM_RE.test(text)) excitement += 1;
+      break;
+    }
+    case "J": {
+      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 2; }
+      else { score -= 2; excitement -= 2; }
+      break;
+    }
+    case "K": {
+      if (personaPassed) { flags.push("reorder_path"); score += 2; excitement += 2; }
+      else { score -= 2; excitement -= 2; }
+      if (hasProducts(events)) excitement += 1;
+      break;
+    }
+    case "L": {
+      if (personaPassed) { score += 1; excitement += 1; }
+      else { score -= 2; excitement -= 1; }
+      break;
+    }
+    case "M": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("ceo_gold_catalog"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("ceo_gold_handled"); score += 2; excitement += 2;
+      } else {
+        score -= 3; excitement -= 2;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      if (/machang|roses|deliver|send/i.test(text)) excitement += 1;
+      break;
+    }
     default:
       break;
+  }
+
+  if (personaPassed && hasProducts(events) && WARM_RE.test(text)) {
+    flags.push("warm_product_moment");
+    excitement += 1;
+    score += 1;
   }
 
   if (personaPassed) { flags.push("persona_checks_passed"); score += 1; }
