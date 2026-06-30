@@ -49,6 +49,8 @@ The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `ap
 2. `meta-llama/llama-4-scout-17b-16e-instruct` — first fallback on 429
 3. `llama-3.1-8b-instant` — last resort; tool schemas are **dropped** and it is told not to invent products
 
+**Groq key rotation** (`lib/kira/groq.ts`): set `GROQ_API_KEY`, `GROQ_API_KEY_2`, `GROQ_API_KEY_3` in `.env.local`. Each request round-robins the starting key; on 429/413 the route tries every key on the current model before dropping to the next model.
+
 **Deterministic fast-paths** (`tryHandleDeterministicPrompt` in `lib/kira/fast-paths.ts`): stateful or safety-critical patterns bypass the LLM loop. Product search, vague queries, delivery policy, COD, and out-of-scope are handled by Groq + tools. Fast-paths that remain:
 
 1. Empty input → friendly prompt
@@ -61,8 +63,7 @@ The full-screen Kira chat is the main surface at `/` (`app/page.tsx` renders `ap
 8. Cart delivery check — fee quote for items in tray
 9. Re-show / more options / add-to-cart / list-as-text — referential on `lastProducts`
 10. Checkout — "ready to checkout" + checkout fill-in state machine
-
-Bare greetings (`hey`, `hi`) go to the LLM. The client opening bubble is included in API history so Kira doesn't re-introduce after "Welcome back!"
+11. **Search fast-paths** (`lib/kira/search-fast-paths.ts`) — demo-critical searches bypass the LLM when intent is clear: popular/trending, repair+flowers, gift+budget/city, rush/sale/hamper, bakery brands, bare budget queries, and `parseSearchIntent` ("show me X on Kapruka"). Ambiguous/vague queries still go to Groq.
 
 **MCP tool handling quirks:**
 - All 7 tools have `response_format: "json"` injected before calling

@@ -8,6 +8,7 @@ import {
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
 import { handleCheckoutFillIn, isCheckoutFillInTurn } from "@/lib/kira/checkout-flow";
+import { tryHandleSearchFastPath } from "@/lib/kira/search-fast-paths";
 import { L, Lf } from "@/lib/kira/localization";
 import {
   REORDER_REF_RE,
@@ -449,6 +450,25 @@ export async function tryHandleDeterministicPrompt({
       controller,
       language,
     });
+  }
+
+  // ── Search fast-paths (popular, repair, gift, budget, breadth) ───────────
+  if (
+    await tryHandleSearchFastPath({
+      text: trimmed,
+      messages,
+      cart,
+      deliveryCity,
+      deliveryDate,
+      language,
+      mcpClient,
+      controller,
+      budget,
+      occasion,
+      recipient,
+    })
+  ) {
+    return true;
   }
 
   // Everything else → LLM handles it
