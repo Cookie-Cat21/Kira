@@ -31,6 +31,7 @@ import { runCheck } from "./evaluate.mjs";
 import { scoreCeoLens, ceoScorePercent, ceoPassAt90 } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
+import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -322,6 +323,10 @@ import {
   GROUP_M,
 } from "./personas/generated-groups.mjs";
 import { GROUP_S } from "./personas/generated-search-edge.mjs";
+import { GROUP_T } from "./personas/generated-category-purity.mjs";
+import { GROUP_U } from "./personas/generated-context-bleed.mjs";
+import { GROUP_V } from "./personas/generated-vague-intent.mjs";
+import { GROUP_W } from "./personas/generated-repair-flow.mjs";
 
 const GROUPS = {
   A: GROUP_A,
@@ -338,6 +343,10 @@ const GROUPS = {
   L: GROUP_L,
   M: GROUP_M,
   S: GROUP_S,
+  T: GROUP_T,
+  U: GROUP_U,
+  V: GROUP_V,
+  W: GROUP_W,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
@@ -349,7 +358,7 @@ function toolStepCount(events) {
   return events.filter((e) => e.t === "step").length;
 }
 
-function applyToken(token, arg, events, text, userMsg = "") {
+function applyToken(token, arg, events, text, userMsg = "", messages = null) {
   const products = productsOf(events);
   switch (token) {
     case "notEmpty":
@@ -411,6 +420,36 @@ function applyToken(token, arg, events, text, userMsg = "") {
       return {
         pass,
         reason: pass ? "" : `Search relevance failed: ${violations.slice(0, 3).join("; ")}`,
+      };
+    }
+    case "noContextBleed": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const msgs = messages ?? [];
+      const { pass, violations } = validateNoContextBleed(msgs, products);
+      return {
+        pass,
+        reason: pass ? "" : violations.slice(0, 2).join("; "),
+      };
+    }
+    case "noPrematureProducts": {
+      const hasProds = !!products && products.length > 0;
+      return {
+        pass: !hasProds,
+        reason: hasProds ? "Showed products on zero-context vague message (should ask first)" : "",
+      };
+    }
+    case "noNothingFound": {
+      const bad = NOTHING_FOUND_RE.test(text);
+      return {
+        pass: !bad,
+        reason: bad ? "Returned nothing-found on vague message (should ask instead)" : "",
+      };
+    }
+    case "noHandDeliver": {
+      const bad = /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i.test(text);
+      return {
+        pass: !bad,
+        reason: bad ? "Preachy hand-deliver advice — Kapruka exists to deliver" : "",
       };
     }
     case "asksClarifying":
@@ -506,10 +545,11 @@ function evaluateChecks(persona, result) {
   if (gate) return { passed: false, isError: true, reasons: [gate.reason], toolCalls: toolStepCount(result.events ?? []) };
   const { responseText, events } = result;
   const userMsg = personaUserMessage(persona);
+  const messages = buildMessagesFromPersona(persona);
   const reasons = [];
   for (const chk of persona.checks ?? []) {
     const [token, arg] = Array.isArray(chk) ? chk : [chk];
-    const r = applyToken(token, arg, events, responseText, userMsg);
+    const r = applyToken(token, arg, events, responseText, userMsg, messages);
     if (!r.pass) reasons.push(r.reason);
   }
   return { passed: reasons.length === 0, reasons, toolCalls: toolStepCount(events) };
@@ -522,9 +562,10 @@ function evaluateG(persona, result) {
   const reasons = [];
   if (!responseText.trim()) reasons.push("Empty response");
   const userMsg = personaUserMessage(persona);
+  const messages = buildMessagesFromPersona(persona);
   for (const chk of persona.checks ?? []) {
     const [token, arg] = Array.isArray(chk) ? chk : [chk];
-    const r = applyToken(token, arg, events, responseText, userMsg);
+    const r = applyToken(token, arg, events, responseText, userMsg, messages);
     if (!r.pass) reasons.push(r.reason);
   }
   const lens = scoreFounderLens(responseText, events, persona);
@@ -600,6 +641,10 @@ const GROUP_LABELS = {
   L: "Messy / Adversarial",
   M: "CEO Gold Paths",
   S: "Search Routing Edge (200)",
+  T: "Category Purity (~120)",
+  U: "Context Bleed (~80)",
+  V: "Vague Intent (~60)",
+  W: "Repair Flow (~60)",
 };
 const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white, G: c.green };
 
@@ -647,7 +692,7 @@ async function main() {
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
   const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : RESULTS_PATH;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
-  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite — 702 personas${c.reset}`);
+  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite — 902+ personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
   if (concurrency > 1) console.log(`${c.yellow}! concurrency > 1 on Groq free tier causes rate-limit fallbacks (scored as ERR).${c.reset}`);
   await assertDevServerAvailable();
