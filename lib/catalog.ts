@@ -204,16 +204,13 @@ export async function getProductsByCategory(
   return db(
     async () => {
       const rows = await query<DbRow>(
-        `select ${PRODUCT_COLS} from products where category_slug = $1 order by ${ORDER[sort]} limit $2 offset $3`,
-        [slug, limit, offset]
-      );
-      const totalRows = await query<{ count: string }>(
-        "select count(*)::text as count from products where category_slug = $1",
+        `select ${PRODUCT_COLS} from products where category_slug = $1 order by ${ORDER[sort]}`,
         [slug]
       );
+      const filtered = applyCategoryCatalogFilter(slug, rows.map(rowToProduct));
       return {
-        items: applyCategoryCatalogFilter(slug, rows.map(rowToProduct)),
-        total: Number(totalRows[0]?.count ?? rows.length),
+        items: filtered.slice(offset, offset + limit),
+        total: filtered.length,
       };
     },
     () => {

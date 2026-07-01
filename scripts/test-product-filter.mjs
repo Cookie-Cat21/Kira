@@ -32,16 +32,27 @@ const CATEGORY_IRRELEVANCE_TERMS = {
   hampers: HAMPER_JUNK_RE,
 };
 
+const VAGUE_SEARCH_QUERY_RE =
+  /^(options?|gifts?|gift\s+ideas?|items?|stuff|things?|ideas?|picks?|something|more|anniversary|birthday)$/i;
+
+function resolveFilterKeyFromText(text) {
+  const normalized = text.toLowerCase();
+  if (FLOWER_INTENT_RE.test(normalized)) return "flowers";
+  if (HAMPER_INTENT_RE.test(normalized)) return "hampers";
+  if (CAKE_INTENT_RE.test(normalized)) return "cake";
+  if (CHOCOLATE_INTENT_RE.test(normalized)) return "chocolate";
+  const q = text.toLowerCase().trim();
+  if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  if (q === "gift hamper" || q === "gift set") return "hampers";
+  return null;
+}
+
 function resolveProductFilterKey(query, ...contextTexts) {
   const q = query.toLowerCase().trim();
+  const queryKey = resolveFilterKeyFromText(q);
+  if (queryKey && !VAGUE_SEARCH_QUERY_RE.test(q)) return queryKey;
   const context = [q, ...contextTexts.filter(Boolean)].join(" ");
-  if (FLOWER_INTENT_RE.test(context)) return "flowers";
-  if (CAKE_INTENT_RE.test(context)) return "cake";
-  if (CHOCOLATE_INTENT_RE.test(context)) return "chocolate";
-  if (HAMPER_INTENT_RE.test(context)) return "hampers";
-  if (q === "gift hamper" || q === "gift set") return "hampers";
-  if (q in CATEGORY_RELEVANCE_TERMS) return q;
-  return null;
+  return resolveFilterKeyFromText(context) ?? queryKey;
 }
 
 function filterProductsForSearch(products, query, ...contextTexts) {
@@ -174,6 +185,11 @@ assert(
 assert(
   resolveProductFilterKey("options", "mixed flower bouquets under 3000") === "flowers",
   "vague options inherit flower context"
+);
+
+assert(
+  resolveProductFilterKey("gift hamper", "show me flowers for amma") === "hampers",
+  "explicit hamper query wins over flower context bleed"
 );
 
 const hamperGood = [

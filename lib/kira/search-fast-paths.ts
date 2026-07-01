@@ -1,4 +1,4 @@
-import { parseRelativeDeliveryDate } from "@/lib/colombo-date";
+import { parseRelativeDeliveryDate, getColomboTodayIso } from "@/lib/colombo-date";
 import { callMcpTool } from "@/lib/mcp-client";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
 import { L, Lf } from "@/lib/kira/localization";
@@ -477,12 +477,13 @@ export async function tryHandleSearchFastPath({
     }
     const dedupedGiftProducts = dedupeProducts(giftProducts).slice(0, 6);
 
+    let canonicalGiftCity = giftCityHint;
     if (giftCityHint && dedupedGiftProducts[0]) {
       controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
       const giftCityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
         params: { query: giftCityHint, limit: 3, response_format: "json" },
       });
-      const canonicalGiftCity = extractFirstCity(giftCityResult.content) ?? giftCityHint;
+      canonicalGiftCity = extractFirstCity(giftCityResult.content) ?? giftCityHint;
       const primaryProduct = dedupedGiftProducts[0];
       if (primaryProduct) {
         controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
@@ -500,17 +501,17 @@ export async function tryHandleSearchFastPath({
           controller.enqueue(sse("delivery", giftDelivery));
         }
       }
+    }
 
-      for (const product of dedupedGiftProducts) {
-        product.badges = buildReasonBadges(product, {
-          budgetAmount: giftMaxPrice,
-          occasion: giftOccasion,
-          recipient: giftRecipient,
-          city: canonicalGiftCity,
-          deliveryDate: giftDate,
-          deliveryInfo: product.deliveryInfo ?? primaryProduct?.deliveryInfo,
-        });
-      }
+    for (const product of dedupedGiftProducts) {
+      product.badges = buildReasonBadges(product, {
+        budgetAmount: giftMaxPrice,
+        occasion: giftOccasion,
+        recipient: giftRecipient,
+        city: canonicalGiftCity,
+        deliveryDate: giftDate,
+        deliveryInfo: product.deliveryInfo ?? dedupedGiftProducts[0]?.deliveryInfo,
+      });
     }
 
     if (dedupedGiftProducts.length === 0) {
@@ -573,8 +574,12 @@ export async function tryHandleSearchFastPath({
     const saleResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: saleQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
     });
-    const saleProducts = filterFamilySafeProducts(
-      dedupeProducts(extractProductsFromMcp(saleResult.content))
+    const saleProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(saleResult.content),
+        saleQuery,
+        filterContext
+      )
     );
     if (saleProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: saleQuery }));
@@ -590,7 +595,7 @@ export async function tryHandleSearchFastPath({
   if (RUSH_RE.test(lower)) {
     const rushQuery = extractProductKeyword(lower) ?? "flowers";
     const rushCity = extractCityHint(trimmed) ?? deliveryCity ?? "Colombo";
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = getColomboTodayIso();
     controller.enqueue(sse("step", `Searching Kapruka for same-day ${rushQuery}`));
     const rushResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: rushQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
@@ -610,7 +615,7 @@ export async function tryHandleSearchFastPath({
       });
       const rushDelivery = extractDeliveryInfoFromMcp(rushDeliveryResult.content);
       if (rushDelivery?.available === false) {
-        rushProducts = rushProducts.slice(0, 3);
+        rushProducts = rushProducts.slice(1);
       }
       if (rushDelivery) controller.enqueue(sse("delivery", rushDelivery));
     }
@@ -635,8 +640,12 @@ export async function tryHandleSearchFastPath({
     const brandResult = await callMcpTool(mcpClient, "kapruka_search_products", {
       params: { q: `${brandQuery} cake`, limit: 6, in_stock_only: true, response_format: "json" },
     });
-    const brandProducts = filterFamilySafeProducts(
-      dedupeProducts(extractProductsFromMcp(brandResult.content))
+    const brandProducts = dedupeProducts(
+      filterProductsForSearch(
+        extractProductsFromMcp(brandResult.content),
+        `${brandQuery} cake`,
+        filterContext
+      )
     );
     if (brandProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: `${brandQuery} cake` }));
@@ -660,8 +669,8 @@ export async function tryHandleSearchFastPath({
       const r = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: { q, limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
       });
-      popularProducts = filterFamilySafeProducts(
-        dedupeProducts(extractProductsFromMcp(r.content))
+      popularProducts = dedupeProducts(
+        filterProductsForSearch(extractProductsFromMcp(r.content), q, filterContext)
       );
       if (popularProducts.length > 0) break;
     }

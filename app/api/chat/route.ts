@@ -44,6 +44,7 @@ import {
 } from "@/lib/kira/session-context";
 import {
   filterProductsForSearch,
+  filterFamilySafeProducts,
   buildMessageFilterContext,
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
@@ -296,7 +297,9 @@ export async function POST(req: NextRequest) {
         let payLink: string | undefined;
         let modelIndex = 0;
         const groqKeys = getGroqKeys().filter((k) => k.length > 0);
-        let keyIndex = pickStartingKeyIndex();
+        const startKeyIndex = pickStartingKeyIndex();
+        let keyIndex = startKeyIndex;
+        let keysAttemptedOnModel = 0;
         let hallucinationRetries = 0; // circuit breaker — stop-hook fires at most once
         let stagnantRounds = 0;       // consecutive tool-use rounds with no progress
         let streamedText = false;     // true once real streaming emits the first token
@@ -497,11 +500,14 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
               const rawForLlm = extractProductsFromMcp(resultContent);
               const queryKey = String(toolArgs.q ?? "").toLowerCase().trim();
-              const filteredForLlm = filterProductsForSearch(
+              let filteredForLlm = filterProductsForSearch(
                 rawForLlm,
                 queryKey,
                 searchFilterContext
               );
+              if (filteredForLlm.length === 0 && rawForLlm.length > 0) {
+                filteredForLlm = filterFamilySafeProducts(rawForLlm);
+              }
               collectedProducts.push(...filteredForLlm);
             }
             if (toolName === "kapruka_create_order") {
@@ -761,13 +767,14 @@ export async function POST(req: NextRequest) {
               }
 
               if (apiErr?.status === 429 || apiErr?.status === 413) {
-                // Try next key on the same model first.
-                if (keyIndex < groqKeys.length - 1) {
-                  keyIndex++;
+                // Try every key (wrap around from round-robin start) before downgrading model.
+                keysAttemptedOnModel++;
+                if (groqKeys.length > 1 && keysAttemptedOnModel < groqKeys.length) {
+                  keyIndex = (startKeyIndex + keysAttemptedOnModel) % groqKeys.length;
                   continue callLoop;
                 }
-                // All keys exhausted on this model — drop to next model, reset keys.
-                keyIndex = 0;
+                keysAttemptedOnModel = 0;
+                keyIndex = startKeyIndex;
                 if (modelIndex < MODELS.length - 1) {
                   modelIndex++;
                   continue callLoop;
@@ -1013,17 +1020,21 @@ export async function POST(req: NextRequest) {
 
         // Dedup + cap carousel
         const seenIds = new Set<string>();
-        const dedupedProducts = filterProductsForSearch(
-          collectedProducts
-            .filter((p) => {
-              if (seenIds.has(p.id)) return false;
-              seenIds.add(p.id);
-              return true;
-            })
-            .slice(0, 8),
+        const rawDeduped = collectedProducts
+          .filter((p) => {
+            if (seenIds.has(p.id)) return false;
+            seenIds.add(p.id);
+            return true;
+          })
+          .slice(0, 8);
+        let dedupedProducts = filterProductsForSearch(
+          rawDeduped,
           latestUserText,
           searchFilterContext
         );
+        if (dedupedProducts.length === 0 && rawDeduped.length > 0) {
+          dedupedProducts = filterFamilySafeProducts(rawDeduped);
+        }
         if (dedupedProducts.length > 0)
           controller.enqueue(sse("products", dedupedProducts));
         if (checkoutInfo) {
