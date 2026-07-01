@@ -1,9 +1,15 @@
 const DEFAULT_API_URL = "http://localhost:3000/api/chat";
 const DEFAULT_TIMEOUT_MS = 45_000;
 
-export const API_URL = process.env.KIRA_API_URL ?? DEFAULT_API_URL;
+/** Read API URL at call time so live QA can override KIRA_API_URL per run. */
+export function getApiUrl() {
+  return process.env.KIRA_API_URL ?? DEFAULT_API_URL;
+}
 
-export async function assertDevServerAvailable(apiUrl = API_URL) {
+/** @deprecated Use getApiUrl() — cached at import time and ignores later env changes. */
+export const API_URL = getApiUrl();
+
+export async function assertDevServerAvailable(apiUrl = getApiUrl()) {
   const url = new URL(apiUrl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
@@ -58,7 +64,7 @@ export async function sendTestCase(testCase) {
   const requestBody = normalizeRequest(testCase.request);
 
   try {
-    const res = await fetch(API_URL, {
+    const res = await fetch(getApiUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
@@ -154,7 +160,7 @@ async function sendJsonEndpoint(testCase) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
   const startedAt = Date.now();
-  const url = new URL(API_URL);
+  const url = new URL(getApiUrl());
   url.pathname = `/api/${testCase.endpoint}`;
   url.search = "";
 

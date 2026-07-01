@@ -67,7 +67,7 @@ function matchesCategory(key, txt, activeCats) {
   if (key === "flowers" && !activeCats.includes("cake") && CAKE_REL.test(txt)) return false;
   if (
     key === "flowers" &&
-    activeCats.length >= 2 &&
+    !activeCats.includes("cake") &&
     /\b(ribbon\s+cake|sculpture\s+cake|flower\s+ribbon\s+cake)\b/i.test(txt)
   ) {
     return false;
