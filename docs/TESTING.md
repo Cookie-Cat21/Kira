@@ -100,7 +100,7 @@ Real users hit `https://kira-peach.vercel.app` — run traps against production 
 
 ```bash
 export KIRA_LIVE_URL=https://kira-peach.vercel.app/api/chat
-npm run test:live-regression     # 10 blocking traps
+npm run test:live-regression     # 12 blocking traps (incl. LIVE-X001–X002 reorder)
 npm run test:live-qa:traps       # Dulith plan + traps only
 npm run test:live-qa:smoke       # traps + domain smoke on live
 npm run test:live-qa             # full domain suites on live
@@ -119,8 +119,11 @@ Results are written to `test-results/persona-results.json`.
 Playwright uses `localhost:3107` with `reuseExistingServer: false` so it always starts a clean Kira server for browser checks.
 
 ```bash
-npx playwright test
+npm run test:e2e                 # full suite
+npm run test:e2e:reorder          # welcome-back + checkout prefill only
 ```
+
+CI: `.github/workflows/e2e.yml` runs reorder + smoke subset on PRs (requires `GROQ_API_KEY` repo secret).
 
 The E2E suite covers:
 
@@ -129,10 +132,45 @@ The E2E suite covers:
 - product search, quick-view, product cards, quick replies, and out-of-scope redirects
 - tray quantity updates and checkout handoff with no local card form
 - required delivery fields and editable delivery date
+- **one-tap reorder** — welcome-back strip + prefilled checkout (`tests/e2e/reorder.spec.ts`)
 - Sinhala/Tamil mode checks
 - invalid tracking and new-chat reset
 
 The checkout E2E mocks only `/api/checkout`, returning a Kapruka-style checkout URL so the browser can verify the handoff without creating a real order.
+
+---
+
+## Voice & multimodal — what we can and cannot automate
+
+**Kira today does not ship voice input.** The orb uses a Siri-style visual wave only; there is no `SpeechRecognition` / microphone pipeline in the app. Competitors (e.g. ShopMate) may show voice in demos — that is a separate product surface.
+
+| Surface | Automated on our side? | How |
+|---------|------------------------|-----|
+| Chat API / SSE (search, reorder, checkout) | **Yes** | `test-personas.mjs`, `live-regression.mjs`, Group X |
+| UI clicks (welcome back, checkout modal) | **Yes** | Playwright (`test:e2e:reorder`) |
+| Dulith / CEO heuristic scoring | **Yes** | `ceo-lens.mjs`, `dulith-qa-orchestrator.mjs`, `ceo-review-llm.mjs` |
+| Live production URL | **Yes** | `npm run test:live-qa:smoke` on `kira-peach.vercel.app` |
+| **Microphone / voice-to-text** | **No (not built)** | Would need Web Speech API + browser mic permissions |
+| **Real spoken Sinhala/Tanglish** | **Partial** | API tests with romanised/Unicode text; native audio needs human QA |
+
+### If we add voice later
+
+1. **Unit/integration:** mock `SpeechRecognition` in Playwright and assert transcribed text reaches `/api/chat`.
+2. **Cloud agent manual pass:** browser automation with mic permission (flaky; not a CI gate).
+3. **CEO review:** extend Group personas with voice-intent phrasing; run `ceo-review-llm.mjs` on transcripts; human records a 60s demo for judges.
+
+Until voice ships, CEO review for Kira should focus on **one-tap reorder**, search purity, and checkout — all fully automatable today.
+
+---
+
+## Dulith / CEO review loop
+
+1. **Plan gate** — `npm run test:dulith-plan` (≥9/10 on plan docs)
+2. **Implementation gate** — domain persona suites S–X via `npm run test:dulith-qa:smoke`
+3. **Production gate** — `npm run test:live-regression` + `npm run test:live-qa:smoke`
+4. **Optional LLM founder pass** — `npm run ceo:review` on flagged persona rows
+
+Group **X** (`one-tap-reorder`, ~60 cases) validates `reorderCheckout` SSE, checkout prefill, and honest no-history fallbacks. Target: **≥90%** persona + CEO lens on live URL.
 
 ---
 

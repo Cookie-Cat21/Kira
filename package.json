@@ -36,6 +36,8 @@
     "test:live-qa": "node scripts/live-qa-loop.mjs --full",
     "test:live-qa:traps": "node scripts/live-qa-loop.mjs --traps-only",
     "test:live-qa:smoke": "node scripts/live-qa-loop.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:reorder": "playwright test tests/e2e/reorder.spec.ts",
     "setup:fonts": "node scripts/setup-sf-pro.mjs"
   },
   "dependencies": {

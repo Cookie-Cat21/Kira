@@ -134,6 +134,33 @@ export const LIVE_TRAPS = [
     note: "One-tap reorder — reorderCheckout SSE with prefill",
     checks: ["reorderCheckout", "checkoutPrefill"],
   },
+  {
+    id: "LIVE-X002",
+    group: "X",
+    request: {
+      messages: [
+        {
+          role: "user",
+          content:
+            "recipient Amma, phone 0771234567, address 12 Galle Road Colombo 03, deliver on 2026-07-25, yes place the order",
+        },
+      ],
+      cart: [
+        {
+          product: {
+            id: "live-x002",
+            name: "gift hamper",
+            price: 3500,
+            currency: "LKR",
+          },
+          quantity: 1,
+        },
+      ],
+    },
+    note: "Post-checkout lastOrder SSE with delivery snapshot",
+    checks: ["checkoutSSE", "lastOrderSnapshot"],
+    timeoutMs: 90_000,
+  },
 ];
 
 const FLOWER_JUNK =
@@ -215,6 +242,28 @@ function runChecks(trap, result) {
         }
         break;
       }
+      case "checkoutSSE": {
+        const checkoutEvt = result.events?.find((e) => e.t === "checkout");
+        if (!checkoutEvt?.v?.checkoutUrl && !checkoutEvt?.v?.orderRef) {
+          reasons.push("Expected checkout SSE after place order");
+        }
+        break;
+      }
+      case "lastOrderSnapshot": {
+        const evt = result.events?.find((e) => e.t === "lastOrder");
+        const o = evt?.v;
+        if (
+          !o?.recipient?.name ||
+          !o?.recipient?.phone ||
+          !o?.delivery?.city ||
+          !o?.delivery?.address ||
+          !Array.isArray(o?.items) ||
+          !o.items.length
+        ) {
+          reasons.push("lastOrder SSE missing delivery snapshot or items");
+        }
+        break;
+      }
       default:
         break;
     }
@@ -229,7 +278,11 @@ export async function runLiveRegression(apiUrl = LIVE_URL) {
 
   try {
     for (const trap of LIVE_TRAPS) {
-      const result = await sendTestCase({ request: buildRequest(trap), checks: [] });
+      const result = await sendTestCase({
+        request: buildRequest(trap),
+        checks: [],
+        timeoutMs: trap.timeoutMs,
+      });
       const reasons = runChecks(trap, result);
       const passed = reasons.length === 0;
       const persona = { msg: trap.msg, ...trap };

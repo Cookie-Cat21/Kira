@@ -9,8 +9,9 @@ import { L } from "@/lib/kira/localization";
 import { isCheckoutConfirmation } from "@/lib/kira/permissions";
 import { extractCityHint, extractFirstCity } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
+import { inferLastOrderLabel } from "@/lib/reorder";
 import { looksLikeMcpProductId, resolveMcpProductId } from "@/lib/product-id";
-import type { CartItem, CheckoutInfo } from "@/types";
+import type { CartItem, CheckoutInfo, LastOrder } from "@/types";
 
 export type CheckoutDetails = {
   recipientName?: string;
@@ -207,6 +208,23 @@ export async function placeKaprukaOrder({
 
   controller.enqueue(sse("checkout", checkoutInfo));
   controller.enqueue(sse("payLink", checkoutInfo.checkoutUrl));
+  const saved: LastOrder = {
+    orderRef: checkoutInfo.orderRef,
+    items: cart,
+    recipient: {
+      name: details.recipientName!.trim(),
+      phone: details.phone!.trim(),
+    },
+    delivery: {
+      city,
+      address: details.address!.trim(),
+      date: details.date!.trim(),
+    },
+    giftMessage: details.giftMessage?.trim(),
+    placedAt: Date.now(),
+    label: inferLastOrderLabel(cart),
+  };
+  controller.enqueue(sse("lastOrder", saved));
   await streamWords(
     controller,
     language === "si"
