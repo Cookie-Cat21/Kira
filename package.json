@@ -29,6 +29,9 @@
     "test:search-edge": "node scripts/generate-search-edge.mjs && node scripts/search-edge-orchestrator.mjs --full",
     "test:search-edge:smoke": "node scripts/generate-search-edge.mjs && node scripts/search-edge-orchestrator.mjs --smoke 25",
     "test:dulith-plan": "node scripts/dulith-plan-review.mjs",
+    "test:dulith-plans": "node scripts/dulith-plan-review.mjs --all",
+    "test:dulith-qa:smoke": "node scripts/dulith-qa-orchestrator.mjs --smoke",
+    "test:dulith-qa": "node scripts/dulith-qa-orchestrator.mjs --full",
     "setup:fonts": "node scripts/setup-sf-pro.mjs"
   },
   "dependencies": {

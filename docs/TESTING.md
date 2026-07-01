@@ -41,7 +41,7 @@ Results are written to `test-results/results.json`.
 
 ## Persona Suite
 
-`scripts/test-personas.mjs` runs **502** judge-style personas (A–G curated + H–M generated):
+`scripts/test-personas.mjs` runs **902+** judge-style personas (A–G curated + H–M generated + **S–W Dulith edge domains**):
 
 - **Group A (25)** — vague or indirect gift prompts.
 - **Group B (25)** — out-of-scope prompts.
@@ -72,6 +72,27 @@ node scripts/ceo-score-all.mjs --from test-results/ceo-500/results.json --llm --
 ```
 
 Results: `test-results/ceo-500/summary.json`, `triage.json` (failure clusters for fix loop).
+
+### Dulith QA Program (domains S–W)
+
+Five founder-gated domains — each has a plan doc, auto-approval at ≥9/10, and an edge suite:
+
+| Domain | Group | Plan | Generator |
+|--------|-------|------|-----------|
+| Search routing | S | `docs/SEARCH-ROUTING-PLAN.md` | `generate-search-edge.mjs` |
+| Category purity | T | `docs/CATEGORY-PURITY-PLAN.md` | `generate-category-purity.mjs` |
+| Context bleed | U | `docs/CONTEXT-BLEED-PLAN.md` | `generate-context-bleed.mjs` |
+| Vague intent | V | `docs/VAGUE-INTENT-PLAN.md` | `generate-vague-intent.mjs` |
+| Repair flow | W | `docs/REPAIR-FLOW-PLAN.md` | `generate-repair-flow.mjs` |
+
+```bash
+npm run test:dulith-plans       # approve all domain plans (≥9/10 gate)
+npm run test:dulith-qa:smoke    # smoke each domain (~15–25 cases)
+npm run test:dulith-qa          # full S+T+U+V+W program
+npm run test:search-edge        # Group S only (200 combo cases)
+```
+
+Master summary: `test-results/dulith-qa/summary.json`. See `docs/DULITH-QA-PROGRAM.md`.
 
 Results are written to `test-results/persona-results.json`.
 

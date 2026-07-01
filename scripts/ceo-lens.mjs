@@ -14,6 +14,8 @@ const LEAK_RE =
 const TOOL_MARKUP_RE = /<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i;
 const GENERIC_CAROUSEL_RE =
   /^here are \d+ picks\b|^here are kapruka'?s top picks right now/i;
+const NOTHING_FOUND_RE =
+  /nothing in stock|couldn'?t find|no results|not in stock|out of stock|stock නෑ|stock இல்லை/i;
 
 function hasFamilyUnsafeProduct(events) {
   const products = (events ?? []).find((e) => e.t === "products")?.v;
@@ -246,6 +248,57 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       }
       if (WARM_RE.test(text)) excitement += 1;
       if (hasProducts(events) && /deliver|colombo|kandy|send/i.test(text)) excitement += 1;
+      break;
+    }
+    case "T": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("category_purity_ok"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("purity_honest_empty"); score += 1; excitement += 1;
+      } else {
+        flags.push("junk_in_carousel"); score -= 4; excitement -= 4;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      break;
+    }
+    case "U": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("no_context_bleed"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("context_handled"); score += 1; excitement += 1;
+      } else {
+        flags.push("context_bleed_fail"); score -= 4; excitement -= 4;
+      }
+      break;
+    }
+    case "V": {
+      if (personaPassed && !hasProducts(events)) {
+        flags.push("asked_first"); score += 3; excitement += 3;
+      } else if (personaPassed && hasProducts(events) && /popular|trending/i.test(msg)) {
+        flags.push("valid_browse"); score += 2; excitement += 2;
+      } else if (personaPassed) {
+        score += 1; excitement += 1;
+      } else {
+        flags.push("premature_products"); score -= 4; excitement -= 4;
+      }
+      if (NOTHING_FOUND_RE.test(text)) {
+        flags.push("nothing_found_on_vague"); score -= 3;
+      }
+      break;
+    }
+    case "W": {
+      if (PREACHY_RE.test(text)) {
+        return { score: 0, excitement: 0, flags: ["preachy_hand_deliver"], pass: false, verdict: "Wrong advice — Kapruka exists to deliver." };
+      }
+      if (personaPassed && hasProducts(events)) {
+        flags.push("repair_catalog"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("repair_handled"); score += 2; excitement += 2;
+      } else {
+        score -= 3; excitement -= 2;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      if (/deliver|send|machang/i.test(text)) excitement += 1;
       break;
     }
     default:
