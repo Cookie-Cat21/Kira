@@ -33,6 +33,40 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## One-tap reorder (Phase 1) — shipped
+
+Returning customers can reorder in **≤2 taps** without retyping delivery details:
+
+- **"Order this again"** on post-checkout success (modal + chat card)
+- **Welcome back** strip when `lastOrder` exists in localStorage
+- Chat `"order again"` opens prefilled checkout when full delivery snapshot exists
+- **Track → Reorder** lands in checkout review, not cart-only
+
+Full plan: [`docs/REORDER-PLAN.md`](docs/REORDER-PLAN.md)
+
+### Phase 2 roadmap (deferred — not required for challenge v1)
+
+| Feature | Why deferred |
+|---------|----------------|
+| Kapruka account login + order history | Needs auth API beyond MCP |
+| Cross-device sync (Supabase) | v1 uses `localStorage` habit loop |
+| Scheduled reorder / occasion reminders | Retention product, not demo scope |
+| "Reorder similar" when SKU discontinued | Needs search fallback logic |
+
+## Testing & CEO review
+
+See [`docs/TESTING.md`](docs/TESTING.md) for the full runbook. Quick gates:
+
+```bash
+npm run build
+npm run test:live-regression          # production traps (incl. LIVE-X001–X002)
+node scripts/test-personas.mjs --group x --concurrency 1
+npm run test:dulith-qa:smoke
+npm run test:e2e:reorder                # Playwright UI reorder path
+```
+
+**Voice input:** Kira does not ship voice-to-text today (visual orb only). Automated CEO review covers API personas, live traps, Playwright UI, and `ceo-lens` heuristics — not microphone input. See TESTING.md § Voice & multimodal.
+
 ## Phase 0 — MCP exploration
 
 Before working on UI, verify the Kapruka MCP end-to-end:
