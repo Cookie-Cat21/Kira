@@ -44,27 +44,37 @@ function hasCrossCategoryConjunction(text: string): boolean {
   return all.size >= 2;
 }
 
+/** MCP `q` values per category for multi-search merges. */
+export const CATEGORY_SEARCH_QUERY: Record<SearchCategory, string> = {
+  flowers: "flowers",
+  chocolate: "chocolate",
+  cake: "cake",
+  hampers: "gift hamper",
+};
+
+/** User wants to see/buy products — not just chatting about categories. */
+export function hasProductSearchIntent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    /\b(show\s+me|show\s+us|search|send|need|want|looking\s+for|browse|get\s+me|find|order|deliver|pick|gift\s+for)\b/i.test(
+      lower
+    ) ||
+    lower.includes("on kapruka") ||
+    lower.includes("kapruka")
+  );
+}
+
+/** Two or more categories with explicit product intent → dedicated multi-search handler. */
+export function isMultiCategoryProductSearch(text: string): boolean {
+  return detectSearchCategories(text).length >= 2 && hasProductSearchIntent(text);
+}
+
 /**
- * Multi-category and combo queries should reach the LLM agent loop so it can
- * run targeted searches (or hampers) instead of a single fast-path keyword search.
- *
- * Keep fast-paths for: tracking, checkout, jailbreak, reorder, popular, single
- * clear category, bare "birthday cake under 2000", storefront slug-only browse.
+ * Legacy name — multi-category with product intent uses the multi-search handler;
+ * ambiguous combos (e.g. "flowers or chocolates?") still fall through to the LLM.
  */
 export function shouldBypassSearchFastPath(text: string): boolean {
-  const categories = detectSearchCategories(text);
-  if (categories.length >= 2) return true;
-  if (hasCrossCategoryConjunction(text)) return true;
-
-  // "flowers or chocolates" — user is deciding; LLM can clarify or show both lanes
-  if (/\bor\b/i.test(text) && categories.length === 1) {
-    const parts = text.split(/\bor\b/i);
-    const altCats = parts
-      .map((p) => detectSearchCategories(p))
-      .flat()
-      .filter((c, i, arr) => arr.indexOf(c) === i);
-    if (altCats.length >= 2) return true;
-  }
-
-  return false;
+  if (!isMultiCategoryProductSearch(text)) return false;
+  // Handled by tryHandleMultiCategorySearch — block single-keyword fast-path only.
+  return true;
 }

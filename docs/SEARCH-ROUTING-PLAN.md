@@ -17,7 +17,8 @@ Adding one regex per phrasing is whack-a-mole — every new combo breaks again.
 | Route | When | Handler |
 |-------|------|---------|
 | **Deterministic** | Tracking, checkout, jailbreak, trust, reorder, re-show, popular/sale, single clear category, bare `product + budget`, storefront slug browse | Existing fast-paths |
-| **Agent (LLM + MCP tools)** | 2+ categories detected, `and`/`with`/`plus` cross-category joins, `X or Y` across categories | Groq agent loop |
+| **Multi-search merge** | 2+ categories + send/show/need intent | One MCP search per lane, merged carousel |
+| **Agent (LLM + MCP tools)** | `flowers or chocolates?`, vague disjunction, no product verb | Groq agent loop |
 
 Implementation: `shouldBypassSearchFastPath()` in `lib/kira/search-routing.ts` — returns `false` from search fast-path so the LLM runs targeted searches.
 
