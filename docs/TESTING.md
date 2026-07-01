@@ -94,6 +94,20 @@ npm run test:search-edge        # Group S only (200 combo cases)
 
 Master summary: `test-results/dulith-qa/summary.json`. See `docs/DULITH-QA-PROGRAM.md`.
 
+### Live URL QA (production)
+
+Real users hit `https://kira-peach.vercel.app` — run traps against production before trusting a merge:
+
+```bash
+export KIRA_LIVE_URL=https://kira-peach.vercel.app/api/chat
+npm run test:live-regression     # 10 blocking traps
+npm run test:live-qa:traps       # Dulith plan + traps only
+npm run test:live-qa:smoke       # traps + domain smoke on live
+npm run test:live-qa             # full domain suites on live
+```
+
+GitHub Actions: `.github/workflows/live-regression.yml` (daily + manual). See `docs/LIVE-QA-PLAN.md`.
+
 Results are written to `test-results/persona-results.json`.
 
 `PASS / FAIL / ERR` is intentional: `ERR` means a rate-limit, connection, or fallback response where the model never really ran. Infra `ERR` cases should be re-run before filing a product bug.

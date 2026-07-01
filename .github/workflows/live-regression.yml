@@ -1,0 +1,29 @@
+name: Live regression (production)
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  live-traps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run live regression traps
+        env:
+          KIRA_LIVE_URL: https://kira-peach.vercel.app/api/chat
+        run: node scripts/live-regression.mjs
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-regression-results
+          path: test-results/live-regression.json

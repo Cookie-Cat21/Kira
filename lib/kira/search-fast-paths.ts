@@ -136,17 +136,19 @@ async function tryHandleMultiCategorySearch({
   } else {
     const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
     const cityText = deliveryCityForMessage ? ` to ${deliveryCityForMessage}` : "";
-    const introKey = products.length === 1 ? "searchFoundOne" : "searchFoundMany";
+    const sanitized = filterProductsForSearch(products, trimmed, trimmed, filterContext);
+    const finalProducts = sanitized.length > 0 ? sanitized : products;
+    const introKey = finalProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
     await streamWords(
       controller,
       Lf(introKey, language, {
-        n: products.length,
+        n: finalProducts.length,
         budget: budgetText,
         city: cityText,
         date: effectiveDate ? ` on ${effectiveDate}` : "",
       })
     );
-    controller.enqueue(sse("products", products.slice(0, 6)));
+    controller.enqueue(sse("products", finalProducts.slice(0, 6)));
   }
 
   controller.enqueue(sse("done"));
@@ -186,7 +188,6 @@ export async function tryHandleSearchFastPath({
   if (await tryHandleMultiCategorySearch({
     trimmed,
     filterContext,
-    messages,
     deliveryCity,
     deliveryDate,
     language,

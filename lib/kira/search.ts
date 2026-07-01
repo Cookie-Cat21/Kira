@@ -253,6 +253,14 @@ function productMatchesCategoryKey(
   if (key === "flowers" && !activeCats.includes("cake") && CAKE_INTENT_RE.test(txt)) {
     return false;
   }
+  // In multi-category combos, ribbon/sculpture cakes must not satisfy the flowers lane alone.
+  if (
+    key === "flowers" &&
+    activeCats.length >= 2 &&
+    /\b(ribbon\s+cake|sculpture\s+cake|flower\s+ribbon\s+cake)\b/i.test(txt)
+  ) {
+    return false;
+  }
   return true;
 }
 
