@@ -2,6 +2,7 @@ import { parseRelativeDeliveryDate } from "@/lib/colombo-date";
 import { callMcpTool } from "@/lib/mcp-client";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
 import { L, Lf } from "@/lib/kira/localization";
+import { normalizeUserTypos } from "@/lib/kira/out-of-scope";
 import {
   BAKERY_BRANDS,
   GLOBAL_SHOP_RE,
@@ -25,6 +26,7 @@ import {
   hasCakeSearchIntent,
   hasChocolateSearchIntent,
   parseSearchIntent,
+  parseStorefrontIntent,
   VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
@@ -60,13 +62,89 @@ export async function tryHandleSearchFastPath({
   occasion?: string;
   recipient?: string;
 }): Promise<boolean> {
-  const trimmed = text.trim();
+  const trimmed = normalizeUserTypos(text.trim());
   const lower = trimmed.toLowerCase();
   const filterContext = buildMessageFilterContext(trimmed, messages);
 
   // ── Global Shop (coming soon) ────────────────────────────────────────────
   if (GLOBAL_SHOP_RE.test(lower)) {
     await streamWords(controller, L("globalShopSoon", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Storefront /shop/{slug} — search immediately, no clarifying questions ─
+  const storefrontIntent = parseStorefrontIntent(trimmed);
+  if (storefrontIntent) {
+    const { slug, query, maxPrice } = storefrontIntent;
+    const productCity = extractCityHint(trimmed) ?? deliveryCity;
+    const productDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    const wantsBest = /\bbest\b/i.test(lower);
+    const categoryLabel =
+      slug === "hampers"
+        ? "gift hampers"
+        : slug === "cakes"
+          ? "birthday cakes"
+          : slug === "flowers"
+            ? "flower bouquets"
+            : slug === "kids"
+              ? "soft toys"
+              : slug === "home"
+                ? "home gifts"
+                : slug;
+
+    controller.enqueue(sse("step", `Searching Kapruka for ${query}`));
+    let storefrontProducts: KiraProduct[] = [];
+    for (const q of [query, fallbackQuery(query)].filter((v): v is string => Boolean(v))) {
+      const storefrontResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: 6,
+          in_stock_only: true,
+          ...(maxPrice ? { max_price: maxPrice } : {}),
+          ...(wantsBest ? { sort: "bestseller" as const } : {}),
+          response_format: "json",
+        },
+      });
+      storefrontProducts = dedupeProducts(
+        filterProductsForSearch(
+          extractProductsFromMcp(storefrontResult.content),
+          q,
+          filterContext
+        )
+      );
+      if (storefrontProducts.length >= 3) break;
+    }
+
+    if (productCity && storefrontProducts[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: productCity,
+          product_id: storefrontProducts[0].id,
+          ...(productDate ? { delivery_date: productDate } : {}),
+          response_format: "json",
+        },
+      });
+      const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+      if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+    }
+
+    const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
+    const cityText = productCity ? ` to ${productCity}` : "";
+    if (storefrontProducts.length === 0) {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: categoryLabel }));
+    } else {
+      await streamWords(
+        controller,
+        Lf("storefrontSearchIntro", language, {
+          category: categoryLabel,
+          budget: budgetText,
+          city: cityText,
+        })
+      );
+      controller.enqueue(sse("products", storefrontProducts));
+    }
     controller.enqueue(sse("done"));
     return true;
   }
@@ -207,11 +285,19 @@ export async function tryHandleSearchFastPath({
     /\bto\s+(my\s+)?(wife|husband|her|him|gf|girlfriend|boyfriend|partner|office|home)\b/i.test(
       lower
     ) || /\bdeliver(?:y)?\s+to\b/i.test(lower);
+  const hasProductAndCity = !!simpleProductQuery && !!extractCityHint(trimmed);
+  const hasProductForRecipient =
+    !!simpleProductQuery &&
+    /\bfor\s+(?:my\s+)?(amma|mum|mom|dad|thaththa|wife|husband|friend|girlfriend|boyfriend|partner|her|him|daughter|son)\b/i.test(
+      lower
+    );
   const hasSimpleProductIntent =
     !!simpleProductQuery &&
     !(cart.length > 0 && hasPhone && (hasAddress || hasOrderCity) && /\b(place|order|recipient|deliver|gift message|address)\b/i.test(lower)) &&
     (/\b(show|search|want|need|looking for|send|buy|get|order|deliver)\b/i.test(lower) ||
       hasDeliveryToRecipient ||
+      hasProductAndCity ||
+      hasProductForRecipient ||
       /[\u0D80-\u0DFF\u0B80-\u0BFF]/.test(trimmed) ||
       /\b(vesak|birthday|anniversary)\b/i.test(lower) ||
       trimmed.toLowerCase() === simpleProductQuery ||
@@ -582,7 +668,7 @@ export async function tryHandleSearchFastPath({
     if (popularProducts.length === 0) {
       await streamWords(controller, "Nothing jumping out as a bestseller right now — want me to search a specific category?");
     } else {
-      await streamWords(controller, `Here are Kapruka's top picks right now — all in stock. 🛍️`);
+      await streamWords(controller, `Machang, pulled Kapruka's top sellers — all in stock right now. 🛍️`);
       controller.enqueue(sse("products", popularProducts));
     }
     controller.enqueue(sse("done"));

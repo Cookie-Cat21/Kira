@@ -71,7 +71,7 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
 
 /** Single grocery items / brand pages — not curated hampers. Test name+summary only (not category). */
 export const HAMPER_JUNK_RE =
-  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka)\b/i;
+  /\b(body\s*soap|bar\s*soap|cleanser|king\s*coconut|thambili|\bcoconut\b|lifebuoy|pvt\s*ltd|shop all products from|\/partner\/|brand\s*:\s*kapruka|pen\s*set|pen\s*gift|executive\s*pen|journal|stationery)\b/i;
 
 /** Standalone biscuit SKUs miscategorized because the category slug says "hamper". */
 export const HAMPER_STANDALONE_JUNK_RE = /\bconfectionery and biscuits\b/i;
@@ -153,7 +153,7 @@ export const BAKERY_BRANDS: Record<string, string> = {
 };
 
 export const REORDER_SESSION_RE =
-  /\b(order again|buy again|same as last|same thing|what i had|repeat order|reorder)\b/i;
+  /\b(order again|buy again|same as last|same thing|what i had|repeat order|repeat (?:my |the )?last order|reorder please|reorder)\b/i;
 export const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
 // Matches relationship-repair scenarios in EITHER word order — "wife is mad" and
 // "got drunk, wife is upset" both fire. "sorry"/"fix" were dropped: too broad
@@ -359,33 +359,74 @@ export async function fetchFreshMoreProducts({
   return freshPool;
 }
 
+/** Single bestseller search — fallback when rotated "more options" pool is empty. */
+export async function fetchBaselineSearchProducts({
+  mcpClient,
+  query,
+  maxPrice,
+  onStep,
+  filterContext,
+}: {
+  mcpClient: Client;
+  query: string;
+  maxPrice?: number;
+  onStep?: (label: string) => void;
+  filterContext?: string;
+}): Promise<KiraProduct[]> {
+  onStep?.(`Searching Kapruka for "${query}"`);
+  const result = await callMcpTool(mcpClient, "kapruka_search_products", {
+    params: {
+      q: query,
+      limit: 6,
+      in_stock_only: true,
+      sort: "bestseller",
+      ...(maxPrice ? { max_price: maxPrice } : {}),
+      response_format: "json",
+    },
+  });
+  return dedupeProducts(
+    filterProductsForSearch(
+      extractProductsFromMcp(result.content),
+      query,
+      filterContext ?? query
+    )
+  );
+}
+
 export function cartItemsToProducts(items: CartItem[]): KiraProduct[] {
   return items.map((item) => item.product);
 }
 
 export function extractProductKeyword(lower: string): string | null {
-  if (/\bcake\b/.test(lower)) return "cake";
-  if (/\bflower|\brose|\bbouquet/.test(lower)) return "flowers";
-  if (/\blilies?\b/.test(lower)) return "flowers";
-  if (/\borchids?\b/.test(lower)) return "flowers";
-  if (/\bchocolat/.test(lower)) return "chocolate";
-  if (/\bhamper\b/.test(lower)) return "gift hamper";
-  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(lower)) return "electronics";
-  if (/\bphones?\b/.test(lower)) {
+  const text = lower
+    .replace(/\bflwoers\b/gi, "flowers")
+    .replace(/\bbirtday\b/gi, "birthday")
+    .replace(/\bcolmbo\b/gi, "colombo")
+    .replace(/\btomoro\b/gi, "tomorrow")
+    .replace(/\bchoclate\b/gi, "chocolate")
+    .replace(/\bbouqet\b/gi, "bouquet");
+  if (/\bcake\b/.test(text)) return "cake";
+  if (/\bflower|\brose|\bbouquet/.test(text)) return "flowers";
+  if (/\blilies?\b/.test(text)) return "flowers";
+  if (/\borchids?\b/.test(text)) return "flowers";
+  if (/\bchocolat/.test(text)) return "chocolate";
+  if (/\bhamper\b/.test(text)) return "gift hamper";
+  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(text)) return "electronics";
+  if (/\bphones?\b/.test(text)) {
     if (
       /\b(my phone|phone is|phone number|recipient phone|contact number|your phone|phone\s*[:=]?\s*(?:\+?94|0)\d)/i.test(
-        lower
+        text
       )
     ) {
       return null;
     }
     return "electronics";
   }
-  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(lower)) return "clothing";
-  if (/\bgrocery\b/.test(lower)) return "grocery";
-  if (/\btoy\b|\bteddy\b/.test(lower)) return "soft toy";
-  if (/\bsweet\b/.test(lower)) return "chocolate";
-  if (/\bgift\b/.test(lower)) return "gift set";
+  if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(text)) return "clothing";
+  if (/\bgrocery\b/.test(text)) return "grocery";
+  if (/\btoy\b|\bteddy\b/.test(text)) return "soft toy";
+  if (/\bsweet\b/.test(text)) return "chocolate";
+  if (/\bgift\b/.test(text)) return "gift set";
   return null;
 }
 
@@ -429,6 +470,62 @@ export async function productsFromTrackingItems(
   return dedupeProducts(products);
 }
 
+/** Store category slugs from `/shop/{slug}` → Kapruka search query. */
+export const STOREFRONT_CATEGORY_SLUGS: Record<string, string> = {
+  hampers: "gift hamper",
+  flowers: "flowers",
+  cakes: "cake",
+  chocolates: "chocolate",
+  electronics: "electronics",
+  grocery: "grocery",
+  kids: "soft toy",
+  home: "home lifestyle",
+};
+
+const SHOP_CONTEXT_RE =
+  /\b(shop|storefront|shop page|\/shop\/|shop\/|category|browsing|comparing)\b/i;
+
+const STOREFRONT_SLUG_ALIASES: [RegExp, string][] = [
+  [/gift hampers?|\bhampers\b/, "hampers"],
+  [/flower bouquets?|\bbouquets?\b|\bflowers?\b/, "flowers"],
+  [/birthday cakes?|\bcakes?\b/, "cakes"],
+  [/\bchocolates?\b/, "chocolates"],
+  [/phone accessories|\belectronics?\b/, "electronics"],
+  [/\bgrocery\b/, "grocery"],
+  [/soft toys?|\bkids\b/, "kids"],
+  [/\bhome\b/, "home"],
+];
+
+function slugFromShopText(lower: string): string | null {
+  const pathSlug = lower.match(/(?:\/shop\/|shop\/)([a-z]+)/)?.[1];
+  if (pathSlug && STOREFRONT_CATEGORY_SLUGS[pathSlug]) return pathSlug;
+
+  const hasShopContext =
+    SHOP_CONTEXT_RE.test(lower) ||
+    /\b(on your shop page|in the shop|on the storefront)\b/.test(lower);
+
+  if (!hasShopContext) return null;
+
+  for (const [re, slug] of STOREFRONT_SLUG_ALIASES) {
+    if (re.test(lower)) return slug;
+  }
+  return null;
+}
+
+/** User was browsing the storefront — search immediately, don't ask clarifying questions. */
+export function parseStorefrontIntent(
+  text: string
+): { slug: string; query: string; maxPrice?: number } | null {
+  const lower = text.toLowerCase().trim();
+  const slug = slugFromShopText(lower);
+  if (!slug) return null;
+  const query = STOREFRONT_CATEGORY_SLUGS[slug];
+  if (!query) return null;
+  const priceMatch = lower.match(/\b(?:under|below|max|budget)\s+(?:lkr\s*)?([\d,]+)/);
+  const maxPrice = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined;
+  return { slug, query, maxPrice };
+}
+
 export function parseSearchIntent(text: string):
   | {
       query: string;
@@ -442,8 +539,21 @@ export function parseSearchIntent(text: string):
     lower.includes("show me") ||
     lower.includes("search") ||
     lower.includes("catalog") ||
-    lower.includes("kapruka");
+    lower.includes("kapruka") ||
+    lower.includes("live stock");
   if (!isSearchy) return null;
+
+  const bestMatch = lower.match(/show me (?:the )?best (.+?) on kapruka/);
+  if (bestMatch?.[1]) {
+    const query = normalizeProductQuery(bestMatch[1].trim());
+    if (query.length >= 3) {
+      const priceMatch = lower.match(/\b(?:under|below|max|maximum)\s+(?:lkr\s*)?([\d,]+)/);
+      return {
+        query,
+        maxPrice: priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined,
+      };
+    }
+  }
 
   // Referential messages ("show me those", "can u show me them as pictures") are
   // handled by the re-show fast-path — don't treat them as new searches.

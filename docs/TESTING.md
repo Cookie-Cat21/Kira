@@ -41,23 +41,37 @@ Results are written to `test-results/results.json`.
 
 ## Persona Suite
 
-`scripts/test-personas.mjs` runs 165 judge-style personas:
+`scripts/test-personas.mjs` runs **502** judge-style personas (A–G curated + H–M generated):
 
 - **Group A (25)** — vague or indirect gift prompts.
 - **Group B (25)** — out-of-scope prompts.
 - **Group C (25)** — transactional flows: search, delivery, checkout, tracking, browse, sort, spelling correction.
 - **Group D (12)** — Sinhala/Tamil/language-mode prompts.
 - **Group E (13)** — adversarial and edge prompts.
-- **Group F (20)** — judge-path regressions: fake-card removal, editable delivery date, MCP city aliases, COD questions, checkout validation, gift-message readback, multi-item checkout, perishable warnings, wrong-localhost guard, and Sinhala demos.
-- **Group G (45)** — founder/friend delivery: angry-partner repair, send-to-recipient, gift messages, city/address orders, anti-hand-deliver guard.
+- **Group F (24)** — judge-path regressions.
+- **Group G (45)** — founder/friend delivery.
+- **Groups H–M (335)** — storefront, multilingual depth, checkout E2E, reorder, messy inputs, CEO gold paths.
 
 ```bash
-node scripts/test-personas.mjs                      # all 165
-node scripts/test-personas.mjs --group g            # founder/friend delivery (45)
-node scripts/test-personas.mjs --group f            # one group (a|b|c|d|e|f)
-node scripts/test-personas.mjs --id C20,F07         # specific personas
-node scripts/test-personas.mjs --concurrency 1      # explicit default
+node scripts/generate-personas.mjs                # refresh H–M from templates
+node scripts/test-personas.mjs                      # all 502
+node scripts/test-personas.mjs --group m            # CEO gold paths
+node scripts/test-personas.mjs --id C20,F07,M12     # specific IDs
+node scripts/test-personas.mjs --concurrency 1      # explicit default (required on Groq free tier)
 ```
+
+### CEO 500 gate (target ≥90% persona + CEO score)
+
+```bash
+npx next dev --port 3107
+export KIRA_API_URL=http://localhost:3107/api/chat
+npm run test:ceo-smoke          # 50-persona smoke batch
+npm run test:ceo-500            # full 502 run
+node scripts/ceo-500-orchestrator.mjs --shard 1/5  # parallel shards
+node scripts/ceo-score-all.mjs --from test-results/ceo-500/results.json --llm --below 90
+```
+
+Results: `test-results/ceo-500/summary.json`, `triage.json` (failure clusters for fix loop).
 
 Results are written to `test-results/persona-results.json`.
 

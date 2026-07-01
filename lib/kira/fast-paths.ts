@@ -8,6 +8,7 @@ import {
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
 import { handleCheckoutFillIn, isCheckoutFillInTurn } from "@/lib/kira/checkout-flow";
+import { isOutOfScopePrompt } from "@/lib/kira/out-of-scope";
 import { tryHandleSearchFastPath } from "@/lib/kira/search-fast-paths";
 import { L, Lf } from "@/lib/kira/localization";
 import {
@@ -18,7 +19,9 @@ import {
   extractCityHint,
   extractLastSearchContext,
   extractOrderNumber,
+  extractProductKeyword,
   buildMessageFilterContext,
+  fetchBaselineSearchProducts,
   fetchFreshMoreProducts,
   filterFamilySafeProducts,
   filterProductsForSearch,
@@ -125,6 +128,31 @@ export async function tryHandleDeterministicPrompt({
   const TRUST_RE = /\b(is\s+(kapruka|this|it)(\s+\w+){0,3}\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
   if (TRUST_RE.test(lower)) {
     await streamWords(controller, L("trustAffirmation", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Out-of-scope — warm redirect, zero tools ─────────────────────────────
+  if (isOutOfScopePrompt(trimmed)) {
+    await streamWords(controller, L("outOfScopeRedirect", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── COD / payment policy — zero tools ────────────────────────────────────
+  const COD_RE =
+    /\b(cash\s+on\s+delivery|\bcod\b|pay\s+cash|cash\s+payment|can\s+i\s+pay\s+cash)\b/i;
+  if (COD_RE.test(lower)) {
+    await streamWords(controller, L("codPolicy", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Same-day / cut-off delivery policy — zero tools ──────────────────────
+  const DELIVERY_POLICY_RE =
+    /\b(cut[- ]?off|same[- ]day|how (?:fast|soon)|when do you (?:deliver|stop)|delivery (?:time|window|hours|cutoff))\b/i;
+  if (DELIVERY_POLICY_RE.test(lower) && !extractProductKeyword(lower)) {
+    await streamWords(controller, L("deliveryPolicy", language));
     controller.enqueue(sse("done"));
     return true;
   }
@@ -376,10 +404,11 @@ export async function tryHandleDeterministicPrompt({
   }
 
   // ── Checkout triggers ────────────────────────────────────────────────────
-  if (lower.includes("ready to checkout") || lower.includes("complete the order")) {
-    const message = cart.length === 0
-      ? L("checkoutEmptyCart", language)
-      : L("checkoutNeedName", language);
+  const CHECKOUT_INTENT_RE =
+    /\b(ready to checkout|complete the order|checkout now|want to checkout|place my order|create checkout link|proceed to payment)\b/i;
+  if (CHECKOUT_INTENT_RE.test(lower)) {
+    const message =
+      cart.length === 0 ? L("checkoutEmptyCart", language) : L("checkoutNeedName", language);
     await streamWords(controller, message);
     controller.enqueue(sse("done"));
     return true;
@@ -429,15 +458,25 @@ export async function tryHandleDeterministicPrompt({
 
   if (isPureMoreRequest) {
     const ctx = extractLastSearchContext(messages, trimmed);
+    const filterContext = buildMessageFilterContext(trimmed, messages);
     const excludeIds = productIds(shownProducts ?? lastProducts);
-    const moreProducts = await fetchFreshMoreProducts({
+    let moreProducts = await fetchFreshMoreProducts({
       mcpClient,
       query: ctx.query,
       maxPrice: ctx.maxPrice,
       excludeIds,
-      filterContext: buildMessageFilterContext(trimmed, messages),
+      filterContext,
       onStep: (label) => controller.enqueue(sse("step", label)),
     });
+    if (moreProducts.length === 0 && excludeIds.size === 0) {
+      moreProducts = await fetchBaselineSearchProducts({
+        mcpClient,
+        query: ctx.query,
+        maxPrice: ctx.maxPrice,
+        filterContext,
+        onStep: (label) => controller.enqueue(sse("step", label)),
+      });
+    }
     if (moreProducts.length === 0) {
       await streamWords(
         controller,

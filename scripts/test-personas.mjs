@@ -1,6 +1,6 @@
 /**
  * test-personas.mjs
- * Runs 165 persona test cases against POST /api/chat and prints a pass/fail table.
+ * Runs 500 persona test cases against POST /api/chat and prints a pass/fail table.
  *
  * Groups:
  *   A (25) — vague / indirect gift messages        → must ask, never "nothing found"
@@ -8,8 +8,9 @@
  *   C (25) — feature / transactional flows          → search, delivery, checkout, tracking, browse
  *   D (12) — multilingual (si / ta / romanized)     → output-language gating
  *   E (13) — adversarial / robustness / edge        → injection, gibberish, long input, mixed scripts
- *   F (20) — regression / judge paths: checkout handoff, delivery date, city aliases, Sinhala demos
- *   G (45) — founder / friend / delivery repair       → angry-partner flowers, Kapruka send-not-hand-deliver
+ *   F (24) — regression / judge paths
+ *   G (45) — founder / friend / delivery repair
+ *   H–M (335) — generated: storefront, multilingual, checkout, reorder, messy, CEO gold
  *
  * Usage:
  *   node scripts/test-personas.mjs                       # all 165
@@ -27,7 +28,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { runCheck } from "./evaluate.mjs";
-import { scoreCeoLens } from "./ceo-lens.mjs";
+import { scoreCeoLens, ceoScorePercent, ceoPassAt90 } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
@@ -311,7 +312,30 @@ const GROUP_G = [
   { id: "G45", msg: "she's mad at me for coming home late send flowers don't tell me to hand deliver", checks: ["products", ["text", /deliver|send|flowers|her|kapruka/i], ["noText", /hand.?deliver|pick up yourself|dodging the conversation|go see her/i]], note: "Explicit anti-hand-deliver guard" },
 ];
 
-const GROUPS = { A: GROUP_A, B: GROUP_B, C: GROUP_C, D: GROUP_D, E: GROUP_E, F: GROUP_F, G: GROUP_G };
+import {
+  GROUP_H,
+  GROUP_I,
+  GROUP_J,
+  GROUP_K,
+  GROUP_L,
+  GROUP_M,
+} from "./personas/generated-groups.mjs";
+
+const GROUPS = {
+  A: GROUP_A,
+  B: GROUP_B,
+  C: GROUP_C,
+  D: GROUP_D,
+  E: GROUP_E,
+  F: GROUP_F,
+  G: GROUP_G,
+  H: GROUP_H,
+  I: GROUP_I,
+  J: GROUP_J,
+  K: GROUP_K,
+  L: GROUP_L,
+  M: GROUP_M,
+};
 
 // --- Generic check tokens (Groups C / D / E) ---
 function productsOf(events) {
@@ -391,10 +415,19 @@ function applyToken(token, arg, events, text) {
     }
     case "noTools":
       return { pass: toolStepCount(events) === 0, reason: `Called ${toolStepCount(events)} tool(s); should redirect with none` };
-    case "text":
-      return { pass: arg.test(text), reason: `Response did not match ${arg}` };
-    case "noText":
-      return { pass: !arg.test(text), reason: `Response unexpectedly matched ${arg}` };
+    case "noToolLeak":
+      return {
+        pass: !/<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i.test(text),
+        reason: "Tool markup leaked into visible reply",
+      };
+    case "text": {
+      const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
+      return { pass: re.test(text), reason: `Response did not match ${re}` };
+    }
+    case "noText": {
+      const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
+      return { pass: !re.test(text), reason: `Response unexpectedly matched ${re}` };
+    }
     case "lang":
       return { pass: SCRIPT_RANGES[arg].test(text), reason: `Expected ${arg} Unicode in response` };
     case "noLang":
@@ -537,6 +570,12 @@ const GROUP_LABELS = {
   A: "Vague / Indirect", B: "Out-of-Scope", C: "Feature / Transactional",
   D: "Multilingual", E: "Adversarial / Edge", F: "Regression / Judge Path",
   G: "Founder / Friend / Delivery",
+  H: "Storefront ↔ Chat",
+  I: "Multilingual Depth",
+  J: "Checkout E2E",
+  K: "Reorder / Memory",
+  L: "Messy / Adversarial",
+  M: "CEO Gold Paths",
 };
 const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white, G: c.green };
 
@@ -584,7 +623,7 @@ async function main() {
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
   const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : RESULTS_PATH;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
-  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite - 165 personas${c.reset}`);
+  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite — 502 personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
   if (concurrency > 1) console.log(`${c.yellow}! concurrency > 1 on Groq free tier causes rate-limit fallbacks (scored as ERR).${c.reset}`);
   await assertDevServerAvailable();
@@ -614,7 +653,7 @@ async function main() {
   printProgress();
   const runs = await runWithConcurrency(tasks, concurrency);
   process.stdout.write("\n");
-  for (const g of ["A", "B", "C", "D", "E", "F", "G"]) {
+  for (const g of ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]) {
     const groupRuns = runs.filter((r) => r._group === g);
     if (groupRuns.length) printGroupResults(g, groupRuns);
   }
@@ -636,7 +675,13 @@ async function main() {
     toolCalls: r.evaluation.toolCalls ?? 0,
     response: r.result?.responseText?.slice(0, 300) ?? "",
     ...(r.evaluation.founderLens ? { founderLens: r.evaluation.founderLens } : {}),
-    ...(r.evaluation.ceoLens ? { ceoLens: r.evaluation.ceoLens } : {}),
+    ...(r.evaluation.ceoLens
+      ? {
+          ceoLens: r.evaluation.ceoLens,
+          ceoScore: ceoScorePercent(r.evaluation.ceoLens),
+          ceoPass90: ceoPassAt90(r.evaluation.ceoLens) && r.evaluation.passed,
+        }
+      : {}),
   }));
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(jsonOut, null, 2)}\n`);

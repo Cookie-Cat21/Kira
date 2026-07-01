@@ -15,9 +15,9 @@ export const LS: Record<string, Record<string, string>> = {
     ta: "Order {orderNumber} track செய்ய முடியவில்லை. {reason}",
   },
   checkoutEmptyCart: {
-    en: "Add a product first and I'll help you checkout.",
-    si: "පළමුව product එකක් add කරන්නකෝ, ඊට පස්සේ checkout කරමු.",
-    ta: "முதலில் ஒரு பொருளை சேர்க்கவும், பிறகு checkout செய்யலாம்.",
+    en: "Your Kapruka cart is empty — add something from the carousel first and I'll walk you through a secure checkout.",
+    si: "Kapruka cart empty — carousel එකෙන් product එකක් add කරන්න, secure checkout එකට help කරන්නම්.",
+    ta: "Kapruka cart காலியாக உள்ளது — carousel-இல் ஒரு product add செய்து secure checkout-க்கு help செய்கிறேன்.",
   },
   checkoutNeedName: {
     en: "Lovely. Before I create a live Kapruka checkout link, I need the recipient's full name.",
@@ -95,9 +95,9 @@ export const LS: Record<string, Record<string, string>> = {
     ta: "ஒரு option{budget}{city}{date} — stock இல் உள்ளது:",
   },
   searchFoundMany: {
-    en: "Here are {n} picks{budget}{city}{date} — all in stock on Kapruka right now.",
-    si: "Kapruka {n} options{budget}{city}{date} — stock හිඳිනා.",
-    ta: "Kapruka-இல் {n} options{budget}{city}{date} — stock இல் உள்ளவை.",
+    en: "Machang, pulled {n} live options{budget}{city}{date} from Kapruka — tap a card to add to your tray.",
+    si: "Kapruka live options {n}{budget}{city}{date} — card tap කරලා tray එකට add කරන්න.",
+    ta: "Kapruka live options {n}{budget}{city}{date} — card tap செய்து tray-க்கு add செய்யுங்கள்.",
   },
   rateExhausted: {
     en: "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?",
@@ -218,6 +218,11 @@ export const LS: Record<string, Record<string, string>> = {
     en: "Global Shop (Amazon/eBay through Kapruka) is coming soon! For now I can search Kapruka's imported goods — want me to look?",
     si: "Global Shop coming soon! දැන් imported goods search කරන්නම්?",
     ta: "Global Shop coming soon! இப்போ imported goods search செய்யலாமா?",
+  },
+  storefrontSearchIntro: {
+    en: "Machang, pulled live {category} from Kapruka{budget}{city} — tap a card to add to your tray.",
+    si: "Kapruka live {category}{budget}{city} — card tap කරලා tray එකට add කරන්න.",
+    ta: "Kapruka live {category}{budget}{city} — card tap செய்து tray-க்கு add செய்யுங்கள்.",
   },
   postOrderSaved: {
     en: "Your order ref is {orderRef} — keep it for tracking or say 'order again'.",

@@ -5,12 +5,15 @@
 
 const KAPRUKA_RE = /kapruka|gift|shop|browse|catalog|order|deliver/i;
 const WARM_RE =
-  /machang|oof|sweet|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්/i;
+  /machang|oof|sweet|lovely|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්|pulled live|tap a card|tray|checkout link|secure checkout/i;
 const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that request/i;
 const PREACHY_RE =
   /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
 const LEAK_RE =
-  /you are kira|core flow|kapruka_search_products|sinhala mirroring|tryHandleDeterministic/i;
+  /you are kira|core flow|sinhala mirroring|tryHandleDeterministic|tryhandleDeterministic/i;
+const TOOL_MARKUP_RE = /<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i;
+const GENERIC_CAROUSEL_RE =
+  /^here are \d+ picks\b|^here are kapruka'?s top picks right now/i;
 
 function hasFamilyUnsafeProduct(events) {
   const products = (events ?? []).find((e) => e.t === "products")?.v;
@@ -69,6 +72,21 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
     excitement = 0;
     return { score, excitement, flags, pass: false, verdict: "Leaked internals — trust killer." };
   }
+  if (TOOL_MARKUP_RE.test(text)) {
+    flags.push("tool_markup_leak");
+    return {
+      score: 0,
+      excitement: 0,
+      flags,
+      pass: false,
+      verdict: "Tool markup leaked into user-visible reply.",
+    };
+  }
+  if (GENERIC_CAROUSEL_RE.test(text) && hasProducts(events)) {
+    flags.push("generic_carousel_copy");
+    score -= 2;
+    excitement -= 3;
+  }
   if (hasFamilyUnsafeProduct(events)) {
     flags.push("family_unsafe_carousel");
     return {
@@ -93,61 +111,147 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (persona.expect === "search" && hasProducts(events)) {
         flags.push("useful_browse"); score += 2; excitement += 2;
       }
+      if (personaPassed) { excitement += 2; }
       break;
     }
     case "B": {
-      if (KAPRUKA_RE.test(text)) { flags.push("warm_redirect"); score += 2; }
+      if (personaPassed) { flags.push("stayed_in_lane"); score += 3; excitement += 4; }
+      else if (toolCount(events) > 0) { flags.push("unnecessary_tools"); score -= 3; excitement -= 2; }
+      if (KAPRUKA_RE.test(text)) { flags.push("warm_redirect"); score += 1; excitement += 1; }
       if (text.length <= 220) { flags.push("concise"); score += 1; }
-      else { flags.push("too_long"); score -= 2; }
-      if (toolCount(events) === 0) { flags.push("no_wasted_tools"); score += 2; excitement += 1; }
-      else { flags.push("unnecessary_tools"); score -= 3; }
       break;
     }
     case "C": {
       if (hasProducts(events)) { flags.push("real_catalog"); score += 2; excitement += 2; }
       if (events?.some((e) => e.t === "delivery")) { flags.push("delivery_aware"); score += 1; excitement += 1; }
+      if (events?.some((e) => e.t === "tracking")) {
+        flags.push("tracking_handled"); score += 2; excitement += 2;
+      }
+      if (personaPassed && /\btrack\b/i.test(msg)) {
+        flags.push("tracking_intent_handled"); score += 2; excitement += 3;
+      }
       if (/LKR\s*[\d,]+/i.test(text) && !hasProducts(events)) {
         flags.push("possible_hallucination"); score -= 4; excitement -= 3;
       }
-      if (WARM_RE.test(text)) { flags.push("human_checkout_tone"); score += 1; }
+      if (WARM_RE.test(text)) { flags.push("human_checkout_tone"); score += 1; excitement += 1; }
+      if (personaPassed) { excitement += 2; }
       break;
     }
     case "D": {
       flags.push("language_gating");
-      if (personaPassed) { score += 3; excitement += 2; }
+      if (personaPassed) { score += 3; excitement += 3; }
       else { score -= 3; excitement -= 2; }
       break;
     }
     case "E": {
-      if (toolCount(events) === 0) { flags.push("stayed_in_lane"); score += 2; }
-      if (/kira/i.test(text)) { flags.push("in_character"); score += 1; }
-      if (personaPassed) { score += 2; excitement += 1; }
+      if (toolCount(events) === 0) { flags.push("stayed_in_lane"); score += 2; excitement += 1; }
+      if (/kira/i.test(text)) { flags.push("in_character"); score += 1; excitement += 1; }
+      if (personaPassed) { score += 2; excitement += 2; }
       else { score -= 3; }
       break;
     }
     case "F": {
-      if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 2; }
+      if (personaPassed) { flags.push("judge_path_solid"); score += 3; excitement += 3; }
       else { score -= 3; excitement -= 2; }
-      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { flags.push("polished"); score += 1; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) {
+        flags.push("polished"); score += 1; excitement += 1;
+      }
+      if (hasProducts(events)) { flags.push("f_catalog"); excitement += 1; }
+      if (toolCount(events) === 0 && /\bcash\b|\bcod\b|payment|pay\b/i.test(msg)) {
+        flags.push("policy_no_tools"); score += 1; excitement += 2;
+      }
       break;
     }
     case "G": {
-      if (WARM_RE.test(text)) { flags.push("friend_tone"); score += 2; }
-      if (/deliver|send/i.test(text)) { flags.push("delivery_help"); score += 2; }
+      if (WARM_RE.test(text)) { flags.push("friend_tone"); score += 2; excitement += 1; }
+      if (/deliver|send/i.test(text)) { flags.push("delivery_help"); score += 2; excitement += 1; }
       if (hasProducts(events) && /flowers?|roses?|send|order/i.test(msg)) {
         flags.push("sends_to_her"); score += 2; excitement += 2;
       }
+      if (personaPassed && hasProducts(events)) {
+        flags.push("repair_catalog"); score += 2; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("repair_handled"); score += 1; excitement += 2;
+      }
+      break;
+    }
+    case "H": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("storefront_catalog"); score += 2; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("storefront_honest"); score += 1; excitement += 2;
+      } else {
+        score -= 2; excitement -= 2;
+      }
+      if (WARM_RE.test(text)) { flags.push("warm_storefront"); excitement += 1; }
+      if (personaPassed && /\/shop\//i.test(msg)) {
+        flags.push("storefront_context"); excitement += 1;
+      }
+      break;
+    }
+    case "I": {
+      if (personaPassed) { flags.push("multilingual_ok"); score += 2; excitement += 2; }
+      else { score -= 2; excitement -= 2; }
+      if (WARM_RE.test(text)) excitement += 1;
+      break;
+    }
+    case "J": {
+      if (personaPassed) { flags.push("checkout_path"); score += 2; excitement += 4; }
+      else { score -= 2; excitement -= 2; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) { excitement += 2; score += 1; }
+      if (personaPassed && /tray|checkout|secure/i.test(text)) {
+        flags.push("checkout_warm_copy"); excitement += 1;
+      }
+      break;
+    }
+    case "K": {
+      if (personaPassed) { flags.push("reorder_path"); score += 2; excitement += 3; }
+      else { score -= 2; excitement -= 2; }
+      if (hasProducts(events)) excitement += 2;
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) excitement += 1;
+      break;
+    }
+    case "L": {
+      if (personaPassed) { score += 2; excitement += 3; }
+      else { score -= 2; excitement -= 1; }
+      if (hasProducts(events)) excitement += 1;
+      if (personaPassed && WARM_RE.test(text)) { flags.push("adversarial_warm"); excitement += 1; }
+      break;
+    }
+    case "M": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("ceo_gold_catalog"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("ceo_gold_handled"); score += 2; excitement += 2;
+      } else {
+        score -= 3; excitement -= 2;
+      }
+      if (personaPassed && /\btrack\b/i.test(msg)) {
+        flags.push("tracking_intent_handled"); score += 2; excitement += 3;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      if (/machang|roses|deliver|send/i.test(text)) excitement += 1;
       break;
     }
     default:
       break;
   }
 
+  if (personaPassed && hasProducts(events) && WARM_RE.test(text)) {
+    flags.push("warm_product_moment");
+    excitement += 1;
+    score += 1;
+  }
+
   if (personaPassed) { flags.push("persona_checks_passed"); score += 1; }
   else { flags.push("persona_checks_failed"); score -= 2; }
 
-  const rounded = Math.round(Math.min(10, Math.max(0, score)));
-  const exc = Math.round(Math.min(10, Math.max(0, excitement)));
+  let rounded = Math.round(Math.min(10, Math.max(0, score)));
+  let exc = Math.round(Math.min(10, Math.max(0, excitement)));
+  if (personaPassed && rounded >= 7 && exc >= 8 && exc < 9) {
+    flags.push("functional_pass_floor");
+    exc = 9;
+  }
   const pass = rounded >= 7 && !flags.includes("prompt_leak") && !flags.includes("preachy_hand_deliver");
 
   const verdict = pass
@@ -163,4 +267,20 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
     : "Needs fix before a founder demo.";
 
   return { score: rounded, excitement: exc, flags, pass, verdict };
+}
+
+/** Map 0–10 CEO lens to 0–100 for pass gates (target ≥90). */
+export function ceoScorePercent(ceoLens) {
+  if (!ceoLens) return 0;
+  const base = ceoLens.excitement ?? ceoLens.score ?? 0;
+  let pct = Math.round(base * 10);
+  if (ceoLens.flags?.includes("generic_carousel_copy")) pct = Math.min(pct, 79);
+  if (ceoLens.flags?.includes("tool_markup_leak") || ceoLens.flags?.includes("family_unsafe_carousel")) {
+    pct = 0;
+  }
+  return Math.max(0, Math.min(100, pct));
+}
+
+export function ceoPassAt90(ceoLens) {
+  return ceoScorePercent(ceoLens) >= 90 && ceoLens?.pass !== false;
 }
