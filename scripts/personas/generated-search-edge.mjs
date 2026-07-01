@@ -1545,8 +1545,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers and chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "flowers and chocolates for anniversary",
+    "note": "Phrase combo: flowers and chocolates for anniversary"
   },
   {
     "id": "S130",
@@ -1557,8 +1557,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers with chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "birthday cake and roses",
+    "note": "Phrase combo: birthday cake and roses"
   },
   {
     "id": "S131",
@@ -1569,8 +1569,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "flowers and chocolates on Kapruka",
-    "note": "Combo: flowers+chocolates"
+    "msg": "chocolates with flowers",
+    "note": "Phrase combo: chocolates with flowers"
   },
   {
     "id": "S132",
@@ -1581,8 +1581,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers and chocolates on Kapruka",
-    "note": "Combo: flowers+chocolates"
+    "msg": "flowers with chocolate",
+    "note": "Phrase combo: flowers with chocolate"
   },
   {
     "id": "S133",
@@ -1593,8 +1593,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want flowers and chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "chocolate and flower bouquet",
+    "note": "Phrase combo: chocolate and flower bouquet"
   },
   {
     "id": "S134",
@@ -1605,8 +1605,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need flowers plus chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "send flowers and chocolates",
+    "note": "Phrase combo: send flowers and chocolates"
   },
   {
     "id": "S135",
@@ -1617,8 +1617,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "flowers & chocolates please",
-    "note": "Combo: flowers+chocolates"
+    "msg": "need roses plus chocolates",
+    "note": "Phrase combo: need roses plus chocolates"
   },
   {
     "id": "S136",
@@ -1629,8 +1629,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse flowers and chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "show me flowers & chocolates",
+    "note": "Phrase combo: show me flowers & chocolates"
   },
   {
     "id": "S137",
@@ -1641,8 +1641,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers, chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "show me flowers on Kapruka",
+    "note": "Single flowers control"
   },
   {
     "id": "S138",
@@ -1653,8 +1653,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for flowers and chocolates",
-    "note": "Combo: flowers+chocolates"
+    "msg": "show me flowers to Colombo on Kapruka",
+    "note": "Single flowers control + Colombo"
   },
   {
     "id": "S139",
@@ -1665,8 +1665,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me birthday cake and and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me flowers to Kandy on Kapruka",
+    "note": "Single flowers control + Kandy"
   },
   {
     "id": "S140",
@@ -1677,8 +1677,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me birthday cake with and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me flowers to Galle on Kapruka",
+    "note": "Single flowers control + Galle"
   },
   {
     "id": "S141",
@@ -1689,8 +1689,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "birthday cake and and roses on Kapruka",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me chocolates on Kapruka",
+    "note": "Single chocolate control"
   },
   {
     "id": "S142",
@@ -1701,8 +1701,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me birthday cake and and roses on Kapruka",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me chocolates to Colombo on Kapruka",
+    "note": "Single chocolate control + Colombo"
   },
   {
     "id": "S143",
@@ -1713,8 +1713,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want birthday cake and and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me chocolates to Kandy on Kapruka",
+    "note": "Single chocolate control + Kandy"
   },
   {
     "id": "S144",
@@ -1725,8 +1725,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need birthday cake plus and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me chocolates to Galle on Kapruka",
+    "note": "Single chocolate control + Galle"
   },
   {
     "id": "S145",
@@ -1737,8 +1737,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "birthday cake & and roses please",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me cakes on Kapruka",
+    "note": "Single cake control"
   },
   {
     "id": "S146",
@@ -1749,8 +1749,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse birthday cake and and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me cakes to Colombo on Kapruka",
+    "note": "Single cake control + Colombo"
   },
   {
     "id": "S147",
@@ -1761,8 +1761,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me birthday cake, and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me cakes to Kandy on Kapruka",
+    "note": "Single cake control + Kandy"
   },
   {
     "id": "S148",
@@ -1773,8 +1773,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for birthday cake and and roses",
-    "note": "Combo: birthday cake+and roses"
+    "msg": "show me cakes to Galle on Kapruka",
+    "note": "Single cake control + Galle"
   },
   {
     "id": "S149",
@@ -1785,8 +1785,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolates and with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "show me gift hampers on Kapruka",
+    "note": "Single hamper control"
   },
   {
     "id": "S150",
@@ -1797,8 +1797,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolates with with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "show me gift hampers to Colombo on Kapruka",
+    "note": "Single hamper control + Colombo"
   },
   {
     "id": "S151",
@@ -1809,8 +1809,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "chocolates and with flowers on Kapruka",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "show me gift hampers to Kandy on Kapruka",
+    "note": "Single hamper control + Kandy"
   },
   {
     "id": "S152",
@@ -1821,8 +1821,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolates and with flowers on Kapruka",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "show me gift hampers to Galle on Kapruka",
+    "note": "Single hamper control + Galle"
   },
   {
     "id": "S153",
@@ -1833,8 +1833,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want chocolates and with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "birthday cake under 2000",
+    "note": "Bare cake+budget fast-path"
   },
   {
     "id": "S154",
@@ -1845,8 +1845,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need chocolates plus with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "birthday cake under 2000 to Colombo on Kapruka",
+    "note": "Bare cake+budget fast-path + Colombo"
   },
   {
     "id": "S155",
@@ -1857,8 +1857,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "chocolates & with flowers please",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "birthday cake under 2000 to Kandy on Kapruka",
+    "note": "Bare cake+budget fast-path + Kandy"
   },
   {
     "id": "S156",
@@ -1869,8 +1869,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse chocolates and with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "birthday cake under 2000 to Galle on Kapruka",
+    "note": "Bare cake+budget fast-path + Galle"
   },
   {
     "id": "S157",
@@ -1881,8 +1881,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolates, with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "chocolates under 3000",
+    "note": "Bare chocolate+budget"
   },
   {
     "id": "S158",
@@ -1893,8 +1893,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for chocolates and with flowers",
-    "note": "Combo: chocolates+with flowers"
+    "msg": "chocolates under 3000 to Colombo on Kapruka",
+    "note": "Bare chocolate+budget + Colombo"
   },
   {
     "id": "S159",
@@ -1905,8 +1905,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers with chocolate and undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "chocolates under 3000 to Kandy on Kapruka",
+    "note": "Bare chocolate+budget + Kandy"
   },
   {
     "id": "S160",
@@ -1917,8 +1917,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers with chocolate with undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "chocolates under 3000 to Galle on Kapruka",
+    "note": "Bare chocolate+budget + Galle"
   },
   {
     "id": "S161",
@@ -1929,8 +1929,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "flowers with chocolate and undefined on Kapruka",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "flowers to Colombo",
+    "note": "Bare flowers+city"
   },
   {
     "id": "S162",
@@ -1941,8 +1941,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers with chocolate and undefined on Kapruka",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "flowers to Colombo to Colombo on Kapruka",
+    "note": "Bare flowers+city + Colombo"
   },
   {
     "id": "S163",
@@ -1953,8 +1953,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want flowers with chocolate and undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "flowers to Colombo to Kandy on Kapruka",
+    "note": "Bare flowers+city + Kandy"
   },
   {
     "id": "S164",
@@ -1965,8 +1965,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need flowers with chocolate plus undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "flowers to Colombo to Galle on Kapruka",
+    "note": "Bare flowers+city + Galle"
   },
   {
     "id": "S165",
@@ -1977,8 +1977,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "flowers with chocolate & undefined please",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "roses for anniversary Colombo",
+    "note": "Occasion flowers"
   },
   {
     "id": "S166",
@@ -1989,8 +1989,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse flowers with chocolate and undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "roses for anniversary Colombo to Colombo on Kapruka",
+    "note": "Occasion flowers + Colombo"
   },
   {
     "id": "S167",
@@ -2001,8 +2001,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me flowers with chocolate, undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "roses for anniversary Colombo to Kandy on Kapruka",
+    "note": "Occasion flowers + Kandy"
   },
   {
     "id": "S168",
@@ -2013,8 +2013,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for flowers with chocolate and undefined",
-    "note": "Combo: flowers with chocolate+undefined"
+    "msg": "roses for anniversary Colombo to Galle on Kapruka",
+    "note": "Occasion flowers + Galle"
   },
   {
     "id": "S169",
@@ -2025,8 +2025,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolate and flower bouquet and undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me cheapest flowers on Kapruka",
+    "note": "Cheapest flowers sort"
   },
   {
     "id": "S170",
@@ -2037,8 +2037,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolate and flower bouquet with undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me cheapest flowers to Colombo on Kapruka",
+    "note": "Cheapest flowers sort + Colombo"
   },
   {
     "id": "S171",
@@ -2049,8 +2049,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "chocolate and flower bouquet and undefined on Kapruka",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me cheapest flowers to Kandy on Kapruka",
+    "note": "Cheapest flowers sort + Kandy"
   },
   {
     "id": "S172",
@@ -2061,8 +2061,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolate and flower bouquet and undefined on Kapruka",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me cheapest flowers to Galle on Kapruka",
+    "note": "Cheapest flowers sort + Galle"
   },
   {
     "id": "S173",
@@ -2073,8 +2073,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want chocolate and flower bouquet and undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me chocolates under 1500 on Kapruka",
+    "note": "Search+budget"
   },
   {
     "id": "S174",
@@ -2085,8 +2085,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need chocolate and flower bouquet plus undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me chocolates under 1500 to Colombo on Kapruka",
+    "note": "Search+budget + Colombo"
   },
   {
     "id": "S175",
@@ -2097,8 +2097,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "chocolate and flower bouquet & undefined please",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me chocolates under 1500 to Kandy on Kapruka",
+    "note": "Search+budget + Kandy"
   },
   {
     "id": "S176",
@@ -2109,8 +2109,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse chocolate and flower bouquet and undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "show me chocolates under 1500 to Galle on Kapruka",
+    "note": "Search+budget + Galle"
   },
   {
     "id": "S177",
@@ -2121,8 +2121,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me chocolate and flower bouquet, undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "mixed flower bouquets under 3000",
+    "note": "Bouquet budget"
   },
   {
     "id": "S178",
@@ -2133,8 +2133,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for chocolate and flower bouquet and undefined",
-    "note": "Combo: chocolate and flower bouquet+undefined"
+    "msg": "mixed flower bouquets under 3000 to Colombo on Kapruka",
+    "note": "Bouquet budget + Colombo"
   },
   {
     "id": "S179",
@@ -2145,8 +2145,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me send flowers and chocolates and undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "mixed flower bouquets under 3000 to Kandy on Kapruka",
+    "note": "Bouquet budget + Kandy"
   },
   {
     "id": "S180",
@@ -2157,8 +2157,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me send flowers and chocolates with undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "mixed flower bouquets under 3000 to Galle on Kapruka",
+    "note": "Bouquet budget + Galle"
   },
   {
     "id": "S181",
@@ -2169,8 +2169,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "send flowers and chocolates and undefined on Kapruka",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "Hilton birthday cake",
+    "note": "Brand cake"
   },
   {
     "id": "S182",
@@ -2181,8 +2181,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me send flowers and chocolates and undefined on Kapruka",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "Hilton birthday cake to Colombo on Kapruka",
+    "note": "Brand cake + Colombo"
   },
   {
     "id": "S183",
@@ -2193,8 +2193,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want send flowers and chocolates and undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "Hilton birthday cake to Kandy on Kapruka",
+    "note": "Brand cake + Kandy"
   },
   {
     "id": "S184",
@@ -2205,8 +2205,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need send flowers and chocolates plus undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "Hilton birthday cake to Galle on Kapruka",
+    "note": "Brand cake + Galle"
   },
   {
     "id": "S185",
@@ -2217,8 +2217,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "send flowers and chocolates & undefined please",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "show me roses on Kapruka to Kandy",
+    "note": "Roses+city"
   },
   {
     "id": "S186",
@@ -2229,8 +2229,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse send flowers and chocolates and undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "show me roses to Kandy to Colombo on Kapruka",
+    "note": "Roses+city + Colombo"
   },
   {
     "id": "S187",
@@ -2241,8 +2241,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me send flowers and chocolates, undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "show me roses to Kandy to Kandy on Kapruka",
+    "note": "Roses+city + Kandy"
   },
   {
     "id": "S188",
@@ -2253,8 +2253,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for send flowers and chocolates and undefined",
-    "note": "Combo: send flowers and chocolates+undefined"
+    "msg": "show me roses to Kandy to Galle on Kapruka",
+    "note": "Roses+city + Galle"
   },
   {
     "id": "S189",
@@ -2265,8 +2265,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me need roses plus chocolates and undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "premium gift hamper Colombo",
+    "note": "Premium hamper"
   },
   {
     "id": "S190",
@@ -2277,8 +2277,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me need roses plus chocolates with undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "premium gift hamper Colombo to Colombo on Kapruka",
+    "note": "Premium hamper + Colombo"
   },
   {
     "id": "S191",
@@ -2289,8 +2289,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need roses plus chocolates and undefined on Kapruka",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "premium gift hamper Colombo to Kandy on Kapruka",
+    "note": "Premium hamper + Kandy"
   },
   {
     "id": "S192",
@@ -2301,8 +2301,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me need roses plus chocolates and undefined on Kapruka",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "premium gift hamper Colombo to Galle on Kapruka",
+    "note": "Premium hamper + Galle"
   },
   {
     "id": "S193",
@@ -2313,8 +2313,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "I want need roses plus chocolates and undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "what's popular?",
+    "note": "Popular browse"
   },
   {
     "id": "S194",
@@ -2325,8 +2325,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need need roses plus chocolates plus undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "what's popular? to Colombo on Kapruka",
+    "note": "Popular browse + Colombo"
   },
   {
     "id": "S195",
@@ -2337,8 +2337,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "need roses plus chocolates & undefined please",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "what's popular? to Kandy on Kapruka",
+    "note": "Popular browse + Kandy"
   },
   {
     "id": "S196",
@@ -2349,8 +2349,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "browse need roses plus chocolates and undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "what's popular? to Galle on Kapruka",
+    "note": "Popular browse + Galle"
   },
   {
     "id": "S197",
@@ -2361,8 +2361,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me need roses plus chocolates, undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "show me flowers and chocolates under 1500",
+    "note": "Combo budget LKR 1500"
   },
   {
     "id": "S198",
@@ -2373,8 +2373,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "looking for need roses plus chocolates and undefined",
-    "note": "Combo: need roses plus chocolates+undefined"
+    "msg": "show me flowers and chocolates under 2000",
+    "note": "Combo budget LKR 2000"
   },
   {
     "id": "S199",
@@ -2385,8 +2385,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me show me flowers & chocolates and undefined",
-    "note": "Combo: show me flowers & chocolates+undefined"
+    "msg": "show me flowers and chocolates under 3000",
+    "note": "Combo budget LKR 3000"
   },
   {
     "id": "S200",
@@ -2397,8 +2397,8 @@ export const GROUP_S = [
       "noFamilyUnsafe",
       "noToolLeak"
     ],
-    "msg": "show me show me flowers & chocolates with undefined",
-    "note": "Combo: show me flowers & chocolates+undefined"
+    "msg": "show me flowers and chocolates under 4000",
+    "note": "Combo budget LKR 4000"
   }
 ];
 export const SEARCH_EDGE_COUNT = 200;

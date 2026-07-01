@@ -22,7 +22,7 @@ const BASE_CHECKS = [
 const CITIES = ["Colombo", "Kandy", "Galle", "Negombo", "Jaffna", "Matara"];
 const BUDGETS = [1500, 2000, 3000, 4000, 5000, 8000, 12000];
 
-const COMBOS = [
+const PAIR_COMBOS = [
   ["flowers", "chocolates"],
   ["chocolates", "flowers"],
   ["roses", "chocolate"],
@@ -35,14 +35,17 @@ const COMBOS = [
   ["gift hamper", "chocolates"],
   ["roses", "chocolates"],
   ["bouquet", "chocolate box"],
-  ["flowers", "chocolates", "for anniversary"],
-  ["birthday cake", "and roses"],
-  ["chocolates", "with flowers"],
-  ["flowers with chocolate"],
-  ["chocolate and flower bouquet"],
-  ["send flowers and chocolates"],
-  ["need roses plus chocolates"],
-  ["show me flowers & chocolates"],
+];
+
+const PHRASE_COMBOS = [
+  "flowers and chocolates for anniversary",
+  "birthday cake and roses",
+  "chocolates with flowers",
+  "flowers with chocolate",
+  "chocolate and flower bouquet",
+  "send flowers and chocolates",
+  "need roses plus chocolates",
+  "show me flowers & chocolates",
 ];
 
 const COMBO_OPENERS = [
@@ -137,12 +140,17 @@ function buildGroupS() {
 
   for (const t of TRAP_CASES) push(t);
 
-  for (const [a, b] of COMBOS) {
+  for (const [a, b] of PAIR_COMBOS) {
     for (const opener of COMBO_OPENERS) {
       if (n > 200) break;
       const msg = opener(a, b);
       push({ msg, note: `Combo: ${a}+${b}` });
     }
+  }
+
+  for (const msg of PHRASE_COMBOS) {
+    if (n > 200) break;
+    push({ msg, note: `Phrase combo: ${msg.slice(0, 40)}` });
   }
 
   for (const v of SINGLE_VARIANTS) {
@@ -177,7 +185,7 @@ function buildGroupS() {
   // Fill remaining with rotated combo+city+budget
   let fi = 0;
   while (n <= 200) {
-    const combo = COMBOS[fi % COMBOS.length];
+    const combo = PAIR_COMBOS[fi % PAIR_COMBOS.length];
     const city = CITIES[fi % CITIES.length];
     const budget = BUDGETS[fi % BUDGETS.length];
     const opener = COMBO_OPENERS[fi % COMBO_OPENERS.length];

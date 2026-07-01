@@ -56,7 +56,7 @@ export const CATEGORY_SEARCH_QUERY: Record<SearchCategory, string> = {
 export function hasProductSearchIntent(text: string): boolean {
   const lower = text.toLowerCase();
   return (
-    /\b(show\s+me|show\s+us|search|send|need|want|looking\s+for|browse|get\s+me|find|order|deliver|pick|gift\s+for)\b/i.test(
+    /\b(show\s+me|show\s+us|search|send|need|want|looking\s+for|browse|get\s+me|find|order|deliver|pick|gift\s+for|please)\b/i.test(
       lower
     ) ||
     lower.includes("on kapruka") ||
@@ -64,9 +64,12 @@ export function hasProductSearchIntent(text: string): boolean {
   );
 }
 
-/** Two or more categories with explicit product intent → dedicated multi-search handler. */
+/** Two or more categories with combo phrasing → dedicated multi-search handler. */
 export function isMultiCategoryProductSearch(text: string): boolean {
-  return detectSearchCategories(text).length >= 2 && hasProductSearchIntent(text);
+  const categories = detectSearchCategories(text);
+  if (categories.length < 2) return false;
+  // Explicit verbs (show/send/need) OR bare "flowers and chocolates" / "X with Y".
+  return hasProductSearchIntent(text) || hasCrossCategoryConjunction(text);
 }
 
 /**

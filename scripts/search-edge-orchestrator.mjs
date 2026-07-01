@@ -78,16 +78,16 @@ async function runBatch(ids) {
 
 function summarize(rows, target) {
   const total = rows.length;
-  const passed = rows.filter((r) => r.evaluation?.passed).length;
-  const errored = rows.filter((r) => r.evaluation?.isError).length;
+  const passed = rows.filter((r) => r.passed ?? r.evaluation?.passed).length;
+  const errored = rows.filter((r) => r.isError ?? r.evaluation?.isError).length;
   const relevanceFailed = rows.filter((r) =>
-    r.evaluation?.reasons?.some((x) => /search relevance|off-category/i.test(x))
+    (r.reasons ?? r.evaluation?.reasons ?? []).some((x) => /search relevance|off-category/i.test(x))
   ).length;
-  const ceoRows = rows.filter((r) => r.evaluation?.ceoLens);
-  const ceoPass = ceoRows.filter((r) => r.evaluation.ceoLens.pass).length;
-  const personaPct = Math.round((passed / total) * 100);
+  const ceoRows = rows.filter((r) => r.ceoLens ?? r.evaluation?.ceoLens);
+  const ceoPass = ceoRows.filter((r) => (r.ceoLens ?? r.evaluation?.ceoLens).pass).length;
+  const personaPct = total ? Math.round((passed / total) * 100) : 0;
   const ceoPct = ceoRows.length ? Math.round((ceoPass / ceoRows.length) * 100) : 0;
-  const relevancePct = Math.round(((total - relevanceFailed) / total) * 100);
+  const relevancePct = total ? Math.round(((total - relevanceFailed) / total) * 100) : 0;
 
   return {
     total,
@@ -138,7 +138,7 @@ async function main() {
   const outPath = join(OUT_DIR, "summary.json");
   await writeFile(
     outPath,
-    JSON.stringify({ cfg, summary, failures: allRows.filter((r) => !r.evaluation?.passed).slice(0, 30) }, null, 2)
+    JSON.stringify({ cfg, summary, failures: allRows.filter((r) => !(r.passed ?? r.evaluation?.passed)).slice(0, 30) }, null, 2)
   );
 
   console.log("\n=== Search Edge Summary ===");
