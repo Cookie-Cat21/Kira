@@ -30,6 +30,7 @@ import { sendTestCase, assertDevServerAvailable, API_URL } from "./test-runner.m
 import { runCheck } from "./evaluate.mjs";
 import { scoreCeoLens, ceoScorePercent, ceoPassAt90 } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
+import { validateSearchRelevance } from "./search-relevance.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -320,6 +321,7 @@ import {
   GROUP_L,
   GROUP_M,
 } from "./personas/generated-groups.mjs";
+import { GROUP_S } from "./personas/generated-search-edge.mjs";
 
 const GROUPS = {
   A: GROUP_A,
@@ -335,6 +337,7 @@ const GROUPS = {
   K: GROUP_K,
   L: GROUP_L,
   M: GROUP_M,
+  S: GROUP_S,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
@@ -346,7 +349,7 @@ function toolStepCount(events) {
   return events.filter((e) => e.t === "step").length;
 }
 
-function applyToken(token, arg, events, text) {
+function applyToken(token, arg, events, text, userMsg = "") {
   const products = productsOf(events);
   switch (token) {
     case "notEmpty":
@@ -400,6 +403,14 @@ function applyToken(token, arg, events, text) {
       return {
         pass: junk.length === 0,
         reason: junk.length ? `Off-category junk in carousel: ${junk.map((p) => p.name).join(", ")}` : "",
+      };
+    }
+    case "searchRelevance": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const { pass, violations } = validateSearchRelevance(userMsg, products);
+      return {
+        pass,
+        reason: pass ? "" : `Search relevance failed: ${violations.slice(0, 3).join("; ")}`,
       };
     }
     case "asksClarifying":
@@ -480,14 +491,25 @@ function evaluateB(persona, result) {
   return { passed: reasons.length === 0, reasons, toolCalls, isShort, hasRedirect };
 }
 
+function personaUserMessage(persona) {
+  if (persona.msg) return persona.msg;
+  const msgs = persona.request?.messages;
+  if (!Array.isArray(msgs)) return "";
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i]?.role === "user") return msgs[i].content ?? "";
+  }
+  return "";
+}
+
 function evaluateChecks(persona, result) {
   const gate = sentinelGate(result);
   if (gate) return { passed: false, isError: true, reasons: [gate.reason], toolCalls: toolStepCount(result.events ?? []) };
   const { responseText, events } = result;
+  const userMsg = personaUserMessage(persona);
   const reasons = [];
   for (const chk of persona.checks ?? []) {
     const [token, arg] = Array.isArray(chk) ? chk : [chk];
-    const r = applyToken(token, arg, events, responseText);
+    const r = applyToken(token, arg, events, responseText, userMsg);
     if (!r.pass) reasons.push(r.reason);
   }
   return { passed: reasons.length === 0, reasons, toolCalls: toolStepCount(events) };
@@ -499,9 +521,10 @@ function evaluateG(persona, result) {
   const { responseText, events } = result;
   const reasons = [];
   if (!responseText.trim()) reasons.push("Empty response");
+  const userMsg = personaUserMessage(persona);
   for (const chk of persona.checks ?? []) {
     const [token, arg] = Array.isArray(chk) ? chk : [chk];
-    const r = applyToken(token, arg, events, responseText);
+    const r = applyToken(token, arg, events, responseText, userMsg);
     if (!r.pass) reasons.push(r.reason);
   }
   const lens = scoreFounderLens(responseText, events, persona);
@@ -576,6 +599,7 @@ const GROUP_LABELS = {
   K: "Reorder / Memory",
   L: "Messy / Adversarial",
   M: "CEO Gold Paths",
+  S: "Search Routing Edge (200)",
 };
 const GROUP_COLORS = { A: c.yellow, B: c.red, C: c.cyan, D: c.magenta, E: c.blue, F: c.white, G: c.green };
 
@@ -623,7 +647,7 @@ async function main() {
   const idFilter = args.includes("--id") ? new Set(args[args.indexOf("--id") + 1]?.split(",").map((s) => s.trim().toUpperCase()) ?? []) : null;
   const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : RESULTS_PATH;
   const concurrency = parseInt(args[args.indexOf("--concurrency") + 1] ?? String(DEFAULT_CONCURRENCY), 10) || DEFAULT_CONCURRENCY;
-  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite — 502 personas${c.reset}`);
+  console.log(`\n${c.bold}${c.cyan}Kira Persona Test Suite — 702 personas${c.reset}`);
   console.log(`${c.dim}API: ${API_URL} - concurrency: ${concurrency}${c.reset}`);
   if (concurrency > 1) console.log(`${c.yellow}! concurrency > 1 on Groq free tier causes rate-limit fallbacks (scored as ERR).${c.reset}`);
   await assertDevServerAvailable();

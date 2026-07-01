@@ -221,31 +221,62 @@ export function sanitizeCarouselProducts(
   return filterProductsForSearch(products, query, ...contextTexts);
 }
 
+function activeSearchCategories(...texts: (string | undefined)[]): string[] {
+  const context = buildSearchFilterContext(...texts);
+  const cats: string[] = [];
+  if (hasFlowerSearchIntent(context)) cats.push("flowers");
+  if (hasChocolateSearchIntent(context)) cats.push("chocolate");
+  if (hasCakeSearchIntent(context)) cats.push("cake");
+  if (hasHamperSearchIntent(context)) cats.push("hampers");
+  return cats;
+}
+
+function productMatchesCategoryKey(
+  p: KiraProduct,
+  key: string,
+  activeCats: string[]
+): boolean {
+  if (key === "hampers") {
+    const name = p.name ?? "";
+    const body = `${name} ${p.summary ?? ""}`;
+    if (!HAMPER_NAME_RE.test(name)) return false;
+    if (HAMPER_JUNK_RE.test(body)) return false;
+    if (HAMPER_STANDALONE_JUNK_RE.test(body) && !/\bhamper/i.test(name)) return false;
+    return true;
+  }
+  const rel = CATEGORY_RELEVANCE_TERMS[key];
+  const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+  if (!rel) return false;
+  const txt = productDisplayText(p);
+  if (!rel.test(txt) || irrel?.test(txt)) return false;
+  // Flower-themed cakes are not fresh bouquets unless the user asked for cake too.
+  if (key === "flowers" && !activeCats.includes("cake") && CAKE_INTENT_RE.test(txt)) {
+    return false;
+  }
+  return true;
+}
+
 /** Category relevance + family-safe filter for carousel display. */
 export function filterProductsForSearch(
   products: KiraProduct[],
   query: string,
   ...contextTexts: (string | undefined)[]
 ): KiraProduct[] {
+  const context = buildSearchFilterContext(query, ...contextTexts);
+  const activeCats = activeSearchCategories(query, ...contextTexts);
+
+  // Multi-category combo — product must match at least one requested lane.
+  if (activeCats.length >= 2) {
+    const result = products.filter((p) =>
+      activeCats.some((key) => productMatchesCategoryKey(p, key, activeCats))
+    );
+    return filterFamilySafeProducts(result);
+  }
+
   const key = resolveProductFilterKey(query, ...contextTexts);
   let result = products;
-  if (key) {
-    const rel = CATEGORY_RELEVANCE_TERMS[key];
-    const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
-    if (rel) {
-      result = products.filter((p) => {
-        if (key === "hampers") {
-          const name = p.name ?? "";
-          const body = `${name} ${p.summary ?? ""}`;
-          if (!HAMPER_NAME_RE.test(name)) return false;
-          if (HAMPER_JUNK_RE.test(body)) return false;
-          if (HAMPER_STANDALONE_JUNK_RE.test(body) && !/\bhamper/i.test(name)) return false;
-          return true;
-        }
-        const txt = productDisplayText(p);
-        return rel.test(txt) && !(irrel?.test(txt));
-      });
-    }
+  if (key && CATEGORY_RELEVANCE_TERMS[key]) {
+    result = products.filter((p) => productMatchesCategoryKey(p, key, activeCats));
   }
   return filterFamilySafeProducts(result);
 }

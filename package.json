@@ -25,6 +25,10 @@
     "test:ceo-smoke": "node scripts/ceo-500-orchestrator.mjs --smoke 50",
     "test:ceo-500": "node scripts/ceo-500-orchestrator.mjs --full",
     "test:ceo-score": "node scripts/ceo-score-all.mjs",
+    "test:search-edge-gen": "node scripts/generate-search-edge.mjs",
+    "test:search-edge": "node scripts/generate-search-edge.mjs && node scripts/search-edge-orchestrator.mjs --full",
+    "test:search-edge:smoke": "node scripts/generate-search-edge.mjs && node scripts/search-edge-orchestrator.mjs --smoke 25",
+    "test:dulith-plan": "node scripts/dulith-plan-review.mjs",
     "setup:fonts": "node scripts/setup-sf-pro.mjs"
   },
   "dependencies": {

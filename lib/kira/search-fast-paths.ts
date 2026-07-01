@@ -29,6 +29,7 @@ import {
   parseStorefrontIntent,
   VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
+import { shouldBypassSearchFastPath } from "@/lib/kira/search-routing";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
 import {
   extractDeliveryInfoFromMcp,
@@ -65,6 +66,9 @@ export async function tryHandleSearchFastPath({
   const trimmed = normalizeUserTypos(text.trim());
   const lower = trimmed.toLowerCase();
   const filterContext = buildMessageFilterContext(trimmed, messages);
+
+  // Multi-category combos → LLM agent loop (not single-keyword fast-path).
+  if (shouldBypassSearchFastPath(trimmed)) return false;
 
   // ── Global Shop (coming soon) ────────────────────────────────────────────
   if (GLOBAL_SHOP_RE.test(lower)) {
