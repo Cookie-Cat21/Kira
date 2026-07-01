@@ -301,6 +301,18 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (/deliver|send|machang/i.test(text)) excitement += 1;
       break;
     }
+    case "X": {
+      if (events?.some((e) => e.t === "reorderCheckout")) {
+        flags.push("one_tap_reorder"); score += 4; excitement += 4;
+      } else if (personaPassed && hasProducts(events)) {
+        score -= 2; excitement -= 2;
+        flags.push("carousel_not_checkout");
+      }
+      if (personaPassed) { flags.push("reorder_habit_ok"); score += 2; excitement += 2; }
+      else { score -= 3; excitement -= 3; }
+      if (WARM_RE.test(text) || KAPRUKA_RE.test(text)) excitement += 1;
+      break;
+    }
     default:
       break;
   }

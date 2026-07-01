@@ -1,11 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Gift, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
-import CheckoutModal from "./CheckoutModal";
 
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
@@ -23,12 +22,8 @@ export default function CartDrawer() {
     removeFromCart,
     updateQty,
     checkoutDefaults,
+    openCheckout,
   } = useCart();
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-
-  useEffect(() => {
-    if (checkoutOpen) closeCart();
-  }, [checkoutOpen, closeCart]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,7 +40,7 @@ export default function CartDrawer() {
   return (
     <>
       <AnimatePresence>
-        {isOpen && !checkoutOpen && (
+        {isOpen && (
           <motion.div
             className="fixed inset-0 z-[100] flex justify-end"
             initial={{ opacity: 0 }}
@@ -230,7 +225,16 @@ export default function CartDrawer() {
 
                   <button
                     type="button"
-                    onClick={() => { closeCart(); setCheckoutOpen(true); }}
+                    onClick={() => {
+                      closeCart();
+                      openCheckout({
+                        step: "review",
+                        prefill: {
+                          city: checkoutDefaults?.city,
+                          date: checkoutDefaults?.date,
+                        },
+                      });
+                    }}
                     className="flex w-full items-center justify-center gap-2 rounded-[16px] py-[17px] text-[17px] font-semibold text-white transition-opacity hover:opacity-90 active:opacity-75"
                     style={{ background: "#402970" }}
                   >
@@ -243,12 +247,6 @@ export default function CartDrawer() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        initialDelivery={checkoutDefaults}
-      />
     </>
   );
 }

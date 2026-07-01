@@ -102,6 +102,38 @@ export const LIVE_TRAPS = [
     note: "Repair — Kapruka delivery not DIY",
     checks: ["noHandDeliver", "productsOrHonest"],
   },
+  {
+    id: "LIVE-X001",
+    group: "X",
+    request: {
+      messages: [{ role: "user", content: "order again" }],
+      cart: [],
+      lastOrder: {
+        orderRef: "KP-LIVE-X001",
+        placedAt: Date.now(),
+        label: "Amma's birthday cake",
+        items: [
+          {
+            product: {
+              id: "CAKE-LIVE-001",
+              name: "Chocolate Fudge Birthday Cake",
+              price: 4500,
+              currency: "LKR",
+            },
+            quantity: 1,
+          },
+        ],
+        recipient: { name: "Amma", phone: "0771234567" },
+        delivery: {
+          city: "Colombo",
+          address: "12 Galle Road, Colombo 03",
+          date: "2026-07-15",
+        },
+      },
+    },
+    note: "One-tap reorder — reorderCheckout SSE with prefill",
+    checks: ["reorderCheckout", "checkoutPrefill"],
+  },
 ];
 
 const FLOWER_JUNK =
@@ -164,6 +196,25 @@ function runChecks(trap, result) {
       case "noHandDeliver":
         if (PREACHY.test(text)) reasons.push("Preachy hand-deliver advice");
         break;
+      case "reorderCheckout": {
+        const evt = result.events?.find((e) => e.t === "reorderCheckout");
+        if (!evt) reasons.push("Expected reorderCheckout SSE event");
+        break;
+      }
+      case "checkoutPrefill": {
+        const evt = result.events?.find((e) => e.t === "reorderCheckout");
+        const o = evt?.v;
+        if (
+          !o?.recipient?.name ||
+          !o?.recipient?.phone ||
+          !o?.delivery?.city ||
+          !o?.delivery?.address ||
+          !o?.items?.length
+        ) {
+          reasons.push("reorderCheckout missing full delivery prefill");
+        }
+        break;
+      }
       default:
         break;
     }

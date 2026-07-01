@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -15,7 +16,15 @@ import {
   motion,
   useAnimation,
 } from "framer-motion";
-import type { CartItem, KiraProduct } from "@/types";
+import CheckoutModal from "@/app/components/CheckoutModal";
+import { loadPersistedLastOrder, persistLastOrder } from "@/lib/last-order-storage";
+import {
+  cartFromLastOrder,
+  checkoutPrefillFromLastOrder,
+  type CheckoutPrefill,
+  type CheckoutStep,
+} from "@/lib/reorder";
+import type { CartItem, KiraProduct, LastOrder } from "@/types";
 
 interface FlyItemData {
   id: number;
@@ -47,6 +56,14 @@ interface CartContextValue {
   triggerFly: (rect: DOMRect, imageUrl: string) => void;
   cartButtonRef: RefObject<HTMLButtonElement | null>;
   bagControls: ReturnType<typeof useAnimation>;
+  lastOrder: LastOrder | undefined;
+  saveLastOrder: (order: LastOrder) => void;
+  beginReorder: (order: LastOrder, options?: { step?: CheckoutStep }) => void;
+  openCheckout: (options?: {
+    step?: CheckoutStep;
+    prefill?: CheckoutPrefill;
+  }) => void;
+  closeGlobalCheckout: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -111,6 +128,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [checkoutDefaults, setCheckoutDefaults] = useState<
     { city?: string; date?: string } | undefined
   >();
+  const [lastOrder, setLastOrder] = useState<LastOrder | undefined>(undefined);
+  const [globalCheckoutOpen, setGlobalCheckoutOpen] = useState(false);
+  const [checkoutPrefill, setCheckoutPrefill] = useState<CheckoutPrefill | undefined>();
+  const [checkoutInitialStep, setCheckoutInitialStep] = useState<CheckoutStep>("review");
   const [flyItems, setFlyItems] = useState<FlyItemData[]>([]);
   const flyCounter = useRef(0);
   const cartButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -164,6 +185,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
+  useEffect(() => {
+    const stored = loadPersistedLastOrder();
+    if (stored) setLastOrder(stored);
+  }, []);
+
+  const saveLastOrder = useCallback((order: LastOrder) => {
+    setLastOrder(order);
+    persistLastOrder(order);
+  }, []);
+
+  const closeGlobalCheckout = useCallback(() => {
+    setGlobalCheckoutOpen(false);
+    setCheckoutPrefill(undefined);
+    setCheckoutInitialStep("review");
+  }, []);
+
+  const openCheckout = useCallback(
+    (options?: { step?: CheckoutStep; prefill?: CheckoutPrefill }) => {
+      setCheckoutInitialStep(options?.step ?? "review");
+      setCheckoutPrefill(options?.prefill);
+      setGlobalCheckoutOpen(true);
+      setIsOpen(false);
+    },
+    []
+  );
+
+  const beginReorder = useCallback(
+    (order: LastOrder, options?: { step?: CheckoutStep }) => {
+      setPayLink(undefined);
+      setCart(cartFromLastOrder(order));
+      saveLastOrder(order);
+      openCheckout({
+        step: options?.step ?? "review",
+        prefill: checkoutPrefillFromLastOrder(order),
+      });
+    },
+    [openCheckout, saveLastOrder]
+  );
+
   const triggerFly = useCallback((sourceRect: DOMRect, imageUrl: string) => {
     const targetRect = cartButtonRef.current?.getBoundingClientRect();
     const toX = targetRect ? targetRect.left + targetRect.width / 2 : 80;
@@ -215,20 +275,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       triggerFly,
       cartButtonRef,
       bagControls,
+      lastOrder,
+      saveLastOrder,
+      beginReorder,
+      openCheckout,
+      closeGlobalCheckout,
     }),
     [
       addToCart,
       bagControls,
+      beginReorder,
       cart,
       cartCount,
       cartTotal,
       checkoutDefaults,
       clearCart,
       closeCart,
+      closeGlobalCheckout,
       isOpen,
+      lastOrder,
       openCart,
+      openCheckout,
       payLink,
       removeFromCart,
+      saveLastOrder,
       triggerFly,
       updateQty,
     ]
@@ -245,6 +315,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           />
         ))}
       </AnimatePresence>
+      <CheckoutModal
+        open={globalCheckoutOpen}
+        onClose={closeGlobalCheckout}
+        prefill={checkoutPrefill}
+        initialStep={checkoutInitialStep}
+        onOrderPlaced={saveLastOrder}
+      />
       {children}
     </CartContext.Provider>
   );

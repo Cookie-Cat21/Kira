@@ -22,6 +22,7 @@ import {
   shouldGuardCatalogText,
   stripKnownProductNames,
 } from "@/lib/kira/catalog-guard";
+import { inferLastOrderLabel } from "@/lib/reorder";
 import { buildCompactSummary, trimContextIfNeeded } from "@/lib/kira/context";
 import { tryHandleDeterministicPrompt } from "@/lib/kira/fast-paths";
 import { getGroq, getGroqKeys, hasGroqKeys, pickStartingKeyIndex } from "@/lib/kira/groq";
@@ -292,7 +293,7 @@ export async function POST(req: NextRequest) {
         // Recipient / delivery / gift-message captured from the create_order call so the
         // lastOrder snapshot can pre-fill a reorder, not just re-show the items.
         let lastOrderArgs:
-          | Partial<Pick<LastOrder, "recipient" | "delivery" | "giftMessage">>
+          | Partial<Pick<LastOrder, "recipient" | "delivery" | "giftMessage" | "senderName">>
           | undefined;
         let payLink: string | undefined;
         let modelIndex = 0;
@@ -437,14 +438,21 @@ export async function POST(req: NextRequest) {
                 const deliveryCityValue = clean(del?.city);
                 const deliveryAddress = clean(del?.address);
                 const giftMessage = clean(toolArgs.gift_message ?? toolArgs.giftMessage);
+                const senderName = clean(toolArgs.sender_name ?? toolArgs.senderName);
+                const deliveryDate = clean(del?.date ?? del?.delivery_date ?? toolArgs.delivery_date);
                 lastOrderArgs = {
                   recipient: recipientName && recipientPhone
                     ? { name: recipientName, phone: recipientPhone }
                     : undefined,
                   delivery: deliveryCityValue && deliveryAddress
-                    ? { city: deliveryCityValue, address: deliveryAddress }
+                    ? {
+                        city: deliveryCityValue,
+                        address: deliveryAddress,
+                        ...(deliveryDate ? { date: deliveryDate } : {}),
+                      }
                     : undefined,
                   giftMessage,
+                  senderName,
                 };
                 resultContent = [
                   {
@@ -528,14 +536,21 @@ export async function POST(req: NextRequest) {
               const deliveryCityValue = clean(del?.city);
               const deliveryAddress = clean(del?.address);
               const giftMessage = clean(toolArgs.gift_message ?? toolArgs.giftMessage);
+              const senderName = clean(toolArgs.sender_name ?? toolArgs.senderName);
+              const deliveryDate = clean(del?.date ?? del?.delivery_date ?? toolArgs.delivery_date);
               lastOrderArgs = {
                 recipient: recipientName && recipientPhone
                   ? { name: recipientName, phone: recipientPhone }
                   : undefined,
                 delivery: deliveryCityValue && deliveryAddress
-                  ? { city: deliveryCityValue, address: deliveryAddress }
+                  ? {
+                      city: deliveryCityValue,
+                      address: deliveryAddress,
+                      ...(deliveryDate ? { date: deliveryDate } : {}),
+                    }
                   : undefined,
                 giftMessage,
+                senderName,
               };
             }
             if (toolName === "kapruka_track_order") {
@@ -1046,6 +1061,8 @@ export async function POST(req: NextRequest) {
               recipient: lastOrderArgs?.recipient,
               delivery: lastOrderArgs?.delivery,
               giftMessage: lastOrderArgs?.giftMessage,
+              senderName: lastOrderArgs?.senderName,
+              label: inferLastOrderLabel(cart),
               placedAt: Date.now(),
             };
             controller.enqueue(sse("lastOrder", saved));
