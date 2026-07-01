@@ -296,6 +296,7 @@ export default function KiraExperience({
   const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
   const pendingProductsRef = useRef<KiraProduct[] | null>(null);
   const pendingPayLinkRef = useRef<string | null>(null);
+  const streamCompletedRef = useRef(false);
   const pendingStepSummaryRef = useRef<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -417,6 +418,7 @@ export default function KiraExperience({
       setRequestHealth("loading");
       setLastErrorMessage(null);
       cancelledRef.current = false;
+      streamCompletedRef.current = false;
       streamingMsgIdRef.current = null;
       pendingDeliveryRef.current = null;
       pendingTrackingRef.current = null;
@@ -662,6 +664,7 @@ export default function KiraExperience({
                 setLiveStepSummary(payload.v as string);
                 setLastStreamActivityAt(Date.now());
               } else if (payload.t === "done") {
+                streamCompletedRef.current = true;
                 const id = streamingMsgIdRef.current;
                 const elapsed = Date.now() - thinkingStartRef.current;
                 const stepSummary = pendingStepSummaryRef.current ?? undefined;
@@ -732,7 +735,9 @@ export default function KiraExperience({
                 setRequestHealth("idle");
                 setLastErrorMessage(null);
                 abortControllerRef.current = null;
+                streamingMsgIdRef.current = null;
               } else if (payload.t === "error") {
+                streamCompletedRef.current = true;
                 const errMsg =
                   (payload.v as string) ||
                   "Aiyo, something went wrong on my end — Kapruka's servers can be a bit finicky. Try again?";
@@ -757,6 +762,7 @@ export default function KiraExperience({
                 setRequestHealth("error");
                 setLastErrorMessage(errMsg);
                 abortControllerRef.current = null;
+                streamingMsgIdRef.current = null;
               }
             } catch {
               /* malformed SSE chunk — skip */
@@ -790,18 +796,103 @@ export default function KiraExperience({
         setRequestHealth("error");
         setLastErrorMessage(errMsg);
       } finally {
+        if (abortControllerRef.current === abortController && !cancelledRef.current) {
+          if (!streamCompletedRef.current) {
+            const elapsed = Date.now() - thinkingStartRef.current;
+            const stepSummary = pendingStepSummaryRef.current ?? undefined;
+            const stepLabels: string[] = [];
+            const id = streamingMsgIdRef.current;
+            const pendingDelivery = pendingDeliveryRef.current;
+            const pendingTracking = pendingTrackingRef.current;
+            const pendingCheckout = pendingCheckoutRef.current;
+            const pendingProducts = pendingProductsRef.current;
+            const pendingPayLink = pendingPayLinkRef.current;
+            const truncateMsg =
+              "Aiyo — that took too long or got cut off. Kapruka's servers can be finicky. Tap retry and I'll try again.";
+            if (id) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === id
+                    ? {
+                        ...m,
+                        content: m.content.trim() || truncateMsg,
+                        ...(pendingProducts && !m.products?.length
+                          ? { products: pendingProducts }
+                          : {}),
+                        thinkingMs: elapsed,
+                        steps: stepLabels,
+                        thinkingSummary: stepSummary,
+                      }
+                    : m
+                )
+              );
+            } else {
+              const hasStructuredPayload =
+                !!pendingDelivery ||
+                !!pendingTracking ||
+                !!pendingCheckout ||
+                !!pendingProducts?.length ||
+                !!pendingPayLink;
+              const content = pendingCheckout || pendingPayLink
+                ? "Checkout is ready."
+                : pendingTracking
+                ? "I found the tracking details."
+                : pendingProducts?.length
+                ? "Here are the live Kapruka results."
+                : pendingDelivery
+                ? "Delivery checked."
+                : truncateMsg;
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `kira-${Date.now()}`,
+                  role: "assistant",
+                  content,
+                  timestamp: Date.now(),
+                  ...(pendingProducts ? { products: pendingProducts } : {}),
+                  ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
+                  ...(pendingTracking ? { tracking: pendingTracking } : {}),
+                  ...(pendingCheckout
+                    ? { checkout: pendingCheckout, payLink: pendingCheckout.checkoutUrl }
+                    : pendingPayLink
+                    ? { payLink: pendingPayLink }
+                    : {}),
+                  thinkingMs: elapsed,
+                  steps: stepLabels,
+                  thinkingSummary: stepSummary,
+                },
+              ]);
+            }
+            if (
+              !pendingProducts?.length &&
+              !pendingDelivery &&
+              !pendingTracking &&
+              !pendingCheckout &&
+              !pendingPayLink
+            ) {
+              setRequestHealth("error");
+              setLastErrorMessage(truncateMsg);
+            } else {
+              setRequestHealth("idle");
+            }
+          }
+        }
         // Always clear pending buffered events so they don't bleed into the next request.
         pendingDeliveryRef.current = null;
         pendingTrackingRef.current = null;
         pendingCheckoutRef.current = null;
         pendingProductsRef.current = null;
         pendingPayLinkRef.current = null;
+        pendingStepSummaryRef.current = null;
         if (abortControllerRef.current === abortController) {
           abortControllerRef.current = null;
         }
         if (!cancelledRef.current) {
           setIsLoading(false);
           setIsStreaming(false);
+          if (streamCompletedRef.current) {
+            setRequestHealth("idle");
+          }
         }
       }
     },
