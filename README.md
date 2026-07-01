@@ -67,6 +67,8 @@ npm run test:e2e:reorder                # Playwright UI reorder path
 
 **Voice input:** Kira does not ship voice-to-text today (visual orb only). Automated CEO review covers API personas, live traps, Playwright UI, and `ceo-lens` heuristics — not microphone input. See TESTING.md § Voice & multimodal.
 
+**Submission gate:** `npm run test:dulith-gate` — all founder phases in one command. Demo script: [`docs/JUDGE-DRY-RUN.md`](docs/JUDGE-DRY-RUN.md).
+
 ## Phase 0 — MCP exploration
 
 Before working on UI, verify the Kapruka MCP end-to-end:

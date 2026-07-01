@@ -18,7 +18,7 @@ fully before starting, honor its STOP conditions, and update your row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001 | Vitest harness + CI + mcp-parsing tests | P1 | M | — | TODO |
-| 002 | Per-IP rate limiting + drop dead `express-rate-limit` | P1 | M | — | TODO |
+| 002 | Per-IP rate limiting + drop dead `express-rate-limit` | P1 | M | — | DONE |
 | 003 | Fix the 4 ESLint errors (react-hooks) | P2 | S | — | TODO |
 | 004 | Guard `/api/chat` body parse + noindex `/liquid-glass` | P3 | S | — | TODO |
 | 005 | Split the 2,681-line `app/api/chat/route.ts` | P2 | L | 001 | TODO |
