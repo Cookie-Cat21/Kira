@@ -48,7 +48,7 @@ export const GROUP_W = [
       "noToolLeak",
       [
         "text",
-        {}
+        "deliver|send|yes|can|colombo|flowers"
       ]
     ],
     "note": "Blocked contact"
@@ -62,7 +62,7 @@ export const GROUP_W = [
       "products",
       [
         "noText",
-        {}
+        "hand.?deliver|pick up yourself|go see her"
       ]
     ],
     "note": "Anti hand-deliver"
@@ -105,11 +105,11 @@ export const GROUP_W = [
       "noToolLeak",
       [
         "text",
-        {}
+        "deliver|send|yes|can|kapruka"
       ],
       [
         "noText",
-        {}
+        "hand.?deliver"
       ]
     ],
     "note": "Kapruka capability"

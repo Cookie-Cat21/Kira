@@ -221,14 +221,24 @@ export function sanitizeCarouselProducts(
   return filterProductsForSearch(products, query, ...contextTexts);
 }
 
-function activeSearchCategories(...texts: (string | undefined)[]): string[] {
-  const context = buildSearchFilterContext(...texts);
+function categoriesFromText(text: string): string[] {
   const cats: string[] = [];
-  if (hasFlowerSearchIntent(context)) cats.push("flowers");
-  if (hasChocolateSearchIntent(context)) cats.push("chocolate");
-  if (hasCakeSearchIntent(context)) cats.push("cake");
-  if (hasHamperSearchIntent(context)) cats.push("hampers");
+  if (hasFlowerSearchIntent(text)) cats.push("flowers");
+  if (hasChocolateSearchIntent(text)) cats.push("chocolate");
+  if (hasCakeSearchIntent(text)) cats.push("cake");
+  if (hasHamperSearchIntent(text)) cats.push("hampers");
   return cats;
+}
+
+function activeSearchCategories(query: string, ...contextTexts: (string | undefined)[]): string[] {
+  const q = normalizeProductQuery(query.toLowerCase().trim());
+  const queryCats = categoriesFromText(q);
+  // Explicit category in the current query wins — don't bleed from prior turns.
+  if (queryCats.length > 0 && !VAGUE_SEARCH_QUERY_RE.test(q)) {
+    return queryCats;
+  }
+  const context = buildSearchFilterContext(query, ...contextTexts);
+  return categoriesFromText(context);
 }
 
 function productMatchesCategoryKey(
@@ -253,10 +263,10 @@ function productMatchesCategoryKey(
   if (key === "flowers" && !activeCats.includes("cake") && CAKE_INTENT_RE.test(txt)) {
     return false;
   }
-  // In multi-category combos, ribbon/sculpture cakes must not satisfy the flowers lane alone.
+  // Decorative ribbon/sculpture cakes must never satisfy a flowers-only lane.
   if (
     key === "flowers" &&
-    activeCats.length >= 2 &&
+    !activeCats.includes("cake") &&
     /\b(ribbon\s+cake|sculpture\s+cake|flower\s+ribbon\s+cake)\b/i.test(txt)
   ) {
     return false;

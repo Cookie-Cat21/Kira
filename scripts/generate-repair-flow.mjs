@@ -14,12 +14,24 @@ const SEEDS = [
   { msg: "gf mad send flowers to her office Colombo", checks: [...BASE, "productsOrHonestEmpty"], note: "GF office flowers" },
   { msg: "she's mad what should I send to her office", checks: [...BASE, "asksClarifyingOrProducts"], note: "Vague office repair" },
   { msg: "I messed up send orchids to her workplace Kandy", checks: [...BASE, "productsOrHonestEmpty"], note: "Messed up orchids" },
-  { msg: "she blocked me on WhatsApp can you still deliver flowers Colombo", checks: [...BASE, ["text", /deliver|send|yes|can|colombo|flowers/i]], note: "Blocked contact" },
-  { msg: "she's mad at me for coming home late send flowers don't tell me to hand deliver", checks: [...BASE, "products", ["noText", /hand.?deliver|pick up yourself|go see her/i]], note: "Anti hand-deliver" },
+  {
+    msg: "she blocked me on WhatsApp can you still deliver flowers Colombo",
+    checks: [...BASE, ["text", "deliver|send|yes|can|colombo|flowers"]],
+    note: "Blocked contact",
+  },
+  {
+    msg: "she's mad at me for coming home late send flowers don't tell me to hand deliver",
+    checks: [...BASE, "products", ["noText", "hand.?deliver|pick up yourself|go see her"]],
+    note: "Anti hand-deliver",
+  },
   { msg: "wife kopa send flowers colombo machang", checks: [...BASE, "productsOrHonestEmpty"], note: "Tanglish angry wife" },
   { msg: "I screwed up send her chocolates and a card to Kandy", checks: [...BASE, "productsOrHonestEmpty"], note: "Chocolates + card" },
   { msg: "partner angry need gift to say sorry deliver to Galle", checks: [...BASE, "productsOrHonestEmpty"], note: "Partner Galle" },
-  { msg: "can Kapruka deliver flowers to her office in Colombo if she's mad at me", checks: [...BASE, ["text", /deliver|send|yes|can|kapruka/i], ["noText", /hand.?deliver/i]], note: "Kapruka capability" },
+  {
+    msg: "can Kapruka deliver flowers to her office in Colombo if she's mad at me",
+    checks: [...BASE, ["text", "deliver|send|yes|can|kapruka"], ["noText", "hand.?deliver"]],
+    note: "Kapruka capability",
+  },
 ];
 
 const CITIES = ["Colombo", "Kandy", "Galle", "Negombo", "Matara"];
