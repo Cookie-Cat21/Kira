@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Minimize2, X } from "lucide-react";
@@ -21,6 +22,17 @@ export default function KiraDock() {
     pathname?.startsWith("/liquid-glass");
   const hideLauncher =
     onRoot || pathname === "/" || pathname === "/shop";
+
+  // Close slide-over when navigating to full-screen chat or storefront landing.
+  useEffect(() => {
+    if (!isOpen) return;
+    const landing =
+      pathname === "/" ||
+      pathname === "/shop" ||
+      pathname?.startsWith("/kira") ||
+      pathname?.startsWith("/liquid-glass");
+    if (landing) close();
+  }, [pathname, isOpen, close]);
 
   if (onRoot) return null;
 

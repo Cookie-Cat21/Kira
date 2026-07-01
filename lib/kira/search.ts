@@ -184,20 +184,32 @@ export const SEARCH_SPELLING_MAP: Record<string, string> = {
   teddybear: "teddy bear",
 };
 
+/** Resolve category filter key from a single text blob (query or merged context). */
+function resolveFilterKeyFromText(text: string): string | null {
+  const normalized = text.toLowerCase();
+  if (hasFlowerSearchIntent(normalized)) return "flowers";
+  if (hasHamperSearchIntent(normalized)) return "hampers";
+  if (hasCakeSearchIntent(normalized)) return "cake";
+  if (hasChocolateSearchIntent(normalized)) return "chocolate";
+  const q = normalizeProductQuery(text.toLowerCase().trim());
+  if (q in CATEGORY_RELEVANCE_TERMS) return q;
+  if (q === "gift hamper" || q === "gift set") return "hampers";
+  return null;
+}
+
 /** Map MCP search `q` (+ optional conversation context) to a category filter key. */
 export function resolveProductFilterKey(
   query: string,
   ...contextTexts: (string | undefined)[]
 ): string | null {
   const q = normalizeProductQuery(query.toLowerCase().trim());
+  const queryKey = resolveFilterKeyFromText(q);
+  // Explicit category in the current query wins — don't bleed from prior turns.
+  if (queryKey && !VAGUE_SEARCH_QUERY_RE.test(q)) {
+    return queryKey;
+  }
   const context = buildSearchFilterContext(q, ...contextTexts);
-  if (hasFlowerSearchIntent(context)) return "flowers";
-  if (hasHamperSearchIntent(context)) return "hampers";
-  if (hasCakeSearchIntent(context)) return "cake";
-  if (hasChocolateSearchIntent(context)) return "chocolate";
-  if (q in CATEGORY_RELEVANCE_TERMS) return q;
-  if (q === "gift hamper" || q === "gift set") return "hampers";
-  return null;
+  return resolveFilterKeyFromText(context) ?? queryKey;
 }
 
 /** Single entry point before any carousel SSE — category relevance + family-safe. */
