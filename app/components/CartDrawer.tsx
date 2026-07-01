@@ -47,7 +47,7 @@ export default function CartDrawer() {
       <AnimatePresence>
         {isOpen && !checkoutOpen && (
           <motion.div
-            className="fixed inset-0 z-[80] flex justify-end"
+            className="fixed inset-0 z-[100] flex justify-end"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -67,15 +67,15 @@ export default function CartDrawer() {
               role="dialog"
               aria-modal="true"
               aria-label="Gift tray"
-              className="relative z-10 flex h-full w-full max-w-sm flex-col overflow-hidden"
+              className="relative z-10 flex h-dvh max-h-dvh w-full max-w-sm flex-col overflow-hidden"
               style={{ background: "#1C1C1E" }}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 32, stiffness: 320, mass: 0.9 }}
             >
-              {/* Header */}
-              <div className="flex items-start justify-between px-6 pb-4 pt-10">
+              {/* Header — clear announcement bar + safe area */}
+              <div className="flex shrink-0 items-start justify-between px-6 pb-4 pt-[max(2.75rem,env(safe-area-inset-top,0px)+1.25rem)]">
                 <div>
                   <h2
                     className="text-[28px] font-bold leading-none tracking-tight text-white"
@@ -213,7 +213,7 @@ export default function CartDrawer() {
               {/* Footer */}
               {cart.length > 0 && (
                 <div
-                  className="shrink-0 px-6 pb-10 pt-4"
+                  className="shrink-0 px-6 pt-4 pb-[max(2.5rem,env(safe-area-inset-bottom,0px)+1.25rem)]"
                   style={{ borderTop: "0.5px solid rgba(84,84,88,0.65)" }}
                 >
                   <div className="mb-1 flex items-baseline justify-between">

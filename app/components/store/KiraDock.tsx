@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { useKiraDock } from "@/app/context/KiraDockContext";
+import { useCart } from "@/app/context/CartContext";
 import KiraExperience from "@/app/components/KiraExperience";
 import KiraOrb from "@/app/components/KiraOrb";
 
@@ -16,6 +17,7 @@ export default function KiraDock() {
   const pathname = usePathname();
   const { isOpen, isExpanded, open, close, expand, collapse, seed, isThinking } =
     useKiraDock();
+  const { isOpen: isCartOpen } = useCart();
 
   const onRoot =
     pathname?.startsWith("/kira") ||
@@ -40,7 +42,7 @@ export default function KiraDock() {
     <>
       {/* Floating launcher */}
       <AnimatePresence>
-        {!isOpen && !hideLauncher && (
+        {!isOpen && !hideLauncher && !isCartOpen && (
           <motion.button
             type="button"
             onClick={() => open()}

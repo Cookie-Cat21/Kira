@@ -2,14 +2,16 @@
 
 import { usePathname } from "next/navigation";
 import { useKiraDock } from "@/app/context/KiraDockContext";
+import { useCart } from "@/app/context/CartContext";
 
 export default function AskKiraTab() {
   const pathname = usePathname();
   const { open, isOpen } = useKiraDock();
+  const { isOpen: isCartOpen } = useCart();
 
   const onStore =
     pathname.startsWith("/shop") || pathname.startsWith("/product/");
-  if (!onStore || isOpen || pathname === "/" || pathname === "/shop") return null;
+  if (!onStore || isOpen || isCartOpen || pathname === "/" || pathname === "/shop") return null;
 
   return (
     <button
