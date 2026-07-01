@@ -233,6 +233,21 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (/machang|roses|deliver|send/i.test(text)) excitement += 1;
       break;
     }
+    case "S": {
+      if (personaPassed && hasProducts(events)) {
+        flags.push("search_relevance_ok"); score += 3; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("search_honest_empty"); score += 1; excitement += 1;
+      } else {
+        flags.push("wrong_category_carousel"); score -= 4; excitement -= 4;
+      }
+      if (/flower.*cake|cake.*flower|ribbon cake/i.test(msg) && personaPassed) {
+        flags.push("trap_avoided"); excitement += 2;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      if (hasProducts(events) && /deliver|colombo|kandy|send/i.test(text)) excitement += 1;
+      break;
+    }
     default:
       break;
   }

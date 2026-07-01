@@ -29,6 +29,7 @@ import {
   parseStorefrontIntent,
   VAGUE_SEARCH_QUERY_RE,
 } from "@/lib/kira/search";
+import { isMultiCategoryProductSearch, detectSearchCategories, CATEGORY_SEARCH_QUERY } from "@/lib/kira/search-routing";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
 import {
   extractDeliveryInfoFromMcp,
@@ -36,6 +37,121 @@ import {
 } from "@/lib/mcp-parsing";
 import type { CartItem, DeliveryQuote, KiraProduct } from "@/types";
 import type { getMcpClient } from "@/lib/mcp-client";
+
+async function tryHandleMultiCategorySearch({
+  trimmed,
+  filterContext,
+  deliveryCity,
+  deliveryDate,
+  language,
+  mcpClient,
+  controller,
+  budget,
+}: {
+  trimmed: string;
+  filterContext: string;
+  deliveryCity?: string;
+  deliveryDate?: string;
+  language: string;
+  mcpClient: Awaited<ReturnType<typeof getMcpClient>>;
+  controller: ReadableStreamDefaultController<Uint8Array>;
+  budget?: string;
+}): Promise<boolean> {
+  if (!isMultiCategoryProductSearch(trimmed)) return false;
+
+  const categories = detectSearchCategories(trimmed);
+  const priceMatch = trimmed.match(/\b(?:under|below|max|budget)\s+(?:lkr|rs\.?\s*)?([\d,]+)/i);
+  const maxPrice =
+    parseBudgetAmount(budget) ??
+    (priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : undefined);
+
+  const perLane = Math.max(2, Math.ceil(6 / categories.length));
+  const products: KiraProduct[] = [];
+  const seen = new Set<string>();
+
+  for (const cat of categories) {
+    const baseQuery = CATEGORY_SEARCH_QUERY[cat];
+    const queries =
+      cat === "flowers"
+        ? ["flowers", "roses"]
+        : cat === "chocolate"
+          ? ["chocolate", "chocolates"]
+          : cat === "cake"
+            ? ["cake", "birthday cake"]
+            : [baseQuery];
+
+    let laneCount = 0;
+    for (const q of queries) {
+      if (laneCount >= perLane) break;
+      controller.enqueue(sse("step", `Searching Kapruka for "${q}"`));
+      const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: {
+          q,
+          limit: perLane + 2,
+          in_stock_only: true,
+          ...(maxPrice ? { max_price: maxPrice } : {}),
+          response_format: "json",
+        },
+      });
+      const batch = dedupeProducts(
+        filterProductsForSearch(extractProductsFromMcp(searchResult.content), q, filterContext)
+      );
+      for (const p of batch) {
+        const key = (p.id || p.url || p.name).toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        products.push(p);
+        laneCount++;
+        if (laneCount >= perLane) break;
+      }
+    }
+  }
+
+  const cityHint = extractCityHint(trimmed) ?? deliveryCity;
+  const effectiveDate = deliveryDate ?? trimmed.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
+  let deliveryCityForMessage = deliveryCity;
+
+  if (cityHint && products[0]) {
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_list_delivery_cities));
+    const cityResult = await callMcpTool(mcpClient, "kapruka_list_delivery_cities", {
+      params: { query: cityHint, limit: 3, response_format: "json" },
+    });
+    const canonicalCity = extractFirstCity(cityResult.content) ?? cityHint;
+    deliveryCityForMessage = canonicalCity;
+    controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+    const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+      params: {
+        city: canonicalCity,
+        ...(effectiveDate ? { delivery_date: effectiveDate } : {}),
+        product_id: products[0].id,
+        response_format: "json",
+      },
+    });
+    const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+    if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+  }
+
+  if (products.length === 0) {
+    await streamWords(controller, Lf("searchNothingFound", language, { query: categories.join(" + ") }));
+  } else {
+    const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
+    const cityText = deliveryCityForMessage ? ` to ${deliveryCityForMessage}` : "";
+    const introKey = products.length === 1 ? "searchFoundOne" : "searchFoundMany";
+    await streamWords(
+      controller,
+      Lf(introKey, language, {
+        n: products.length,
+        budget: budgetText,
+        city: cityText,
+        date: effectiveDate ? ` on ${effectiveDate}` : "",
+      })
+    );
+    controller.enqueue(sse("products", products.slice(0, 6)));
+  }
+
+  controller.enqueue(sse("done"));
+  return true;
+}
 
 export async function tryHandleSearchFastPath({
   text,
@@ -65,6 +181,21 @@ export async function tryHandleSearchFastPath({
   const trimmed = normalizeUserTypos(text.trim());
   const lower = trimmed.toLowerCase();
   const filterContext = buildMessageFilterContext(trimmed, messages);
+
+  // Multi-category combo — run one search per lane and merge (not single-keyword guess).
+  if (await tryHandleMultiCategorySearch({
+    trimmed,
+    filterContext,
+    messages,
+    deliveryCity,
+    deliveryDate,
+    language,
+    mcpClient,
+    controller,
+    budget,
+  })) {
+    return true;
+  }
 
   // ── Global Shop (coming soon) ────────────────────────────────────────────
   if (GLOBAL_SHOP_RE.test(lower)) {
