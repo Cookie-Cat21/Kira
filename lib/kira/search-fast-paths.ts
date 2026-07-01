@@ -703,16 +703,35 @@ export async function tryHandleSearchFastPath({
   if (SALE_RE.test(lower) && !parseSearchIntent(trimmed)) {
     const saleQuery = extractProductKeyword(lower) ?? "gift";
     controller.enqueue(sse("step", `Searching Kapruka for budget picks`));
-    const saleResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-      params: { q: saleQuery, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
-    });
-    const saleProducts = dedupeProducts(
-      filterProductsForSearch(
-        extractProductsFromMcp(saleResult.content),
-        saleQuery,
-        filterContext
-      )
+    const saleQueries = [saleQuery, "gift", "chocolate", "gift hamper"].filter(
+      (q, i, arr) => arr.indexOf(q) === i
     );
+    let saleProducts: ReturnType<typeof dedupeProducts> = [];
+    for (const q of saleQueries) {
+      const saleResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q, limit: 6, in_stock_only: true, sort: "price_asc", response_format: "json" },
+      });
+      saleProducts = dedupeProducts(
+        filterProductsForSearch(
+          extractProductsFromMcp(saleResult.content),
+          q,
+          filterContext
+        )
+      );
+      if (saleProducts.length > 0) break;
+    }
+    if (saleProducts.length === 0) {
+      const fallback = await callMcpTool(mcpClient, "kapruka_search_products", {
+        params: { q: "gift", limit: 6, in_stock_only: true, sort: "bestseller", response_format: "json" },
+      });
+      saleProducts = dedupeProducts(
+        filterProductsForSearch(
+          extractProductsFromMcp(fallback.content),
+          "gift",
+          filterContext
+        )
+      );
+    }
     if (saleProducts.length === 0) {
       await streamWords(controller, Lf("searchNothingFound", language, { query: saleQuery }));
     } else {

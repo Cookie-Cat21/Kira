@@ -2,14 +2,33 @@
 /**
  * Judge dry-run — 10 scripted messages mimicking the Kapruka judging path.
  * Usage: node scripts/judge-dry-run.mjs
- * Requires Kira dev server on KIRA_API_URL (default http://localhost:3000/api/chat).
+ * Requires Kira dev server on KIRA_API_URL (default http://localhost:3107/api/chat).
  */
 import { assertDevServerAvailable, sendTestCase } from "./test-runner.mjs";
 
-// expectProducts: a `products` SSE event MUST be emitted (catches "apology
-//   instead of carousel" regressions on search/breadth/reorder paths).
-// expectNoProducts: a `products` event must NOT be emitted (advice / greeting /
-//   field-collection turns should never show a carousel).
+const FULL_LAST_ORDER = {
+  orderRef: "KP-JUDGE-001",
+  placedAt: Date.now(),
+  label: "Judge test hamper",
+  items: [
+    {
+      product: {
+        id: "judge-dry-run-001",
+        name: "Judge Test Chocolate",
+        price: 1500,
+        currency: "LKR",
+      },
+      quantity: 1,
+    },
+  ],
+  recipient: { name: "Amma", phone: "0771234567" },
+  delivery: {
+    city: "Colombo",
+    address: "12 Galle Road",
+    date: "2026-07-20",
+  },
+};
+
 const STEPS = [
   { label: "Greeting", message: "hey", expectNoProducts: true },
   { label: "Electronics breadth", message: "Show me electronics on Kapruka", expectProducts: true },
@@ -17,7 +36,12 @@ const STEPS = [
   { label: "Personality repair", message: "I messed up wife is angry need to send flowers", expectProducts: true },
   { label: "Rush delivery", message: "need roses delivered today to Colombo urgent", expectProducts: true },
   { label: "Ready to checkout", message: "I am ready to checkout", cart: true, expectNoProducts: true },
-  { label: "Reorder session", message: "order again", lastOrder: true, expectProducts: true },
+  {
+    label: "Reorder session (one-tap)",
+    message: "order again",
+    lastOrder: FULL_LAST_ORDER,
+    expectReorderCheckout: true,
+  },
   { label: "Sale browse", message: "anything on sale", expectProducts: true },
   { label: "Hamper browse", message: "show me a gift hamper", expectProducts: true },
   { label: "Track order ask", message: "I want to track my order", expectNoProducts: true },
@@ -44,31 +68,24 @@ for (let i = 0; i < STEPS.length; i++) {
   const step = STEPS[i];
   const request = {
     messages: [{ role: "user", content: step.message }],
-    cart: step.cart
-      ? [{ product: SAMPLE_PRODUCT, quantity: 1 }]
-      : [],
+    cart: step.cart ? [{ product: SAMPLE_PRODUCT, quantity: 1 }] : [],
     language: "en",
-    ...(step.lastOrder
-      ? {
-          lastOrder: {
-            orderRef: "KP-JUDGE-001",
-            placedAt: Date.now(),
-            items: [{ product: SAMPLE_PRODUCT, quantity: 1 }],
-          },
-        }
-      : {}),
+    ...(step.lastOrder ? { lastOrder: step.lastOrder } : {}),
   };
 
   const result = await sendTestCase({ request, checks: [] });
   const hasError = result.events.some((e) => e.t === "error");
   const hasDone = result.events.some((e) => e.t === "done");
-  // A products event counts only when it actually carries items.
   const hasProducts = result.events.some(
     (e) => e.t === "products" && Array.isArray(e.v) && e.v.length > 0
   );
-  const productMismatch =
-    (step.expectProducts && !hasProducts) ||
-    (step.expectNoProducts && hasProducts);
+  const hasReorderCheckout = result.events.some((e) => e.t === "reorderCheckout");
+
+  let productMismatch = false;
+  if (step.expectProducts && !hasProducts) productMismatch = true;
+  if (step.expectNoProducts && hasProducts) productMismatch = true;
+  if (step.expectReorderCheckout && !hasReorderCheckout) productMismatch = true;
+
   const ok = !result.error && hasDone && !hasError && !productMismatch;
 
   console.log(`${ok ? "✓" : "✗"} [${i + 1}/${STEPS.length}] ${step.label} (${result.durationMs}ms)`);
@@ -78,7 +95,10 @@ for (let i = 0; i < STEPS.length; i++) {
     if (hasError) console.log("  SSE error event received");
     if (!hasDone) console.log("  missing done event");
     if (step.expectProducts && !hasProducts) console.log("  expected a products event, got none");
-    if (step.expectNoProducts && hasProducts) console.log("  unexpected products event (should be advice/text only)");
+    if (step.expectNoProducts && hasProducts) console.log("  unexpected products event");
+    if (step.expectReorderCheckout && !hasReorderCheckout) {
+      console.log("  expected reorderCheckout SSE for one-tap reorder");
+    }
   } else {
     passed++;
   }
