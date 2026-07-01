@@ -159,6 +159,40 @@ export const DOMAINS = [
       },
     ],
   },
+  {
+    id: "one-tap-reorder",
+    title: "One-tap reorder habit (CEO priority)",
+    plan: "docs/REORDER-PLAN.md",
+    group: "X",
+    generator: "generate-reorder-habit.mjs",
+    smoke: 15,
+    extraCriteria: [
+      {
+        id: "one_tap_ui",
+        weight: 2,
+        test: (t) => /one tap|Order this again|post-checkout|Welcome back|button/i.test(t),
+        note: "Primary UI reorder surface, not chat-only",
+      },
+      {
+        id: "checkout_prefill",
+        weight: 2,
+        test: (t) => /pre-fill|prefill|skip.*recipient|delivery fields|checkout review/i.test(t),
+        note: "Checkout prefill on reorder",
+      },
+      {
+        id: "track_to_pay",
+        weight: 1,
+        test: (t) => /Track.*pay|OrderTracker|review \+ pay|not add-to-cart|not cart-only/i.test(t),
+        note: "Tracking reorder goes to checkout, not cart detour",
+      },
+      {
+        id: "phase2_deferred",
+        weight: 1,
+        test: (t) => /Phase 2|deferred|Supabase|explicitly deferred/i.test(t),
+        note: "Account/history scoped as Phase 2, v1 shippable without auth",
+      },
+    ],
+  },
 ];
 
 export function criteriaForDomain(domain) {
