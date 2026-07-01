@@ -17,8 +17,9 @@ import {
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { getColomboTodayIso, getColomboTomorrowIso } from "@/lib/colombo-date";
+import { inferLastOrderLabel, normalizeReorderDate, type CheckoutPrefill, type CheckoutStep } from "@/lib/reorder";
 import { cn } from "@/lib/utils";
-import type { CheckoutInfo } from "@/types";
+import type { CheckoutInfo, LastOrder } from "@/types";
 
 const lkrFormatter = new Intl.NumberFormat("en-LK", {
   style: "currency",
@@ -26,7 +27,7 @@ const lkrFormatter = new Intl.NumberFormat("en-LK", {
   maximumFractionDigits: 0,
 });
 
-type Step = "review" | "delivery" | "confirm";
+type Step = CheckoutStep;
 
 const STEPS: Step[] = ["review", "delivery", "confirm"];
 const STEP_LABELS: Record<Step, string> = {
@@ -49,10 +50,14 @@ interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
   payLink?: string;
+  /** @deprecated use prefill.city / prefill.date */
   initialDelivery?: {
     city?: string;
     date?: string;
   };
+  prefill?: CheckoutPrefill;
+  initialStep?: CheckoutStep;
+  onOrderPlaced?: (order: LastOrder) => void;
 }
 
 export default function CheckoutModal({
@@ -60,8 +65,11 @@ export default function CheckoutModal({
   onClose,
   payLink,
   initialDelivery,
+  prefill,
+  initialStep = "review",
+  onOrderPlaced,
 }: CheckoutModalProps) {
-  const { cart, cartTotal, clearCart, payLink: contextPayLink } = useCart();
+  const { cart, cartTotal, clearCart, payLink: contextPayLink, beginReorder } = useCart();
   const prefersReduced = useReducedMotion();
   const dialogRef = useRef<HTMLElement>(null);
   const [step, setStep] = useState<Step>("review");
@@ -84,14 +92,22 @@ export default function CheckoutModal({
   useEffect(() => {
     if (!open) return;
     const timer = window.setTimeout(() => {
-      setDelivery((current) => ({
-        ...current,
-        city: current.city || initialDelivery?.city || "",
-        date: initialDelivery?.date || current.date || getColomboTomorrowIso(),
-      }));
+      setStep(initialStep);
+      setDelivery({
+        name: prefill?.recipientName ?? "",
+        phone: prefill?.phone ?? "",
+        city: prefill?.city ?? initialDelivery?.city ?? "",
+        address: prefill?.address ?? "",
+        date: normalizeReorderDate(prefill?.date ?? initialDelivery?.date),
+      });
+      setGiftMessage(prefill?.giftMessage ?? "");
+      setSenderName(prefill?.senderName ?? "");
+      setPlaceError("");
+      setModalCheckoutInfo(undefined);
+      setCheckoutMode("live");
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [open, initialDelivery?.city, initialDelivery?.date]);
+  }, [open, initialStep, prefill, initialDelivery?.city, initialDelivery?.date]);
 
   // Focus trap — keep keyboard focus inside the modal
   useEffect(() => {
@@ -176,6 +192,21 @@ export default function CheckoutModal({
         }
         setCheckoutMode(data.mode === "sandbox" ? "sandbox" : "live");
         setModalCheckoutInfo(data.checkoutInfo);
+        const saved: LastOrder = {
+          orderRef: data.checkoutInfo.orderRef,
+          items: [...cart],
+          recipient: { name: delivery.name.trim(), phone: delivery.phone.trim() },
+          delivery: {
+            city: delivery.city.trim(),
+            address: delivery.address.trim(),
+            date: delivery.date,
+          },
+          giftMessage: giftMessage.trim() || undefined,
+          senderName: senderName.trim() || undefined,
+          label: inferLastOrderLabel(cart),
+          placedAt: Date.now(),
+        };
+        onOrderPlaced?.(saved);
         setStep("confirm");
       } catch {
         setPlaceError("Network error — check your connection and try again.");
@@ -498,6 +529,36 @@ export default function CheckoutModal({
                         <Share2 className="size-3.5 text-green-500" />
                         Tell them it&apos;s coming — share on WhatsApp
                       </a>
+                    )}
+                    {cart.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const saved: LastOrder = {
+                            orderRef: modalCheckoutInfo?.orderRef,
+                            items: [...cart],
+                            recipient: {
+                              name: delivery.name.trim(),
+                              phone: delivery.phone.trim(),
+                            },
+                            delivery: {
+                              city: delivery.city.trim(),
+                              address: delivery.address.trim(),
+                              date: delivery.date,
+                            },
+                            giftMessage: giftMessage.trim() || undefined,
+                            senderName: senderName.trim() || undefined,
+                            label: inferLastOrderLabel(cart),
+                            placedAt: Date.now(),
+                          };
+                          onOrderPlaced?.(saved);
+                          beginReorder(saved);
+                        }}
+                        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-xl border-2 border-kap-purple bg-kap-purple/5 px-6 py-3.5 text-sm font-bold text-kap-purple transition-all hover:bg-kap-purple/10 active:scale-[0.98]"
+                      >
+                        <Gift className="size-4" />
+                        Order this again
+                      </button>
                     )}
                   </motion.div>
                 )}

@@ -16,6 +16,7 @@ interface ChatMessageProps {
   onAddToCart: (product: KiraProduct) => void;
   onOpenProduct?: (product: KiraProduct) => void;
   onReorderFromTracking?: (tracking: OrderTracking) => void;
+  onOrderAgain?: () => void;
   deliveryCity?: string;
 }
 
@@ -280,6 +281,7 @@ export default function ChatMessage({
   onAddToCart,
   onOpenProduct,
   onReorderFromTracking,
+  onOrderAgain,
   deliveryCity,
 }: ChatMessageProps) {
   const isKira = message.role === "assistant";
@@ -370,14 +372,20 @@ export default function ChatMessage({
 
         {/* Pay link CTA */}
         {(message.checkout || message.payLink) && (
-          <CheckoutCard message={message} />
+          <CheckoutCard message={message} onOrderAgain={onOrderAgain} />
         )}
       </div>
     </div>
   );
 }
 
-function CheckoutCard({ message }: { message: KiraMessage }) {
+function CheckoutCard({
+  message,
+  onOrderAgain,
+}: {
+  message: KiraMessage;
+  onOrderAgain?: () => void;
+}) {
   const checkoutUrl = message.checkout?.checkoutUrl ?? message.payLink;
   const [copied, setCopied] = useState(false);
   if (!checkoutUrl) return null;
@@ -461,6 +469,16 @@ function CheckoutCard({ message }: { message: KiraMessage }) {
         Complete payment
         <ChevronRight className="size-4" />
       </a>
+      {onOrderAgain && (
+        <button
+          type="button"
+          onClick={onOrderAgain}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white transition-all hover:bg-white/15 active:scale-95"
+        >
+          <Gift className="size-4 text-kap-yellow" />
+          Order this again
+        </button>
+      )}
     </div>
   );
 }

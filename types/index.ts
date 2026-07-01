@@ -125,8 +125,10 @@ export interface LastOrder {
   orderRef?: string;
   items: CartItem[];
   recipient?: { name: string; phone: string };
-  delivery?: { city: string; address: string };
+  delivery?: { city: string; address: string; date?: string };
   giftMessage?: string;
+  senderName?: string;
+  label?: string;
   placedAt: number;
 }
 

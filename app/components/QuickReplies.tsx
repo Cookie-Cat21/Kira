@@ -9,12 +9,14 @@ interface QuickRepliesProps {
   isLoading: boolean;
   onSelect: (text: string) => void;
   onCheckout?: () => void;
+  onReorder?: () => void;
 }
 
 interface Chip {
   label: string;
   value: string;
   checkout?: boolean;
+  reorder?: boolean;
 }
 
 function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
@@ -37,7 +39,7 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     // than risk a stale ref from a previous/persisted order.
     const orderRef = last.checkout?.orderRef;
     return [
-      { label: "Order again", value: "order again" },
+      { label: "Order again", value: "order again", reorder: true },
       {
         label: "Track this order",
         value: orderRef ? `Track order ${orderRef}` : "I want to track my order",
@@ -176,6 +178,7 @@ export default function QuickReplies({
   isLoading,
   onSelect,
   onCheckout,
+  onReorder,
 }: QuickRepliesProps) {
   const chips = deriveChips(messages, deliveryCity);
   if (isLoading || chips.length === 0) return null;
@@ -194,9 +197,11 @@ export default function QuickReplies({
           <button
             key={chip.label}
             type="button"
-            onClick={() =>
-              chip.checkout && onCheckout ? onCheckout() : onSelect(chip.value)
-            }
+            onClick={() => {
+              if (chip.reorder && onReorder) onReorder();
+              else if (chip.checkout && onCheckout) onCheckout();
+              else onSelect(chip.value);
+            }}
             className="glass-chip rounded-full px-3 py-1.5 text-xs font-semibold text-white/75 transition-colors hover:text-white"
           >
             {chip.label}

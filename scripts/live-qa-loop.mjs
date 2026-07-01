@@ -23,7 +23,7 @@ const GROUP_MODULE = {
   T: "./personas/generated-category-purity.mjs",
   U: "./personas/generated-context-bleed.mjs",
   V: "./personas/generated-vague-intent.mjs",
-  W: "./personas/generated-repair-flow.mjs",
+  X: "./personas/generated-reorder-habit.mjs",
 };
 
 const LIVE_CRITERIA = [

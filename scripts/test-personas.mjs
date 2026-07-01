@@ -327,6 +327,7 @@ import { GROUP_T } from "./personas/generated-category-purity.mjs";
 import { GROUP_U } from "./personas/generated-context-bleed.mjs";
 import { GROUP_V } from "./personas/generated-vague-intent.mjs";
 import { GROUP_W } from "./personas/generated-repair-flow.mjs";
+import { GROUP_X } from "./personas/generated-reorder-habit.mjs";
 
 const GROUPS = {
   A: GROUP_A,
@@ -347,6 +348,7 @@ const GROUPS = {
   U: GROUP_U,
   V: GROUP_V,
   W: GROUP_W,
+  X: GROUP_X,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
@@ -450,6 +452,38 @@ function applyToken(token, arg, events, text, userMsg = "", messages = null) {
       return {
         pass: !bad,
         reason: bad ? "Preachy hand-deliver advice — Kapruka exists to deliver" : "",
+      };
+    }
+    case "reorderOpensCheckout": {
+      const reorderEvt = events.find((e) => e.t === "reorderCheckout");
+      if (reorderEvt) return { pass: true, reason: "" };
+      const hasProducts = !!products?.length;
+      if (!hasProducts && /order|previous|first|KP-|last/i.test(text)) {
+        return { pass: true, reason: "" };
+      }
+      return {
+        pass: false,
+        reason: hasProducts
+          ? "Carousel only — expected reorderCheckout SSE for one-tap reorder"
+          : "Expected reorderCheckout or honest no-history reply",
+      };
+    }
+    case "checkoutPrefill": {
+      const reorderEvt = events.find((e) => e.t === "reorderCheckout");
+      if (!reorderEvt?.v) {
+        return { pass: false, reason: "No reorderCheckout payload for prefill check" };
+      }
+      const o = reorderEvt.v;
+      const ok =
+        o.recipient?.name &&
+        o.recipient?.phone &&
+        o.delivery?.city &&
+        o.delivery?.address &&
+        Array.isArray(o.items) &&
+        o.items.length > 0;
+      return {
+        pass: !!ok,
+        reason: ok ? "" : "reorderCheckout missing recipient, delivery, or items",
       };
     }
     case "asksClarifying":

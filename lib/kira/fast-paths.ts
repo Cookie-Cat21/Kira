@@ -30,6 +30,7 @@ import {
 } from "@/lib/kira/search";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
 import type { CartItem, KiraProduct, LastOrder } from "@/types";
+import { hasFullReorderContext } from "@/lib/reorder";
 
 // Matches short "show me" / "can i see them" re-show requests with no product query.
 export const RESHOW_RE = /^(show\s*(me|them|these)?|can\s+i\s+see(\s+them)?|let\s+me\s+see(\s+them)?)[\.\?\!]?$/i;
@@ -261,16 +262,21 @@ export async function tryHandleDeterministicPrompt({
 
   // ── Within-session reorder ───────────────────────────────────────────────
   if (REORDER_SESSION_RE.test(lower)) {
-    const source =
+    const order: LastOrder | null =
       lastOrder?.items?.length
         ? lastOrder
         : cart.length > 0
-        ? { items: cart, placedAt: Date.now() }
-        : null;
-    if (source?.items?.length) {
-      const products = cartItemsToProducts(source.items);
-      await streamWords(controller, L("reorderSessionFound", language));
-      controller.enqueue(sse("products", filterFamilySafeProducts(products)));
+          ? { items: cart, placedAt: Date.now() }
+          : null;
+    if (order?.items?.length) {
+      if (hasFullReorderContext(order)) {
+        await streamWords(controller, L("reorderSessionFound", language));
+        controller.enqueue(sse("reorderCheckout", order));
+      } else {
+        const products = cartItemsToProducts(order.items);
+        await streamWords(controller, L("reorderSessionFound", language));
+        controller.enqueue(sse("products", filterFamilySafeProducts(products)));
+      }
     } else {
       await streamWords(controller, L("reorderNoHistory", language));
     }

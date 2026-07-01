@@ -28,11 +28,11 @@ import {
 import KiraLoader from "./KiraLoader";
 import McpStatusBadge from "./McpStatusBadge";
 import ChatMessage from "./ChatMessage";
-import CheckoutModal from "./CheckoutModal";
 import ProductQuickView from "./ProductQuickView";
 import { ThinkingLive, ThinkingDone, type LiveStep } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
+import WelcomeBackReorder from "./WelcomeBackReorder";
 import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
 import { useCart } from "../context/CartContext";
@@ -44,6 +44,7 @@ import {
   getColomboTomorrowIso,
   parseRelativeDeliveryDate,
 } from "@/lib/colombo-date";
+import { hasFullReorderContext } from "@/lib/reorder";
 import type {
   CheckoutInfo,
   DeliveryQuote,
@@ -276,7 +277,6 @@ export default function KiraExperience({
   const [lastStreamActivityAt, setLastStreamActivityAt] = useState<number>(Date.now());
   const [a11yAnnounce, setA11yAnnounce] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<KiraProduct | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const {
     cart,
     addToCart,
@@ -285,6 +285,10 @@ export default function KiraExperience({
     cartCount,
     cartTotal,
     setCheckoutDefaults,
+    beginReorder,
+    saveLastOrder,
+    openCheckout,
+    lastOrder: persistedLastOrder,
   } = useCart();
   const thinkingStartRef = useRef<number>(0);
   const streamingMsgIdRef = useRef<string | null>(null);
@@ -341,17 +345,19 @@ export default function KiraExperience({
         },
         quantity: item.quantity,
       }));
-      for (const { product, quantity } of items) {
-        for (let q = 0; q < quantity; q++) addToCart(product);
-      }
-      setLastOrder({
+      const order: LastOrder = {
         orderRef: tracking.orderNumber,
         items,
         placedAt: Date.now(),
+      };
+      beginReorder(order, {
+        step: hasFullReorderContext(order) ? "review" : "delivery",
       });
-      setA11yAnnounce("Previous order items added to cart");
+      setLastOrder(order);
+      saveLastOrder(order);
+      setA11yAnnounce("Opening checkout to reorder your items");
     },
-    [addToCart]
+    [beginReorder, saveLastOrder]
   );
 
   const cancelActiveResponse = useCallback(() => {
@@ -619,11 +625,12 @@ export default function KiraExperience({
                 const checkout = payload.v as CheckoutInfo;
                 setPayLink(checkout.checkoutUrl);
                 if (cart.length > 0) {
-                  setLastOrder({
+                  const partial: LastOrder = {
                     orderRef: checkout.orderRef,
                     items: cart,
                     placedAt: Date.now(),
-                  });
+                  };
+                  setLastOrder(partial);
                 }
                 const id = streamingMsgIdRef.current;
                 if (id) {
@@ -642,7 +649,14 @@ export default function KiraExperience({
                   pendingCheckoutRef.current = checkout;
                 }
               } else if (payload.t === "lastOrder") {
-                setLastOrder(payload.v as LastOrder);
+                const order = payload.v as LastOrder;
+                setLastOrder(order);
+                saveLastOrder(order);
+              } else if (payload.t === "reorderCheckout") {
+                const order = payload.v as LastOrder;
+                setLastOrder(order);
+                saveLastOrder(order);
+                beginReorder(order, { step: "review" });
               } else if (payload.t === "payLink") {
                 setPayLink(payload.v as string);
                 const id = streamingMsgIdRef.current;
@@ -912,11 +926,18 @@ export default function KiraExperience({
     ]
   );
 
-  // Seeded opening from a storefront surface (e.g. "Ask Kira about this" on a
-  // product page). Two-step on purpose: the setTimeout lands after the
-  // session-restore timeout above so restored messages aren't clobbered, and
-  // routing the prompt through state gives React one render to commit the
-  // product message before sendMessage scans `messages` for lastProducts.
+  const handleOrderAgain = useCallback(() => {
+    const order = lastOrder ?? persistedLastOrder;
+    if (order?.items?.length) {
+      beginReorder(order, {
+        step: hasFullReorderContext(order) ? "review" : "delivery",
+      });
+      return;
+    }
+    void sendMessage("order again");
+  }, [beginReorder, lastOrder, persistedLastOrder, sendMessage]);
+
+  // Seeded opening from a storefront surface
   const seedFiredRef = useRef(false);
   const seedSentRef = useRef(false);
   const [pendingSeedPrompt, setPendingSeedPrompt] = useState<string | null>(null);
@@ -1204,16 +1225,24 @@ export default function KiraExperience({
                     onAddToCart={handleAddToCart}
                     onOpenProduct={setSelectedProduct}
                     onReorderFromTracking={handleReorderFromTracking}
+                    onOrderAgain={handleOrderAgain}
                     deliveryCity={deliveryCity}
                   />
                 </div>
               ))}
+              <WelcomeBackReorder />
               <QuickReplies
                 messages={messages}
                 deliveryCity={deliveryCity}
                 isLoading={isLoading}
                 onSelect={sendMessage}
-                onCheckout={() => setCheckoutOpen(true)}
+                onCheckout={() =>
+                  openCheckout({
+                    step: "review",
+                    prefill: { city: deliveryCity, date: deliveryDate },
+                  })
+                }
+                onReorder={handleOrderAgain}
               />
               {isLoading && !isStreaming && (
                 <ThinkingLive
@@ -1241,7 +1270,7 @@ export default function KiraExperience({
                   deliveryFee={latestDeliveryInfo?.fee}
                   estimatedTotal={estimatedTotal}
                   budgetAmount={budgetAmount}
-                  onCheckout={() => setCheckoutOpen(true)}
+                  onCheckout={() => openCheckout()}
                   onCheckDelivery={() =>
                     sendMessage(
                       `Check delivery for my cart to ${deliveryCity ?? "Colombo"} on ${deliveryDate}`
@@ -1309,12 +1338,6 @@ export default function KiraExperience({
           onClose={() => setSelectedProduct(null)}
         />
       )}
-
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        initialDelivery={{ city: deliveryCity, date: deliveryDate }}
-      />
     </div>
   );
 }
