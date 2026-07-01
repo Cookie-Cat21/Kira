@@ -3,7 +3,6 @@
  * Each domain: plan doc → founder review → edge suite → orchestrator gate ≥90%.
  */
 
-/** Shared criteria every domain plan should satisfy. */
 export const BASE_CRITERIA = [
   {
     id: "root_cause",

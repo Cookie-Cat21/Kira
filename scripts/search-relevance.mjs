@@ -65,6 +65,13 @@ function matchesCategory(key, txt, activeCats) {
   if (irrel?.test(txt)) return false;
   // Flower-themed cakes are not fresh flowers unless user asked for cake too
   if (key === "flowers" && !activeCats.includes("cake") && CAKE_REL.test(txt)) return false;
+  if (
+    key === "flowers" &&
+    activeCats.length >= 2 &&
+    /\b(ribbon\s+cake|sculpture\s+cake|flower\s+ribbon\s+cake)\b/i.test(txt)
+  ) {
+    return false;
+  }
   return true;
 }
 
