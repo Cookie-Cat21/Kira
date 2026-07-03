@@ -55,6 +55,7 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     } else {
       chips.push({ label: "Check delivery", value: "Check delivery to Colombo" });
     }
+    chips.push({ label: "Add gift note", value: "I want to add a gift message to my order" });
     // Suggest a price filter if products are expensive
     const prices = last.products?.map((p) => p.price) ?? [];
     const maxPrice = Math.max(...prices);
@@ -159,12 +160,14 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
     ];
   }
 
-  // Opening / first reply — show entry-point categories
+  // Opening / first reply — everyday shopper + gift entry points
   if (isFirstReply || text.includes("what") || text.includes("help") || text.includes("looking for")) {
     return [
+      { label: "Shop for myself", value: "I need to buy something for myself on Kapruka" },
+      { label: "Groceries", value: "Show me grocery items on Kapruka" },
+      { label: "Electronics", value: "Show me electronics on Kapruka" },
       { label: "Birthday gift", value: "I need a birthday gift" },
       { label: "Flowers", value: "I want to send fresh flowers" },
-      { label: "Cakes", value: "Show me cakes on Kapruka" },
       { label: "Track order", value: "I want to track my order" },
     ];
   }

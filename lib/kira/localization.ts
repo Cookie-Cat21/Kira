@@ -199,10 +199,25 @@ export const LS: Record<string, Record<string, string>> = {
     si: "Machang, rough patch eh? Her එකට deliver කරන්න පුළුවන් options:",
     ta: "Machang, rough patch eh? அவருக்கு deliver பண்ண options:",
   },
+  repairBreakupSearchIntro: {
+    en: "Aiyo! 💔 Okay — let's make this count. Kapruka can deliver straight to her door today. Here are flowers that ship now:",
+    si: "Aiyo! 💔 හරි — meaningful එකක් කරමු. Kapruka direct deliver කරන්න පුළුවන්. Flowers options:",
+    ta: "Aiyo! 💔 சரி — meaningful-ஆ செய்வோம். Kapruka direct deliver பண்ண முடியும். Flowers options:",
+  },
   repairGiftAsk: {
     en: "Oof, sounds rough — zero judgment. Flowers or chocolates usually land well. What should I send, and where?",
     si: "Oof, rough වගේ — judgment නෑ. Flowers හෝ chocolates හොඳයි. මොකක්ද යවන්නේ, කොහෙද?",
     ta: "Oof, rough மாதிரி — judgment இல்ல. Flowers அல்லது chocolates நல்லா இருக்கும். என்ன அனுப்பணும், எங்க?",
+  },
+  repairBreakupAsk: {
+    en: "Aiyo, that's heavy — zero judgment. Flowers or chocolates usually land well. What should I send, and where should Kapruka deliver it?",
+    si: "Aiyo, heavy — judgment නෑ. Flowers හෝ chocolates. මොකක්ද යවන්නේ, Kapruka deliver කරන්නේ කොහෙද?",
+    ta: "Aiyo, heavy — judgment இல்ல. Flowers அல்லது chocolates. என்ன அனுப்பணும், Kapruka deliver எங்க?",
+  },
+  selfShopIntro: {
+    en: "Nice — shopping for yourself? Tell me what you need (groceries, phone stuff, home essentials) and I'll pull live Kapruka picks.",
+    si: "Nice — ඔයාටද? Groceries, phone stuff, home essentials — මොකක්ද ඕන?",
+    ta: "Nice — உங்களுக்கா? Groceries, phone stuff, home essentials — என்ன வேணும்?",
   },
   rushSearchIntro: {
     en: "These can reach {city} on {date} — rush slots fill fast:",

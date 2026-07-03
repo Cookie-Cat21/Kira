@@ -34,6 +34,7 @@
     "test:dulith-qa": "node scripts/dulith-qa-orchestrator.mjs --full",
     "test:dulith-gate": "node scripts/dulith-final-gate.mjs",
     "test:dulith-gate:local": "node scripts/dulith-final-gate.mjs --with-local",
+    "test:dulith-5h": "node scripts/dulith-5h-loop.mjs --duration 300",
     "test:judge-dry-run": "node scripts/judge-dry-run.mjs",
     "test:live-regression": "node scripts/live-regression.mjs",
     "test:live-qa": "node scripts/live-qa-loop.mjs --full",
