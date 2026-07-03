@@ -94,6 +94,19 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
+  // ── Bare budget only — ask before any search ─────────────────────────────
+  const BARE_BUDGET_ONLY_RE =
+    /^(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+)\s*$/i;
+  const bareBudgetOnly = BARE_BUDGET_ONLY_RE.exec(trimmed);
+  if (bareBudgetOnly) {
+    const amount = Number(bareBudgetOnly[1].replace(/,/g, ""));
+    if (amount >= 100 && amount <= 500_000) {
+      await streamWords(controller, L("budgetOnlyAsk", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
   // ── Cart contents ────────────────────────────────────────────────────────
   const CART_CONTENTS_RE =
     /\b(what'?s in (?:my )?(?:cart|tray|basket)|show (?:my )?(?:cart|tray)|cart contents|my tray)\b/i;
@@ -113,6 +126,15 @@ export async function tryHandleDeterministicPrompt({
         `Your tray:\n\n${lines}\n\nSubtotal: **LKR ${total.toLocaleString("en-LK")}**`
       );
     }
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
+  // ── Gift message intent (cart must have items) ───────────────────────────
+  const GIFT_MESSAGE_INTENT_RE =
+    /\b(gift message|gift note|add a note|message on the card|note on the card|card message)\b/i;
+  if (cart.length > 0 && GIFT_MESSAGE_INTENT_RE.test(lower)) {
+    await streamWords(controller, L("giftMessageAsk", language));
     controller.enqueue(sse("done"));
     return true;
   }

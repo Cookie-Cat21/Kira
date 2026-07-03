@@ -418,7 +418,7 @@ export default function CheckoutModal({
                         <textarea
                           value={giftMessage}
                           onChange={(e) => setGiftMessage(e.target.value)}
-                          placeholder="Happy birthday amma! Wishing you all the love 🎂"
+                          placeholder="Happy birthday amma! Wishing you all the love 🎂 (Sinhala/Tamil OK)"
                           rows={3}
                           maxLength={300}
                           className="w-full resize-none rounded-xl border border-kira-line bg-kira-surface px-4 py-3 text-sm text-kira-text outline-none transition-all placeholder:text-kira-muted focus:border-kap-purple/60 focus:ring-2 focus:ring-kap-purple/10"
