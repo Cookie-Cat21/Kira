@@ -14,7 +14,8 @@ import { sendTestCase } from "./test-runner.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
 import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
 import { scoreCeoLens, ceoPassAt90 } from "./ceo-lens.mjs";
-import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
+import { isPreachyHandDeliver, userWantsBreakupHandDeliverFlow, hasBreakupHandDeliverTone } from "./lib/repair-tone.mjs";
+import { FLOWER_JUNK_RE } from "./lib/flower-filter.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -104,6 +105,35 @@ export const LIVE_TRAPS = [
     checks: ["noHandDeliver", "productsOrHonest"],
   },
   {
+    id: "LIVE-Y001",
+    group: "Y",
+    msg: "I broke up with my girlfriend... I need to send some flowers",
+    note: "Breakup — hand-deliver tone + real bouquets",
+    checks: ["breakupHandDeliverTone", "noFlowerJunk", "productsOrHonest"],
+  },
+  {
+    id: "LIVE-Y002",
+    group: "Y",
+    request: {
+      messages: [{ role: "user", content: "මගේ girlfriend එක්ක broke up වුනා... flowers ටිකක් යවන්න ඕන" }],
+      cart: [],
+      language: "si",
+    },
+    note: "Breakup SI — hand-deliver + real bouquets",
+    checks: ["breakupHandDeliverTone", "noFlowerJunk", "productsOrHonest"],
+  },
+  {
+    id: "LIVE-Y003",
+    group: "Y",
+    request: {
+      messages: [{ role: "user", content: "wife kova roses Colombo hand deliver venam illa Kapruka deliver pannunga" }],
+      cart: [],
+      language: "ta",
+    },
+    note: "Anti hand-deliver TA — no DIY lecture",
+    checks: ["noHandDeliver", "productsOrHonest", "noFlowerJunk"],
+  },
+  {
     id: "LIVE-X001",
     group: "X",
     request: {
@@ -164,8 +194,6 @@ export const LIVE_TRAPS = [
   },
 ];
 
-const FLOWER_JUNK =
-  /\b(greeting\s*card|key\s*tag|keytag|key\s*chain|crochet|everbloom|mini\s*flora|flora\s*bunch|artificial|journal|pen\s*set|pen\s*gift|executive\s*pen)\b/i;
 const HONEST_EMPTY =
   /couldn'?t find|nothing in stock|no products in stock|not in stock|try a different|different category/i;
 
@@ -213,8 +241,16 @@ function runChecks(trap, result) {
         break;
       }
       case "noFlowerJunk": {
-        const junk = products.filter((p) => FLOWER_JUNK.test(`${p.name ?? ""} ${p.category ?? ""}`));
+        const junk = products.filter((p) =>
+          FLOWER_JUNK_RE.test(`${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`)
+        );
         if (junk.length) reasons.push(`Flower junk: ${junk.map((p) => p.name).join(", ")}`);
+        break;
+      }
+      case "breakupHandDeliverTone": {
+        if (userWantsBreakupHandDeliverFlow(msg) && !hasBreakupHandDeliverTone(text)) {
+          reasons.push("Breakup + flowers expected Kapruka→you hand-deliver tone");
+        }
         break;
       }
       case "noPrematureProducts":

@@ -300,6 +300,23 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (/deliver|send|machang/i.test(text)) excitement += 1;
       break;
     }
+    case "Y": {
+      if (isPreachyHandDeliver(text, msg)) {
+        return { score: 0, excitement: 0, flags: ["preachy_hand_deliver"], pass: false, verdict: "Wrong breakup/repair advice." };
+      }
+      if (personaPassed && hasProducts(events)) {
+        flags.push("breakup_catalog"); score += 3; excitement += 4;
+      } else if (personaPassed) {
+        flags.push("breakup_handled"); score += 2; excitement += 3;
+      } else {
+        score -= 3; excitement -= 2;
+      }
+      if (/aiyo|💔|hand[- ]?deliver|note card/i.test(text)) {
+        flags.push("challenge_tone"); excitement += 2; score += 1;
+      }
+      if (WARM_RE.test(text)) excitement += 1;
+      break;
+    }
     case "X": {
       if (events?.some((e) => e.t === "reorderCheckout")) {
         flags.push("one_tap_reorder"); score += 4; excitement += 4;

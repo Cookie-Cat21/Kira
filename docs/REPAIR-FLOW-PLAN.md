@@ -16,7 +16,8 @@ Kapruka's whole value prop is **send to them when you can't be there**. Getting 
 
 - `REPAIR_GIFT_RE` in fast-paths triggers warm friend tone + search when product/city named
 - System prompt: never lecture hand-delivery; offer gift message + Kapruka delivery
-- `PREACHY_RE` in CEO lens = automatic fail
+- `PREACHY_RE` in CEO lens = automatic fail **unless** challenge-style Kapruka→you→hand-deliver (see `isPreachyHandDeliver()` in `repair-tone.ts`)
+- Breakup + flowers uses **hand-deliver intro**; angry-partner (non-breakup) uses Kapruka-to-her delivery
 
 ### Layer 2 — Emotional → action routing
 

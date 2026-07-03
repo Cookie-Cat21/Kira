@@ -32,7 +32,8 @@ import { scoreCeoLens, ceoScorePercent, ceoPassAt90 } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
 import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
-import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
+import { isPreachyHandDeliver, userWantsBreakupHandDeliverFlow, hasBreakupHandDeliverTone } from "./lib/repair-tone.mjs";
+import { FLOWER_JUNK_RE, FLOWER_BOUQUET_NAME_RE } from "./lib/flower-filter.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -328,6 +329,7 @@ import { GROUP_T } from "./personas/generated-category-purity.mjs";
 import { GROUP_U } from "./personas/generated-context-bleed.mjs";
 import { GROUP_V } from "./personas/generated-vague-intent.mjs";
 import { GROUP_W } from "./personas/generated-repair-flow.mjs";
+import { GROUP_Y } from "./personas/generated-breakup-repair.mjs";
 import { GROUP_X } from "./personas/generated-reorder-habit.mjs";
 
 const GROUPS = {
@@ -350,6 +352,7 @@ const GROUPS = {
   V: GROUP_V,
   W: GROUP_W,
   X: GROUP_X,
+  Y: GROUP_Y,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
@@ -384,13 +387,48 @@ function applyToken(token, arg, events, text, userMsg = "", messages = null) {
     case "noFlowerJunk": {
       if (!products?.length) return { pass: true, reason: "" };
       const junk = products.filter((p) =>
-        /\b(greeting\s*card|key\s*tag|keytag|key\s*chain|crochet|everbloom|mini\s*flora|flora\s*bunch|artificial|journal|pen\s*set|pen\s*gift|executive\s*pen)\b/i.test(
-          `${p.name ?? ""} ${p.category ?? ""}`
-        )
+        FLOWER_JUNK_RE.test(`${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`)
       );
       return {
         pass: junk.length === 0,
         reason: junk.length ? `Non-flower junk in carousel: ${junk.map((p) => p.name).join(", ")}` : "",
+      };
+    }
+    case "realFlowerBouquets": {
+      if (!products?.length) return { pass: true, reason: "" };
+      const bad = products.filter((p) => {
+        const name = p.name ?? "";
+        const category = (p.category ?? "").toLowerCase();
+        const txt = `${name} ${category} ${p.summary ?? ""}`;
+        if (FLOWER_JUNK_RE.test(txt)) return true;
+        return !FLOWER_BOUQUET_NAME_RE.test(name) && !/^flowers?\b/i.test(category);
+      });
+      return {
+        pass: bad.length === 0,
+        reason: bad.length ? `Not real bouquets: ${bad.map((p) => p.name).join(", ")}` : "",
+      };
+    }
+    case "breakupHandDeliverTone": {
+      if (!userWantsBreakupHandDeliverFlow(userMsg)) return { pass: true, reason: "" };
+      const ok = hasBreakupHandDeliverTone(text);
+      return {
+        pass: ok,
+        reason: ok ? "" : "Breakup + flowers expected Kapruka→you hand-deliver tone (Aiyo + ship to you)",
+      };
+    }
+    case "noBreakupHandDeliverTone": {
+      if (userWantsBreakupHandDeliverFlow(userMsg)) return { pass: true, reason: "" };
+      const bad = hasBreakupHandDeliverTone(text);
+      return {
+        pass: !bad,
+        reason: bad ? "Non-breakup repair should not use breakup hand-deliver story" : "",
+      };
+    }
+    case "breakupAiyoTone": {
+      const ok = /\b(aiyo|💔)\b/i.test(text);
+      return {
+        pass: ok,
+        reason: ok ? "" : "Breakup emotional context expected Aiyo tone",
       };
     }
     case "noFamilyUnsafe": {

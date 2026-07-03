@@ -160,6 +160,40 @@ export const DOMAINS = [
     ],
   },
   {
+    id: "breakup-repair",
+    title: "Breakup hand-deliver + real bouquets (multilingual)",
+    plan: "docs/BREAKUP-REPAIR-PLAN.md",
+    group: "Y",
+    generator: "generate-breakup-repair.mjs",
+    smoke: 30,
+    extraCriteria: [
+      {
+        id: "breakup_hand_deliver",
+        weight: 2,
+        test: (t) => /hand.?deliver|ship to you|Aiyo|note card|challenge/i.test(t),
+        note: "Breakup flowers → Kapruka-to-you hand-deliver story",
+      },
+      {
+        id: "flower_junk_filter",
+        weight: 2,
+        test: (t) => /banana flower|hair clip|bouquet|FLOWER_JUNK|real bouquet/i.test(t),
+        note: "Real bouquet filter — no grocery junk",
+      },
+      {
+        id: "multilingual_y",
+        weight: 1,
+        test: (t) => /en.*si.*ta|multilingual|sinhala|tamil|500/i.test(t),
+        note: "Three-language persona coverage",
+      },
+      {
+        id: "anti_hand_deliver",
+        weight: 2,
+        test: (t) => /anti.?hand.?deliver|don't tell me|karamu beda|venam illa/i.test(t),
+        note: "Anti-hand-deliver traps in all languages",
+      },
+    ],
+  },
+  {
     id: "one-tap-reorder",
     title: "One-tap reorder habit (CEO priority)",
     plan: "docs/REORDER-PLAN.md",
