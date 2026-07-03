@@ -13,6 +13,7 @@ Each domain follows the same pattern as search routing (Group S) — no regex wh
 | context-bleed | U | ~80 | Follow-up search uses **prior** turn category |
 | vague-intent | V | ~60 | Zero-context message → premature product carousel |
 | repair-flow | W | ~60 | Angry partner → preachy "hand deliver" instead of Kapruka |
+| breakup-repair | Y | 500 | Breakup + flowers → missing hand-deliver tone / flower junk (en/si/ta) |
 | one-tap-reorder | X | ~60 | Reorder hidden in chat — no one-tap habit loop (CEO #1 ask) |
 
 ## Workflow per domain
@@ -31,7 +32,8 @@ export KIRA_API_URL=http://localhost:3107/api/chat
 
 npm run test:dulith-plans          # review ALL domain plans
 npm run test:dulith-qa:smoke       # smoke each domain (~15–25 cases)
-npm run test:dulith-qa             # full program (S+T+U+V+W+X)
+npm run test:dulith-qa             # full program (S+T+U+V+W+X+Y)
+npm run test:dulith-breakup:supervisor  # Group Y only — 500 en/si/ta breakup/repair
 ```
 
 Output: `test-results/dulith-qa/summary.json`
