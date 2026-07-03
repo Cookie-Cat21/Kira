@@ -319,8 +319,12 @@ export async function tryHandleSearchFastPath({
     controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
     const repairMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     let repairProducts: KiraProduct[] = [];
-    for (const q of [repairProductKw, fallbackQuery(repairProductKw)]) {
-      if (!q) continue;
+    const repairQueries = [
+      repairProductKw,
+      fallbackQuery(repairProductKw),
+      ...(repairProductKw === "gift set" ? ["flowers", "chocolate", "gift hamper"] : []),
+    ].filter((q): q is string => Boolean(q));
+    for (const q of [...new Set(repairQueries)]) {
       const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: {
           q,
