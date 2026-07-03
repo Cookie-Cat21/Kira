@@ -10,8 +10,7 @@ const FRIENDLY_RE =
   /machang|oof|rough|no judgment|sweet|bro\b|aiyo|that's rough|sorry you're going through|no worries/i;
 const DELIVERY_RE =
   /\bdeliver|send to|send\b|door|address|kapruka|ship|get it to her|get it to him|send her|send him/i;
-const PREACHY_RE =
-  /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person|apologize in person/i;
+import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
 const FLOWER_PRODUCT_RE = /flowers?|roses?|chocolates?|bouquet|hamper/i;
 
 function lastUserText(persona) {
@@ -57,7 +56,7 @@ export function scoreFounderLens(responseText, events, persona = {}) {
   const flags = [];
   let score = 0;
 
-  if (PREACHY_RE.test(text)) {
+  if (isPreachyHandDeliver(text, lastUserText(persona))) {
     flags.push("preachy_hand_deliver");
     return { score: 0, flags, pass: false };
   }

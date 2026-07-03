@@ -214,6 +214,26 @@ export const LS: Record<string, Record<string, string>> = {
     si: "Machang, rough patch eh? Her එකට deliver කරන්න පුළුවන් options:",
     ta: "Machang, rough patch eh? அவருக்கு deliver பண்ண options:",
   },
+  repairDirectToHerIntro: {
+    en: "Machang, rough patch eh? Kapruka can deliver straight to her door — here are live picks:",
+    si: "Machang — Kapruka direct her door ekata deliver. Live picks:",
+    ta: "Machang — Kapruka direct avargal door-kku deliver. Live picks:",
+  },
+  repairBreakupHandDeliverIntro: {
+    en: "Aiyo! 💔 Okay — here's the plan. I'll get the flowers to you, and you hand-deliver them to her. Trust me, that lands better than a courier. Here are bouquets Kapruka can ship to you today:",
+    si: "Aiyo! 💔 hari — plan eka mehemayi. Flowers oyata deliver karala, oya hand-deliver karanna eyata. Courier ekata wada better. Bouquets:",
+    ta: "Aiyo! 💔 seri — plan itho. Flowers ungalukku deliver, neengal hand-deliver avargalukku. Courier-ai vida better. Bouquets:",
+  },
+  repairBreakupHandDeliverAsk: {
+    en: "Aiyo! 💔 Rough one. Want me to pull roses to you so you can hand-deliver them to her? Where should Kapruka ship them?",
+    si: "Aiyo! 💔 Rough. Roses oyata ship karala hand-deliver karannada? Kapruka ship karanne koheda?",
+    ta: "Aiyo! 💔 Rough. Roses ungalukku ship panni hand-deliver seiyalama? Kapruka ship enga?",
+  },
+  repairNoteCardOffer: {
+    en: "Shall I add a note card too?",
+    si: "Note card ekak add karamuda?",
+    ta: "Note card add pannalama?",
+  },
   repairBreakupSearchIntro: {
     en: "Aiyo! 💔 Okay — let's make this count. Kapruka can deliver straight to her door today. Here are flowers that ship now:",
     si: "Aiyo! 💔 හරි — meaningful එකක් කරමු. Kapruka direct deliver කරන්න පුළුවන්. Flowers options:",

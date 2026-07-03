@@ -88,9 +88,13 @@ export const CHOCOLATE_JUNK_RE =
 export const CAKE_JUNK_RE =
   /\b(cake\s*topper|topper|birthday\s*candle|number\s*candle|sparkler|party\s*horn|balloon|cake\s*stand|serving\s*plate|party\s*hat|bday\s*hat|cutlery\s*set|greeting\s*card|greetingcard|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|handcrafted\s*(greeting\s*)?card)\b/i;
 
-/** Deliverable fresh flowers — not cards, keychains, artificial decor, or off-category gifts. */
+/** Real bouquets/arrangements — not grocery banana blossom or hair accessories. */
+export const FLOWER_BOUQUET_NAME_RE =
+  /\b(bouquet|roses?\b|rose\s+bouquet|flower\s+arrangement|mixed\s+flower|fresh\s+flower|hand.?tied|floral\s+gift|carnations?|gerberas?|lilies|orchids|anthurium|sunflower|blushing|timeless\s+twelve|red\s+rose)\b/i;
+
+/** Deliverable fresh flowers — not cards, keychains, artificial decor, grocery, or off-category gifts. */
 export const FLOWER_JUNK_RE =
-  /\b(greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery|journal|pen\s*set|pen\s*gift|executive\s*pen|desk\s*pen|ballpoint|fountain\s*pen|notebook|diary|perfume|cologne|fragrance|belt|necktie|tie\s*clip|cufflink|jewell?ery|necklace|bracelet|earring|watch|electronic|smartphone|laptop|tablet|speaker|headphone|hand\s*wash|body\s*wash|soap|shampoo|lotion|sanitizer|cleanser)\b/i;
+  /\b(banana\s*flower|hair\s*clip|clips\s*set|flower\s*center|greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery|journal|pen\s*set|pen\s*gift|executive\s*pen|desk\s*pen|ballpoint|fountain\s*pen|notebook|diary|perfume|cologne|fragrance|belt|necktie|tie\s*clip|cufflink|jewell?ery|necklace|bracelet|earring|watch|electronic|smartphone|laptop|tablet|speaker|headphone|hand\s*wash|body\s*wash|soap|shampoo|lotion|sanitizer|cleanser|pvt\s*ltd|\/partner\/|vegetable|grocery)\b/i;
 
 // Products that pass RELEVANCE but are clearly not in the category — reject them.
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
@@ -170,6 +174,7 @@ export const REPAIR_GIFT_RE = new RegExp(
 );
 export const REPAIR_BREAKUP_RE = /\b(broke up|breakup|break up|heartbroken|dumped)\b/i;
 export const REPAIR_INSIST_RE = /\b(just send|deliver it|send it anyway|no just send)\b/i;
+export { REPAIR_ANTI_HAND_DELIVER_RE, isPreachyHandDeliver } from "@/lib/kira/repair-tone";
 export const RUSH_RE = /\b(today|urgent|asap|rush|same.?day|right now|need it now)\b/i;
 export const SALE_RE = /\b(on sale|discount|deal|offer|clearance|budget pick)\b/i;
 export const HAMPER_RE = /\b(hamper|gift set|combo pack|gift box|gift basket)\b/i;
@@ -256,6 +261,22 @@ function productMatchesCategoryKey(
     if (!HAMPER_NAME_RE.test(name)) return false;
     if (HAMPER_JUNK_RE.test(body)) return false;
     if (HAMPER_STANDALONE_JUNK_RE.test(body) && !/\bhamper/i.test(name)) return false;
+    return true;
+  }
+  if (key === "flowers" || key === "roses") {
+    const name = p.name ?? "";
+    const category = (p.category ?? "").toLowerCase();
+    const txt = productDisplayText(p);
+    const irrel = CATEGORY_IRRELEVANCE_TERMS[key];
+    if (irrel?.test(txt)) return false;
+    if (!FLOWER_BOUQUET_NAME_RE.test(name) && !/^flowers?\b/i.test(category)) return false;
+    if (!activeCats.includes("cake") && CAKE_INTENT_RE.test(txt)) return false;
+    if (
+      !activeCats.includes("cake") &&
+      /\b(ribbon\s+cake|sculpture\s+cake|flower\s+ribbon\s+cake)\b/i.test(txt)
+    ) {
+      return false;
+    }
     return true;
   }
   const rel = CATEGORY_RELEVANCE_TERMS[key];

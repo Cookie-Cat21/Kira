@@ -5,6 +5,7 @@
  */
 import {
   FLOWER_JUNK_RE,
+  FLOWER_BOUQUET_NAME_RE,
   CHOCOLATE_JUNK_RE,
   CAKE_JUNK_RE,
   HAMPER_JUNK_RE,
@@ -74,6 +75,13 @@ function filterProductsForSearch(products, query, ...contextTexts) {
           return true;
         }
         const txt = `${p.name ?? ""} ${p.category ?? ""} ${p.summary ?? ""}`;
+        if (key === "flowers" || key === "roses") {
+          const name = p.name ?? "";
+          const category = (p.category ?? "").toLowerCase();
+          if (irrel?.test(txt)) return false;
+          if (!FLOWER_BOUQUET_NAME_RE.test(name) && !/^flowers?\b/i.test(category)) return false;
+          return true;
+        }
         return rel.test(txt) && !(irrel?.test(txt));
       });
     }
@@ -85,7 +93,10 @@ const flowerJunk = [
   { id: "1", name: "Everbloom Mini Flora Bunch", price: 1410, currency: "LKR" },
   { id: "2", name: "Red Bouquet Handcrafted Greeting Card", price: 330, currency: "LKR" },
   { id: "3", name: "Cute Crochet Rose Bouquet Key Tag", price: 380, currency: "LKR" },
+  { id: "4", name: "Banana Flower 500G", price: 120, currency: "LKR", category: "Vegetables" },
+  { id: "5", name: "Daisy Flower Hair Clips Set", price: 450, currency: "LKR" },
   { id: "6", name: "Executive Journal Pen Gift Set", price: 7500, currency: "LKR" },
+  { id: "7", name: "Flower Center Pvt Ltd", price: 0, currency: "LKR" },
 ];
 
 const flowerGood = [
@@ -144,8 +155,8 @@ assert(
 );
 
 assert(
-  filterProductsForSearch(flowerJunk, "bouquets").length === 0,
-  "bouquets filters flower junk"
+  filterProductsForSearch(flowerJunk, "flowers").length === 0,
+  "flowers query filters banana blossom, hair clips, and flower junk"
 );
 
 assert(

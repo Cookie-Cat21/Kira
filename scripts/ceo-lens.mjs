@@ -7,8 +7,7 @@ const KAPRUKA_RE = /kapruka|gift|shop|browse|catalog|order|deliver/i;
 const WARM_RE =
   /machang|oof|sweet|lovely|happy to|can i help|what kind|tell me|who'?s it for|budget|occasion|\?|🎁|ha,|sorry|no worries|ayubowan|வணக்கம்|ආයුබෝවන්|pulled live|tap a card|tray|checkout link|secure checkout/i;
 const CORPORATE_RE = /as an ai|i am a language model|i cannot assist with that request/i;
-const PREACHY_RE =
-  /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i;
+import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
 const LEAK_RE =
   /you are kira|core flow|sinhala mirroring|tryHandleDeterministic|tryhandleDeterministic/i;
 const TOOL_MARKUP_RE = /<function=|kapruka_\w+>\s*\{|"\s*in_stock_only\s*":/i;
@@ -60,7 +59,7 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
   if (!text) {
     return { score: 0, excitement: 0, flags: ["empty_response"], pass: false, verdict: "No response — dead end." };
   }
-  if (PREACHY_RE.test(text)) {
+  if (isPreachyHandDeliver(text, msg)) {
     return { score: 0, excitement: 0, flags: ["preachy_hand_deliver"], pass: false, verdict: "Wrong advice — Kapruka exists to deliver." };
   }
   if (CORPORATE_RE.test(text)) {
@@ -287,7 +286,7 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       break;
     }
     case "W": {
-      if (PREACHY_RE.test(text)) {
+      if (isPreachyHandDeliver(text, msg)) {
         return { score: 0, excitement: 0, flags: ["preachy_hand_deliver"], pass: false, verdict: "Wrong advice — Kapruka exists to deliver." };
       }
       if (personaPassed && hasProducts(events)) {

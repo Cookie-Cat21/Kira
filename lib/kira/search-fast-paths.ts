@@ -9,6 +9,7 @@ import {
   HAMPER_RE,
   REPAIR_GIFT_RE,
   REPAIR_BREAKUP_RE,
+  REPAIR_ANTI_HAND_DELIVER_RE,
   RUSH_RE,
   SALE_RE,
   buildReasonBadges,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/kira/search";
 import { isMultiCategoryProductSearch, detectSearchCategories, CATEGORY_SEARCH_QUERY } from "@/lib/kira/search-routing";
 import { sse, streamWords, TOOL_STEPS } from "@/lib/kira/sse";
+import { repairIntroKeys } from "@/lib/kira/repair-tone";
 import {
   extractDeliveryInfoFromMcp,
   extractProductsFromMcp,
@@ -314,16 +316,27 @@ export async function tryHandleSearchFastPath({
     repairProductKw = "gift set";
   }
   if (REPAIR_GIFT_RE.test(lower) && repairProductKw) {
-    const introKey = REPAIR_BREAKUP_RE.test(lower) ? "repairBreakupSearchIntro" : "repairGiftSearchIntro";
+    const breakup = REPAIR_BREAKUP_RE.test(lower);
+    const antiHandDeliver = REPAIR_ANTI_HAND_DELIVER_RE.test(lower);
+    const { intro: introKey } = repairIntroKeys({
+      breakup,
+      antiHandDeliver,
+      hasProducts: true,
+    });
     await streamWords(controller, L(introKey, language));
-    controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
+    const flowerRepair =
+      /\b(flowers?|roses?|bouquet)\b/i.test(lower) || repairProductKw === "flowers";
+    const repairSearchKw = flowerRepair ? "roses" : repairProductKw;
+    controller.enqueue(sse("step", `Searching Kapruka for "${repairSearchKw}"`));
     const repairMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     let repairProducts: KiraProduct[] = [];
-    const repairQueries = [
-      repairProductKw,
-      fallbackQuery(repairProductKw),
-      ...(repairProductKw === "gift set" ? ["flowers", "chocolate", "gift hamper"] : []),
-    ].filter((q): q is string => Boolean(q));
+    const repairQueries = flowerRepair
+      ? ["roses", "flower bouquet", "mixed flower bouquet", repairProductKw]
+      : [
+          repairSearchKw,
+          fallbackQuery(repairSearchKw),
+          ...(repairProductKw === "gift set" ? ["flowers", "chocolate", "gift hamper"] : []),
+        ].filter((q): q is string => Boolean(q));
     for (const q of [...new Set(repairQueries)]) {
       const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
         params: {
@@ -351,16 +364,21 @@ export async function tryHandleSearchFastPath({
     } else {
       const cityText = repairCity ? ` to ${repairCity}` : "";
       const dateText = deliveryDate ? ` on ${deliveryDate}` : "";
-      await streamWords(
-        controller,
-        Lf("repairProductLine", language, {
-          n: repairProducts.length,
-          budget: "",
-          city: cityText,
-          date: dateText,
-        })
-      );
+      if (!(breakup && !antiHandDeliver)) {
+        await streamWords(
+          controller,
+          Lf("repairProductLine", language, {
+            n: repairProducts.length,
+            budget: "",
+            city: cityText,
+            date: dateText,
+          })
+        );
+      }
       controller.enqueue(sse("products", repairProducts));
+      if (breakup && !antiHandDeliver) {
+        await streamWords(controller, L("repairNoteCardOffer", language));
+      }
       if (repairCity && repairProducts[0]) {
         controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
         const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
@@ -379,7 +397,10 @@ export async function tryHandleSearchFastPath({
     return true;
   }
   if (REPAIR_GIFT_RE.test(lower)) {
-    const askKey = REPAIR_BREAKUP_RE.test(lower) ? "repairBreakupAsk" : "repairGiftAsk";
+    const breakup = REPAIR_BREAKUP_RE.test(lower);
+    const antiHandDeliver = REPAIR_ANTI_HAND_DELIVER_RE.test(lower);
+    const askKey = repairIntroKeys({ breakup, antiHandDeliver, hasProducts: false }).ask
+      ?? (breakup && !antiHandDeliver ? "repairBreakupHandDeliverAsk" : "repairGiftAsk");
     await streamWords(controller, L(askKey, language));
     controller.enqueue(sse("done"));
     return true;

@@ -32,6 +32,7 @@ import { scoreCeoLens, ceoScorePercent, ceoPassAt90 } from "./ceo-lens.mjs";
 import { scoreFounderLens } from "./founder-lens.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
 import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
+import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
 const c = {
@@ -448,7 +449,7 @@ function applyToken(token, arg, events, text, userMsg = "", messages = null) {
       };
     }
     case "noHandDeliver": {
-      const bad = /hand[- ]?deliver|pick up yourself|dodging the conversation|go see her in person/i.test(text);
+      const bad = isPreachyHandDeliver(text, userMsg);
       return {
         pass: !bad,
         reason: bad ? "Preachy hand-deliver advice — Kapruka exists to deliver" : "",

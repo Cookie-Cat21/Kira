@@ -14,6 +14,7 @@ import { sendTestCase } from "./test-runner.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
 import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
 import { scoreCeoLens, ceoPassAt90 } from "./ceo-lens.mjs";
+import { isPreachyHandDeliver } from "./lib/repair-tone.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -165,7 +166,6 @@ export const LIVE_TRAPS = [
 
 const FLOWER_JUNK =
   /\b(greeting\s*card|key\s*tag|keytag|key\s*chain|crochet|everbloom|mini\s*flora|flora\s*bunch|artificial|journal|pen\s*set|pen\s*gift|executive\s*pen)\b/i;
-const PREACHY = /hand[- ]?deliver|pick up yourself|go see her in person/i;
 const HONEST_EMPTY =
   /couldn'?t find|nothing in stock|no products in stock|not in stock|try a different|different category/i;
 
@@ -221,7 +221,7 @@ function runChecks(trap, result) {
         if (products.length) reasons.push("Showed products on vague/zero-context message");
         break;
       case "noHandDeliver":
-        if (PREACHY.test(text)) reasons.push("Preachy hand-deliver advice");
+        if (isPreachyHandDeliver(text, msg)) reasons.push("Preachy hand-deliver advice");
         break;
       case "reorderCheckout": {
         const evt = result.events?.find((e) => e.t === "reorderCheckout");
