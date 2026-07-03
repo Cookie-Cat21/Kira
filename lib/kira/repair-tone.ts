@@ -7,7 +7,7 @@ export const HAND_DELIVER_TO_HER_RE =
   /\b(hand[- ]?deliver them to her|you hand[- ]?deliver|get (?:the )?flowers to you|deliver (?:them |it )?to you.*hand[- ]?deliver|flowers (?:oyata|ungalukku).{0,40}hand[- ]?deliver|hand[- ]?deliver karanna|hand[- ]?deliver seiyalama|ship (?:them |it )?to you)\b/i;
 
 export const REPAIR_BREAKUP_RE =
-  /\b(broke up|breakup|break up|heartbroken|dumped|break up aachu|break up wuna|break up achu)\b/i;
+  /\b(broke up|breakup|break up|break up wuna|break up aachu|break up achu|heartbroken|dumped)\b/i;
 
 const PREACHY_ALWAYS_RE =
   /pick up yourself|dodging the conversation|go see her in person|go apologize in person/i;

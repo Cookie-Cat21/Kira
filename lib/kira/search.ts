@@ -164,15 +164,18 @@ export const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
 // ("sorry, my wife needs chocolates" / "fix dinner for my wife" are not repairs).
 export const REPAIR_RELATION = "wife|husband|gf|girlfriend|boyfriend|partner|spouse";
 export const REPAIR_EMOTION =
-  "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset|broke up|breakup|break up|heartbroken|dumped|silent treatment|forgot|apolog|sorry|owe her|make it up|let her down|let him down|valentine";
+  "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset|broke up|breakup|break up|break up wuna|break up aachu|break up achu|heartbroken|dumped|silent treatment|forgot|apolog|sorry|owe her|make it up|let her down|let him down|valentine";
 export const REPAIR_GIFT_RE = new RegExp(
   `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
     `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)|` +
     `(?:\\bbroke up\\b.{0,40}\\b(?:${REPAIR_RELATION}|her|him)\\b)|` +
+    `(?:\\b(?:broke up|breakup|break up|heartbroken|dumped)\\b.{0,60}\\b(?:flowers?|roses?|bouquet|send|deliver|need|ona|venum|anuppa|yawan|ship)\\b)|` +
+    `(?:\\b(?:flowers?|roses?|bouquet)\\b.{0,60}\\b(?:broke up|breakup|break up|heartbroken|dumped)\\b)|` +
     `(?:\\b(?:apolog|forgot|owe her|make it up|silent treatment)\\b.{0,50}\\b(?:send|deliver|flowers?|roses?|bouquet|chocolates?|something)\\b)`,
   "i"
 );
-export const REPAIR_BREAKUP_RE = /\b(broke up|breakup|break up|heartbroken|dumped)\b/i;
+export const REPAIR_BREAKUP_RE =
+  /\b(broke up|breakup|break up|break up wuna|break up aachu|break up achu|heartbroken|dumped)\b/i;
 export const REPAIR_INSIST_RE = /\b(just send|deliver it|send it anyway|no just send)\b/i;
 export { REPAIR_ANTI_HAND_DELIVER_RE, isPreachyHandDeliver } from "@/lib/kira/repair-tone";
 export const RUSH_RE = /\b(today|urgent|asap|rush|same.?day|right now|need it now)\b/i;
