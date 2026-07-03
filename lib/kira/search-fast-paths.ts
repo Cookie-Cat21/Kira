@@ -305,16 +305,30 @@ export async function tryHandleSearchFastPath({
   }
 
   // ── Emotional repair — warm friend + Kapruka delivery to recipient ─────
-  const repairProductKw = extractProductKeyword(lower);
+  let repairProductKw = extractProductKeyword(lower);
+  if (
+    REPAIR_GIFT_RE.test(lower) &&
+    !repairProductKw &&
+    /\bsend something|something (?:nice|special|to)\b/i.test(lower)
+  ) {
+    repairProductKw = "gift set";
+  }
   if (REPAIR_GIFT_RE.test(lower) && repairProductKw) {
     const introKey = REPAIR_BREAKUP_RE.test(lower) ? "repairBreakupSearchIntro" : "repairGiftSearchIntro";
     await streamWords(controller, L(introKey, language));
     controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
+    const repairMaxPrice = parseBudgetAmount(trimmed) ?? parseBudgetAmount(budget);
     let repairProducts: KiraProduct[] = [];
     for (const q of [repairProductKw, fallbackQuery(repairProductKw)]) {
       if (!q) continue;
       const repairResult = await callMcpTool(mcpClient, "kapruka_search_products", {
-        params: { q, limit: 6, in_stock_only: true, response_format: "json" },
+        params: {
+          q,
+          limit: 6,
+          in_stock_only: true,
+          ...(repairMaxPrice ? { max_price: repairMaxPrice } : {}),
+          response_format: "json",
+        },
       });
       let batch = filterProductsForSearch(
         extractProductsFromMcp(repairResult.content),

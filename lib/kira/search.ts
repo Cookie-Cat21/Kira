@@ -165,7 +165,7 @@ export const REPAIR_GIFT_RE = new RegExp(
   `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
     `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)|` +
     `(?:\\bbroke up\\b.{0,40}\\b(?:${REPAIR_RELATION}|her|him)\\b)|` +
-    `(?:\\b(?:apolog|forgot|owe her|make it up|silent treatment)\\b.{0,50}\\b(?:send|deliver|flowers?|roses?|bouquet|chocolates?)\\b)`,
+    `(?:\\b(?:apolog|forgot|owe her|make it up|silent treatment)\\b.{0,50}\\b(?:send|deliver|flowers?|roses?|bouquet|chocolates?|something)\\b)`,
   "i"
 );
 export const REPAIR_BREAKUP_RE = /\b(broke up|breakup|break up|heartbroken|dumped)\b/i;
