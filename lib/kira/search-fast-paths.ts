@@ -215,6 +215,19 @@ export async function tryHandleSearchFastPath({
     return true;
   }
 
+  // ── Bare budget only — ask product type before searching ───────────────
+  const BARE_BUDGET_ONLY_RE =
+    /^(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+)\s*$/i;
+  const bareBudgetMatch = BARE_BUDGET_ONLY_RE.exec(trimmed);
+  if (bareBudgetMatch) {
+    const amount = Number(bareBudgetMatch[1].replace(/,/g, ""));
+    if (amount >= 100 && amount <= 500_000) {
+      await streamWords(controller, L("budgetOnlyAsk", language));
+      controller.enqueue(sse("done"));
+      return true;
+    }
+  }
+
   // ── Storefront /shop/{slug} — search immediately, no clarifying questions ─
   const storefrontIntent = parseStorefrontIntent(trimmed);
   if (storefrontIntent) {
@@ -319,14 +332,14 @@ export async function tryHandleSearchFastPath({
       );
     } else {
       const cityText = repairCity ? ` to ${repairCity}` : "";
-      const key = repairProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
+      const dateText = deliveryDate ? ` on ${deliveryDate}` : "";
       await streamWords(
         controller,
-        Lf(key, language, {
+        Lf("repairProductLine", language, {
           n: repairProducts.length,
           budget: "",
           city: cityText,
-          date: "",
+          date: dateText,
         })
       );
       controller.enqueue(sse("products", repairProducts));

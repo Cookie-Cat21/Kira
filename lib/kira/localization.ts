@@ -90,14 +90,29 @@ export const LS: Record<string, Record<string, string>> = {
     ta: "Kapruka சரிபார்த்தேன் — \"{query}\" stock இல்லை. வேறு term try செய்யலாமா?",
   },
   searchFoundOne: {
-    en: "Found one option{budget}{city}{date} — here's what's in stock:",
-    si: "Option 1{budget}{city}{date} — stock හිඳිනා:",
-    ta: "ஒரு option{budget}{city}{date} — stock இல் உள்ளது:",
+    en: "Machang — pulled one live pick{budget}{city}{date} from Kapruka. Tap to add to your tray and I'll help get it delivered:",
+    si: "Machang — Kapruka live pick 1{budget}{city}{date}. Card tap කරලා tray එකට add කරන්න — deliver කරන්න help කරන්නම්:",
+    ta: "Machang — Kapruka live pick 1{budget}{city}{date}. Card tap செய்து tray-க்கு add — deliver help செய்கிறேன்:",
   },
   searchFoundMany: {
-    en: "Machang, pulled {n} live options{budget}{city}{date} from Kapruka — tap a card to add to your tray.",
-    si: "Kapruka live options {n}{budget}{city}{date} — card tap කරලා tray එකට add කරන්න.",
-    ta: "Kapruka live options {n}{budget}{city}{date} — card tap செய்து tray-க்கு add செய்யுங்கள்.",
+    en: "Machang, pulled {n} live options{budget}{city}{date} from Kapruka — tap a card to add to your tray and I'll help deliver:",
+    si: "Machang — Kapruka live options {n}{budget}{city}{date}. Card tap කරලා tray එකට add කරන්න — deliver help කරන්නම්:",
+    ta: "Machang — Kapruka live options {n}{budget}{city}{date}. Card tap செய்து tray-க்கு add — deliver help செய்கிறேன்:",
+  },
+  repairProductLine: {
+    en: "Here's what Kapruka can deliver{city}{date} — tap one:",
+    si: "Kapruka deliver කරන්න පුළුවන් picks{city}{date} — tap කරන්න:",
+    ta: "Kapruka deliver பண்ண picks{city}{date} — tap செய்யுங்கள்:",
+  },
+  budgetOnlyAsk: {
+    en: "Got it — LKR budget noted! What are you shopping for? Flowers, cake, groceries, electronics…?",
+    si: "Budget note කළා! මොකක්ද shopping කරන්නේ? Flowers, cake, groceries, electronics…?",
+    ta: "Budget note பண்ணினேன்! என்ன shopping? Flowers, cake, groceries, electronics…?",
+  },
+  giftMessageAsk: {
+    en: "Lovely — what should the gift note say? Type it here and I'll read it back before checkout.",
+    si: "Gift note එක මොකද ලියන්නේ? Type කරන්න — checkout එකට යන්න කලින් read back කරන්නම්.",
+    ta: "Gift note என்ன எழுதணும்? Type செய்யுங்கள் — checkout-க்கு முன் read back செய்கிறேன்.",
   },
   rateExhausted: {
     en: "Aiyo, I'm a bit slammed right now — all my thinking servers are busy 🙏 Give me a minute and try again?",

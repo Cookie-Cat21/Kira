@@ -160,11 +160,12 @@ export const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
 // ("sorry, my wife needs chocolates" / "fix dinner for my wife" are not repairs).
 export const REPAIR_RELATION = "wife|husband|gf|girlfriend|boyfriend|partner|spouse";
 export const REPAIR_EMOTION =
-  "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset|broke up|breakup|break up|heartbroken|dumped";
+  "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset|broke up|breakup|break up|heartbroken|dumped|silent treatment|forgot|apolog|sorry|owe her|make it up|let her down|let him down|valentine";
 export const REPAIR_GIFT_RE = new RegExp(
   `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
     `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)|` +
-    `(?:\\bbroke up\\b.{0,40}\\b(?:${REPAIR_RELATION}|her|him)\\b)`,
+    `(?:\\bbroke up\\b.{0,40}\\b(?:${REPAIR_RELATION}|her|him)\\b)|` +
+    `(?:\\b(?:apolog|forgot|owe her|make it up|silent treatment)\\b.{0,50}\\b(?:send|deliver|flowers?|roses?|bouquet|chocolates?)\\b)`,
   "i"
 );
 export const REPAIR_BREAKUP_RE = /\b(broke up|breakup|break up|heartbroken|dumped)\b/i;
