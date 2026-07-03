@@ -40,6 +40,8 @@ Output: `test-results/dulith-qa/summary.json`
 
 Plans are **auto-approved by Dulith heuristic** at ≥9/10 — no human gate. Implementation loops until every domain hits ≥90% persona pass and ≥90% CEO lens pass.
 
+**Full autonomous playbook:** [`DULITH-AUTONOMOUS-PLAN.md`](DULITH-AUTONOMOUS-PLAN.md) · one command: `npm run test:dulith-autonomous`
+
 ## Non-goals
 
 - Per-phrasing regex for every user variant
