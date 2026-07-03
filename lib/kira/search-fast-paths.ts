@@ -8,6 +8,7 @@ import {
   GLOBAL_SHOP_RE,
   HAMPER_RE,
   REPAIR_GIFT_RE,
+  REPAIR_BREAKUP_RE,
   RUSH_RE,
   SALE_RE,
   buildReasonBadges,
@@ -205,6 +206,15 @@ export async function tryHandleSearchFastPath({
     return true;
   }
 
+  // ── Self-shopper — everyday Kapruka use (not gift concierge) ───────────
+  const SELF_SHOP_VAGUE_RE =
+    /\b(for myself|for me|shop(?:ping)? for myself|buy(?:ing)? for myself|something for myself|restock|ran out of)\b/i;
+  if (SELF_SHOP_VAGUE_RE.test(lower) && !extractProductKeyword(lower)) {
+    await streamWords(controller, L("selfShopIntro", language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+
   // ── Storefront /shop/{slug} — search immediately, no clarifying questions ─
   const storefrontIntent = parseStorefrontIntent(trimmed);
   if (storefrontIntent) {
@@ -284,7 +294,8 @@ export async function tryHandleSearchFastPath({
   // ── Emotional repair — warm friend + Kapruka delivery to recipient ─────
   const repairProductKw = extractProductKeyword(lower);
   if (REPAIR_GIFT_RE.test(lower) && repairProductKw) {
-    await streamWords(controller, L("repairGiftSearchIntro", language));
+    const introKey = REPAIR_BREAKUP_RE.test(lower) ? "repairBreakupSearchIntro" : "repairGiftSearchIntro";
+    await streamWords(controller, L(introKey, language));
     controller.enqueue(sse("step", `Searching Kapruka for "${repairProductKw}"`));
     let repairProducts: KiraProduct[] = [];
     for (const q of [repairProductKw, fallbackQuery(repairProductKw)]) {
@@ -337,7 +348,8 @@ export async function tryHandleSearchFastPath({
     return true;
   }
   if (REPAIR_GIFT_RE.test(lower)) {
-    await streamWords(controller, L("repairGiftAsk", language));
+    const askKey = REPAIR_BREAKUP_RE.test(lower) ? "repairBreakupAsk" : "repairGiftAsk";
+    await streamWords(controller, L(askKey, language));
     controller.enqueue(sse("done"));
     return true;
   }

@@ -159,12 +159,15 @@ export const REORDER_REF_RE = /\b(?:reorder|order again)\s+(KP[\s-]?\d+)\b/i;
 // "got drunk, wife is upset" both fire. "sorry"/"fix" were dropped: too broad
 // ("sorry, my wife needs chocolates" / "fix dinner for my wife" are not repairs).
 export const REPAIR_RELATION = "wife|husband|gf|girlfriend|boyfriend|partner|spouse";
-export const REPAIR_EMOTION = "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset";
+export const REPAIR_EMOTION =
+  "angry|mad|pissed|furious|messed up|drunk|fight|fighting|upset|broke up|breakup|break up|heartbroken|dumped";
 export const REPAIR_GIFT_RE = new RegExp(
   `(?:\\b(?:${REPAIR_RELATION})\\b.{0,60}\\b(?:${REPAIR_EMOTION})\\b)|` +
-    `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)`,
+    `(?:\\b(?:${REPAIR_EMOTION})\\b.{0,60}\\b(?:${REPAIR_RELATION})\\b)|` +
+    `(?:\\bbroke up\\b.{0,40}\\b(?:${REPAIR_RELATION}|her|him)\\b)`,
   "i"
 );
+export const REPAIR_BREAKUP_RE = /\b(broke up|breakup|break up|heartbroken|dumped)\b/i;
 export const REPAIR_INSIST_RE = /\b(just send|deliver it|send it anyway|no just send)\b/i;
 export const RUSH_RE = /\b(today|urgent|asap|rush|same.?day|right now|need it now)\b/i;
 export const SALE_RE = /\b(on sale|discount|deal|offer|clearance|budget pick)\b/i;
