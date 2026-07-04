@@ -25,7 +25,13 @@ export function hasBreakupHandDeliverTone(text = ""): boolean {
   const t = (text ?? "").trim();
   if (!t) return false;
   if (HAND_DELIVER_TO_HER_RE.test(t)) return true;
-  return /\b(aiyo|💔)\b/i.test(t) && /\b(to you|oyata|ungalukku|ship)\b/i.test(t) && /\bhand[- ]?deliver\b/i.test(t);
+  if (/\b(aiyo|💔)\b/i.test(t) && /\b(to you|oyata|ungalukku|ship)\b/i.test(t) && /\bhand[- ]?deliver\b/i.test(t)) {
+    return true;
+  }
+  if (/\b(get (?:the )?flowers to you|flowers oyata|flowers ungalukku)\b/i.test(t) && /\bhand[- ]?deliver\b/i.test(t)) {
+    return true;
+  }
+  return false;
 }
 
 /** Score whether reply inappropriately preaches DIY delivery over Kapruka. */

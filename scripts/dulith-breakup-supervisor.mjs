@@ -112,19 +112,27 @@ async function main() {
 
   const domainResult = qaSummary.results?.find((r) => r.domain === "breakup-repair");
   const failures = domainResult?.failures ?? [];
+  const personaPct = domainResult?.summary?.personaPct ?? 0;
+  const ceoPct = domainResult?.summary?.ceoPct ?? 0;
+  const ran = domainResult?.ran ?? 0;
+  const dulithStandard = personaPct >= 90 && ceoPct >= 90 && ran >= 500;
+
   report.phases.push({
     phase: "group_y",
-    pass: domainResult?.summary?.allPass ?? false,
-    personaPct: domainResult?.summary?.personaPct,
-    ceoPct: domainResult?.summary?.ceoPct,
-    ran: domainResult?.ran,
+    pass: dulithStandard,
+    personaPct,
+    ceoPct,
+    ran,
+    required: 500,
     topFailures: tallyFailures(failures),
   });
 
-  const allPass = report.phases.every((p) => p.pass !== false);
-  report.verdict = allPass
-    ? "APPROVED — Breakup hand-deliver + bouquet QA passed under Dulith supervision."
-    : "NEEDS FIX — See topFailures in summary.json";
+  const allPass =
+    report.phases.every((p) => p.pass !== false) &&
+    dulithStandard;
+  report.verdict = dulithStandard
+    ? `APPROVED — Dulith standard met: ${personaPct}% persona / ${ceoPct}% CEO on all ${ran} cases (en/si/ta).`
+    : `NEEDS FIX — Dulith standard is ≥90% on all 500; got ${personaPct}% persona / ${ceoPct}% CEO (${ran} ran). See topFailures.`;
 
   await writeFile(join(OUT, "summary.json"), JSON.stringify(report, null, 2));
 
