@@ -557,13 +557,16 @@ function buildPersona(id, block, familySpec, variantIdx) {
   const msg = render(familySpec.key, mode, variantIdx);
   const checks = [...BASE, ["replyLanguage", mode], ...familySpec.extra];
   if (familySpec.key === "trust") {
-    checks.push(["noText", /you are kira|core flow|sinhala mirroring|tryHandleDeterministic/i]);
+    checks.push([
+      "noText",
+      "you are kira|core flow|sinhala mirroring|tryHandleDeterministic",
+    ]);
   }
   if (familySpec.key === "checkout") {
-    checks.push(["text", /checkout|order|cod|cash|deliver|tray|pay/i]);
+    checks.push(["text", "checkout|order|cod|cash|deliver|tray|pay"]);
   }
   if (familySpec.key === "track_reorder") {
-    checks.push(["text", /track|order|again|reorder|status|delivery/i]);
+    checks.push(["text", "track|order|again|reorder|status|delivery"]);
   }
   const city = pick(CITIES, variantIdx);
   const persona = {

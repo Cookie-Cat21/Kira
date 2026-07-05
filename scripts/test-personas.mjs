@@ -547,10 +547,16 @@ function applyToken(token, arg, events, text, userMsg = "", messages = null) {
         reason: "Tool markup leaked into visible reply",
       };
     case "text": {
+      if (arg == null || (typeof arg === "object" && typeof arg.test !== "function")) {
+        return { pass: !!text.trim(), reason: text.trim() ? "" : "Empty response" };
+      }
       const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
       return { pass: re.test(text), reason: `Response did not match ${re}` };
     }
     case "noText": {
+      if (arg == null || (typeof arg === "object" && typeof arg.test !== "function")) {
+        return { pass: true, reason: "" };
+      }
       const re = typeof arg === "string" ? new RegExp(arg, "i") : arg;
       return { pass: !re.test(text), reason: `Response unexpectedly matched ${re}` };
     }

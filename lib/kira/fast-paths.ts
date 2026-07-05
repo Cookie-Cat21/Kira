@@ -130,10 +130,20 @@ export async function tryHandleDeterministicPrompt({
     return true;
   }
 
-  // ── Gift message intent (cart must have items) ───────────────────────────
+  // ── Gift message intent (cart must have items; skip when note text or product search is present) ─
   const GIFT_MESSAGE_INTENT_RE =
     /\b(gift message|gift note|add a note|message on the card|note on the card|card message)\b/i;
-  if (cart.length > 0 && GIFT_MESSAGE_INTENT_RE.test(lower)) {
+  const GIFT_NOTE_ALREADY_PROVIDED_RE =
+    /\bnote\s*[:\-—–]\s*\S|\badd\s+gift\s+message\s+\S|\b(?:happy|sorry|love|miss you|birthday|thank)\b/i;
+  const PRODUCT_SEND_WITH_NOTE_RE =
+    /\b(send|deliver|flowers?|roses?|bouquet|cake|chocolates?)\b/i;
+  if (
+    cart.length > 0 &&
+    GIFT_MESSAGE_INTENT_RE.test(lower) &&
+    !GIFT_NOTE_ALREADY_PROVIDED_RE.test(lower) &&
+    !PRODUCT_SEND_WITH_NOTE_RE.test(lower) &&
+    !extractProductKeyword(lower)
+  ) {
     await streamWords(controller, L("giftMessageAsk", language));
     controller.enqueue(sse("done"));
     return true;

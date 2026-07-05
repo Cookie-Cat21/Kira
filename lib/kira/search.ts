@@ -500,7 +500,8 @@ export function extractProductKeyword(lower: string): string | null {
   if (/\borchids?\b/.test(text)) return "flowers";
   if (/\bchocolat/.test(text)) return "chocolate";
   if (/\bhamper\b/.test(text)) return "gift hamper";
-  if (/\b(electronic|smartphone|mobile phone|gadget)\b/.test(text)) return "electronics";
+  if (/\b(electronics?|smartphone|mobile phone|phone chargers?|chargers?|gadgets?)\b/.test(text))
+    return "electronics";
   if (/\bphones?\b/.test(text)) {
     if (
       /\b(my phone|phone is|phone number|recipient phone|contact number|your phone|phone\s*[:=]?\s*(?:\+?94|0)\d)/i.test(

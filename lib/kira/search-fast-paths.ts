@@ -217,6 +217,9 @@ export async function tryHandleSearchFastPath({
   if (!selfKw && /\b(groceries|rice|dhal|essentials|soap|cleaning)\b/i.test(lower)) {
     selfKw = "grocery";
   }
+  if (!selfKw && /\belectronics?\b/i.test(lower)) selfKw = "electronics";
+  if (!selfKw && /\bhome essentials\b/i.test(lower)) selfKw = "home essentials";
+  if (!selfKw && /\bphone chargers?\b/i.test(lower)) selfKw = "phone charger";
   if (SELF_SHOP_RE.test(lower) && selfKw) {
     const productCity = extractCityHint(trimmed) ?? deliveryCity;
     const productDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
