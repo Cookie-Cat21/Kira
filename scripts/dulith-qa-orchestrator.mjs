@@ -36,7 +36,7 @@ function parseArgs() {
     domain: get("--domain", null),
     lang: get("--lang", null),
     skipPlans: args.includes("--skip-plans"),
-    delayMs: Number(get("--delay", "2200")),
+    delayMs: Number(get("--delay", "3500")),
   };
 }
 

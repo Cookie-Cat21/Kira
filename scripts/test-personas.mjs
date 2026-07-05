@@ -48,9 +48,10 @@ const errd = `${c.yellow}${c.bold}ERR ${c.reset}`;
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 const DEFAULT_CONCURRENCY = 1;        // safe for Groq free tier
-const INTER_REQUEST_DELAY_MS = 1_200; // gap between sequential requests
-const RETRY_ON_FALLBACK = true;       // retry once when a rate-limit fallback is seen
-const RETRY_DELAY_MS = 4_000;
+const INTER_REQUEST_DELAY_MS = 2_500; // gap between sequential requests (Groq free tier)
+const RETRY_ON_FALLBACK = true;       // retry when a rate-limit fallback is seen
+const RETRY_DELAY_MS = 8_000;
+const MAX_ERROR_RETRIES = 2;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESULTS_PATH = join(__dirname, "..", "test-results", "persona-results.json");
 
@@ -702,7 +703,7 @@ async function runPersona(persona, group) {
   try {
     let result = await sendTestCase(testCase);
     let evaluation = evaluate(persona, result);
-    if (RETRY_ON_FALLBACK && evaluation.isError) {
+    for (let attempt = 0; attempt < MAX_ERROR_RETRIES && evaluation.isError; attempt++) {
       await sleep(RETRY_DELAY_MS);
       result = await sendTestCase(testCase);
       evaluation = evaluate(persona, result);
