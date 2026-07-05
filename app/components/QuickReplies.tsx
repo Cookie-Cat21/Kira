@@ -49,6 +49,13 @@ function deriveChips(messages: KiraMessage[], deliveryCity?: string): Chip[] {
   }
 
   if (hasProducts) {
+    if (last.suggestions?.length) {
+      return last.suggestions.map((s) => ({
+        label: s,
+        value: s,
+        checkout: /ready to checkout/i.test(s),
+      }));
+    }
     const chips: Chip[] = [];
     if (hasDelivery || deliveryCity) {
       chips.push({ label: "Ready to checkout", value: "I am ready to checkout", checkout: true });

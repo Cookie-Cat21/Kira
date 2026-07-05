@@ -3,6 +3,8 @@ import { callMcpTool } from "@/lib/mcp-client";
 import { parseBudgetAmount } from "@/lib/kira/catalog-guard";
 import { L, Lf } from "@/lib/kira/localization";
 import { normalizeUserTypos } from "@/lib/kira/out-of-scope";
+import { resolveSearchIntent } from "@/lib/kira/search-intent";
+import { streamSearchPlanResult } from "@/lib/kira/search-execute";
 import {
   BAKERY_BRANDS,
   GLOBAL_SHOP_RE,
@@ -140,7 +142,7 @@ async function tryHandleMultiCategorySearch({
     const budgetText = maxPrice ? ` under LKR ${maxPrice.toLocaleString("en-LK")}` : "";
     const cityText = deliveryCityForMessage ? ` to ${deliveryCityForMessage}` : "";
     const sanitized = filterProductsForSearch(products, trimmed, trimmed, filterContext);
-    const finalProducts = sanitized.length > 0 ? sanitized : products;
+    const finalProducts = sanitized;
     const introKey = finalProducts.length === 1 ? "searchFoundOne" : "searchFoundMany";
     await streamWords(
       controller,
@@ -198,6 +200,31 @@ export async function tryHandleSearchFastPath({
     controller,
     budget,
   })) {
+    return true;
+  }
+
+  // Unified search brain — concrete nouns, vague gift+recipient, grocery multi-term.
+  const unifiedPlan = resolveSearchIntent(trimmed, {
+    budget,
+    deliveryCity,
+    occasion,
+    recipient,
+  });
+  if (unifiedPlan?.action === "ask") {
+    await streamWords(controller, L(unifiedPlan.askKey, language));
+    controller.enqueue(sse("done"));
+    return true;
+  }
+  if (unifiedPlan?.action === "search") {
+    await streamSearchPlanResult({
+      plan: unifiedPlan,
+      userText: trimmed,
+      filterContext,
+      mcpClient,
+      controller,
+      language,
+      deliveryDate,
+    });
     return true;
   }
 

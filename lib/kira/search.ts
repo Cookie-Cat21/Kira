@@ -38,6 +38,34 @@ export function hasCakeSearchIntent(...texts: (string | undefined)[]): boolean {
 export const HAMPER_INTENT_RE =
   /\b(hampers?|gift\s*hamper|gift\s*set|combo\s*pack|gift\s*box|gift\s*basket)\b/i;
 
+export const GROCERY_INTENT_RE =
+  /\b(groceries|grocery|rice|dhal|dal|flour|essentials|red rice|basmati)\b/i;
+
+export const ELECTRONICS_INTENT_RE =
+  /\b(electronics?|smartphone|mobile phone|phone chargers?|chargers?|gadgets?|scale|weighing)\b/i;
+
+export const CLOTHING_INTENT_RE =
+  /\b(fashion|clothing|clothes|dress|shirt|saree|sarree|sari|wear)\b/i;
+
+export const HOME_INTENT_RE =
+  /\b(home essentials|home lifestyle|cleaning|household|kitchen)\b/i;
+
+export function hasGrocerySearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && GROCERY_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function hasElectronicsSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && ELECTRONICS_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function hasClothingSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && CLOTHING_INTENT_RE.test(t.toLowerCase()));
+}
+
+export function hasHomeSearchIntent(...texts: (string | undefined)[]): boolean {
+  return texts.some((t) => t && HOME_INTENT_RE.test(t.toLowerCase()));
+}
+
 export function hasHamperSearchIntent(...texts: (string | undefined)[]): boolean {
   return texts.some((t) => t && HAMPER_INTENT_RE.test(t.toLowerCase()));
 }
@@ -67,6 +95,14 @@ export const CATEGORY_RELEVANCE_TERMS: Record<string, RegExp> = {
   cake: /cake|cupcake|pastry|cheesecake|mousse|gateau|torte|sponge|brownie|bakery|patisserie/i,
   hampers:
     /hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|hamper\s*box|curated|munch\s*box|pantry|celebration\s*box|festive|joyful|family\s*pack|classic\s*craving|luxury\s*pantry|cravings|treats\s*hamper|grocery\s*hamper|supermarket\s*hamper/i,
+  grocery:
+    /rice|dhal|dal|flour|atta|red rice|basmati|groceries|grocery|essentials|lentils|pulses|spices|oil|coconut oil|soap|cleaning|detergent|household/i,
+  electronics:
+    /electronic|phone|mobile|charger|gadget|headphone|earphone|speaker|power bank|cable|adapter|scale|weighing|smart|usb|bluetooth/i,
+  clothing:
+    /dress|shirt|saree|sarree|sari|fashion|clothing|wear|apparel|blouse|trouser|skirt|t-?shirt|tee\b|kurta|shawl/i,
+  home:
+    /home|household|kitchen|cleaning|detergent|mop|broom|storage|organizer|lifestyle|bedding|towel|utensil/i,
 };
 
 /** Single grocery items / brand pages — not curated hampers. Test name+summary only (not category). */
@@ -96,6 +132,22 @@ export const FLOWER_BOUQUET_NAME_RE =
 export const FLOWER_JUNK_RE =
   /\b(banana\s*flower|hair\s*clip|clips\s*set|flower\s*center|greeting\s*card|handcrafted\s*(greeting\s*)?card|birthday\s*card|mini\s*bday|post\s*card|postcard|wish\s*card|congratulations\s*card|key\s*tag|keytag|key\s*chain|keychain|key\s*ring|crochet|knitted|yarn|everbloom|artificial|silk\s*flower|fake\s*flower|mini\s*flora|flora\s*bunch|table\s*top|home\s*decor|wall\s*decor|air\s*freshener|potpourri|sticker|magnet|badge|pin\b|bag|backpack|school\s*bag|preschool\s*bag|handbag|purse|wallet|luggage|suitcase|tote|kids\s*bag|pouch|pencil\s*case|stationery|journal|pen\s*set|pen\s*gift|executive\s*pen|desk\s*pen|ballpoint|fountain\s*pen|notebook|diary|perfume|cologne|fragrance|belt|necktie|tie\s*clip|cufflink|jewell?ery|necklace|bracelet|earring|watch|electronic|smartphone|laptop|tablet|speaker|headphone|hand\s*wash|body\s*wash|soap|shampoo|lotion|sanitizer|cleanser|pvt\s*ltd|\/partner\/|vegetable|grocery)\b/i;
 
+/** Grocery search — reject curated hampers unless user asked for hamper. */
+export const GROCERY_JUNK_RE =
+  /\b(hamper|gift\s*box|gift\s*set|combo\s*pack|gift\s*basket|celebration\s*box|joyful|munch\s*box|pantry\s*box|curated|birthday\s*cake|flower|bouquet|chocolate\s*box|soft\s*toy|teddy)\b/i;
+
+/** Electronics noise — mosquito vaporizers unless query mentions mosquito. */
+export const ELECTRONICS_JUNK_RE =
+  /\b(vaporizer|vaporiser|mosquito\s*coil|incense|perfume|candle|lip\s*balm|greeting\s*card|flower|bouquet|cake|hamper|soft\s*toy)\b/i;
+
+/** Clothing search junk. */
+export const CLOTHING_JUNK_RE =
+  /\b(pen\s*set|pen\s*gift|executive\s*pen|stationery|journal|notebook|greeting\s*card|cake|flower|hamper|phone\s*case\s*flower)\b/i;
+
+/** Home essentials junk. */
+export const HOME_JUNK_RE =
+  /\b(greeting\s*card|birthday\s*cake|flower|bouquet|chocolate\s*box|soft\s*toy|hamper|jewell?ery)\b/i;
+
 // Products that pass RELEVANCE but are clearly not in the category — reject them.
 export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   flowers: FLOWER_JUNK_RE,
@@ -103,6 +155,10 @@ export const CATEGORY_IRRELEVANCE_TERMS: Record<string, RegExp> = {
   chocolate: CHOCOLATE_JUNK_RE,
   cake: CAKE_JUNK_RE,
   hampers: HAMPER_JUNK_RE,
+  grocery: GROCERY_JUNK_RE,
+  electronics: ELECTRONICS_JUNK_RE,
+  clothing: CLOTHING_JUNK_RE,
+  home: HOME_JUNK_RE,
 };
 
 /** Adult / intimate / age-restricted — never surface in Kira carousels. */
@@ -203,9 +259,15 @@ function resolveFilterKeyFromText(text: string): string | null {
   if (hasHamperSearchIntent(normalized)) return "hampers";
   if (hasCakeSearchIntent(normalized)) return "cake";
   if (hasChocolateSearchIntent(normalized)) return "chocolate";
+  if (hasGrocerySearchIntent(normalized)) return "grocery";
+  if (hasElectronicsSearchIntent(normalized)) return "electronics";
+  if (hasClothingSearchIntent(normalized)) return "clothing";
+  if (hasHomeSearchIntent(normalized)) return "home";
   const q = normalizeProductQuery(text.toLowerCase().trim());
   if (q in CATEGORY_RELEVANCE_TERMS) return q;
   if (q === "gift hamper" || q === "gift set") return "hampers";
+  if (q === "home essentials" || q === "home lifestyle") return "home";
+  if (q === "phone charger") return "electronics";
   return null;
 }
 
@@ -239,6 +301,10 @@ function categoriesFromText(text: string): string[] {
   if (hasChocolateSearchIntent(text)) cats.push("chocolate");
   if (hasCakeSearchIntent(text)) cats.push("cake");
   if (hasHamperSearchIntent(text)) cats.push("hampers");
+  if (hasGrocerySearchIntent(text)) cats.push("grocery");
+  if (hasElectronicsSearchIntent(text)) cats.push("electronics");
+  if (hasClothingSearchIntent(text)) cats.push("clothing");
+  if (hasHomeSearchIntent(text)) cats.push("home");
   return cats;
 }
 
@@ -774,4 +840,80 @@ export function extractOrderNumber(text: string): string | undefined {
     m.find((s) => /[A-Z]/i.test(s) && /\d/.test(s)) ??
     m.find((s) => /^\d{5,20}$/.test(s));
   return candidate?.toUpperCase();
+}
+
+/** Score products for relevance to query + budget — higher is better. */
+export function rankProductsForQuery(
+  products: KiraProduct[],
+  query: string,
+  maxPrice?: number
+): KiraProduct[] {
+  const qTokens = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 3);
+
+  return [...products].sort((a, b) => {
+    const score = (p: KiraProduct) => {
+      let s = 0;
+      const name = (p.name ?? "").toLowerCase();
+      const body = productDisplayText(p).toLowerCase();
+      for (const tok of qTokens) {
+        if (name.includes(tok)) s += 4;
+        else if (body.includes(tok)) s += 2;
+      }
+      if (maxPrice && p.price > 0 && p.price <= maxPrice) {
+        s += 3;
+        s += Math.max(0, 2 - (maxPrice - p.price) / maxPrice);
+      } else if (maxPrice && p.price > maxPrice) {
+        s -= 5;
+      }
+      if (p.inStock !== false) s += 1;
+      return s;
+    };
+    return score(b) - score(a);
+  });
+}
+
+/** Contextual post-search suggestion chips for SSE. */
+export function buildSearchSuggestions(
+  products: KiraProduct[],
+  context: {
+    query?: string;
+    maxPrice?: number;
+    city?: string;
+    selfShop?: boolean;
+    groceryHonestPivot?: boolean;
+  }
+): string[] {
+  const chips: string[] = [];
+  const q = (context.query ?? "").toLowerCase();
+
+  if (context.groceryHonestPivot && products.some((p) => /hamper/i.test(p.name ?? ""))) {
+    chips.push("Show grocery hampers instead");
+  }
+  if (products.length > 0 && context.maxPrice) {
+    const cheaper = Math.round(context.maxPrice * 0.7);
+    chips.push(`Under LKR ${cheaper.toLocaleString("en-LK")}`);
+  }
+  if (/\bflower|\brose\b/.test(q) && !/\bchocolate\b/.test(q)) {
+    chips.push("Add chocolates");
+  } else if (/\bchocolate\b/.test(q) && !/\bflower|\brose\b/.test(q)) {
+    chips.push("Add flowers");
+  } else if (context.selfShop && /\bgrocery|rice|dhal\b/.test(q)) {
+    chips.push("Show home essentials");
+  } else if (/\belectronic|phone|charger\b/.test(q)) {
+    chips.push("Show cheaper options");
+  } else {
+    chips.push("More options");
+  }
+  if (context.city) {
+    chips.push(`Deliver tomorrow to ${context.city}`);
+  } else {
+    chips.push("Check delivery to Colombo");
+  }
+  if (products.length > 0) {
+    chips.unshift("Ready to checkout");
+  }
+  return [...new Set(chips)].slice(0, 3);
 }

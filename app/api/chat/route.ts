@@ -21,7 +21,9 @@ import {
   isUnsafeCatalogClaim,
   shouldGuardCatalogText,
   stripKnownProductNames,
+  parseBudgetAmount,
 } from "@/lib/kira/catalog-guard";
+import { detectApiLanguage } from "@/lib/kira/language-detect";
 import { inferLastOrderLabel } from "@/lib/reorder";
 import { buildCompactSummary, trimContextIfNeeded } from "@/lib/kira/context";
 import { tryHandleDeterministicPrompt } from "@/lib/kira/fast-paths";
@@ -44,8 +46,9 @@ import {
   validateShownProducts,
 } from "@/lib/kira/session-context";
 import {
+  buildSearchSuggestions,
+  extractCityHint,
   filterProductsForSearch,
-  filterFamilySafeProducts,
   buildMessageFilterContext,
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
@@ -105,9 +108,12 @@ export async function POST(req: NextRequest) {
           shownProducts,
           lastOrder,
         } = body;
-        const language: string = body.language ?? "en";
         const latestUserText =
           [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+        const language: string = detectApiLanguage(
+          latestUserText,
+          (body.language ?? "en") as "en" | "si" | "ta"
+        );
         const searchFilterContext = buildMessageFilterContext(latestUserText, messages);
         const checkoutConfirmed = isCheckoutConfirmation(latestUserText);
         const safeLastProducts = validateLastProducts(lastProducts);
@@ -513,10 +519,9 @@ export async function POST(req: NextRequest) {
                 queryKey,
                 searchFilterContext
               );
-              if (filteredForLlm.length === 0 && rawForLlm.length > 0) {
-                filteredForLlm = filterFamilySafeProducts(rawForLlm);
+              if (filteredForLlm.length > 0) {
+                collectedProducts.push(...filteredForLlm);
               }
-              collectedProducts.push(...filteredForLlm);
             }
             if (toolName === "kapruka_create_order") {
               if (!sandboxCheckout) {
@@ -1068,16 +1073,26 @@ export async function POST(req: NextRequest) {
             return true;
           })
           .slice(0, 8);
-        let dedupedProducts = filterProductsForSearch(
+        const dedupedProducts = filterProductsForSearch(
           rawDeduped,
           latestUserText,
           searchFilterContext
-        );
-        if (dedupedProducts.length === 0 && rawDeduped.length > 0) {
-          dedupedProducts = filterFamilySafeProducts(rawDeduped);
-        }
-        if (dedupedProducts.length > 0)
+        ).slice(0, 6);
+        if (dedupedProducts.length > 0) {
           controller.enqueue(sse("products", dedupedProducts));
+          const maxPrice =
+            parseBudgetAmount(latestUserText) ?? parseBudgetAmount(budget);
+          controller.enqueue(
+            sse(
+              "suggestions",
+              buildSearchSuggestions(dedupedProducts, {
+                query: latestUserText,
+                maxPrice,
+                city: deliveryCity ?? extractCityHint(latestUserText),
+              })
+            )
+          );
+        }
         if (checkoutInfo) {
           controller.enqueue(sse("checkout", checkoutInfo));
           if (cart.length > 0) {

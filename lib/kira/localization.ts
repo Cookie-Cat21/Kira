@@ -254,6 +254,11 @@ export const LS: Record<string, Record<string, string>> = {
     si: "Nice — ඔයාටද? Groceries, phone stuff, home essentials — මොකක්ද ඕන?",
     ta: "Nice — உங்களுக்கா? Groceries, phone stuff, home essentials — என்ன வேணும்?",
   },
+  groceryHamperPivot: {
+    en: "Kapruka doesn't sell loose rice or dhal as single SKUs — their closest match is curated grocery hampers. Here are honest options:",
+    si: "Kapruka loose rice/dhal single SKU විකිණන්නේ නෑ — ආසන්නම grocery hampers. Honest options:",
+    ta: "Kapruka loose rice/dhal single SKU விற்காது — அருகிலுள்ள grocery hampers. Honest options:",
+  },
   rushSearchIntro: {
     en: "These can reach {city} on {date} — rush slots fill fast:",
     si: "These {city} {date} — rush slots fill fast:",
