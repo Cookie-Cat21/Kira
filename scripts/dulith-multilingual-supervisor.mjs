@@ -28,6 +28,7 @@ const ROOT = join(__dirname, "..");
 const OUT = join(ROOT, "test-results", "dulith-multilingual");
 
 const smokeOnly = process.argv.includes("--smoke-only");
+const skipSmoke = process.argv.includes("--skip-smoke");
 const langArg = (() => {
   const i = process.argv.indexOf("--lang");
   return i >= 0 ? process.argv[i + 1] : null;
@@ -132,22 +133,27 @@ async function main() {
     return;
   }
 
-  console.log("\n--- Smoke: 125 cases (25 per mode) ---\n");
-  const smokeResult = await runOrchestrator({ smoke: true });
-  const smokeOk = blockPass(smokeResult, smokeResult?.ran ?? 125);
-  report.phases.push({
-    phase: "smoke",
-    pass: smokeOk,
-    ran: smokeResult?.ran,
-    personaPct: smokeResult?.summary?.personaPct,
-    ceoPct: smokeResult?.summary?.ceoPct,
-    topFailures: tallyFailures(smokeResult?.failures ?? []),
-  });
-  if (!smokeOk) {
-    report.verdict = `BLOCKED — smoke failed (${smokeResult?.summary?.personaPct}% persona / ${smokeResult?.summary?.ceoPct}% CEO). Fix before full 2500.`;
-    await writeFile(join(OUT, "summary.json"), JSON.stringify(report, null, 2));
-    console.error("\n" + report.verdict);
-    process.exit(1);
+  if (!skipSmoke) {
+    console.log("\n--- Smoke: 125 cases (25 per mode) ---\n");
+    const smokeResult = await runOrchestrator({ smoke: true });
+    const smokeOk = blockPass(smokeResult, smokeResult?.ran ?? 125);
+    report.phases.push({
+      phase: "smoke",
+      pass: smokeOk,
+      ran: smokeResult?.ran,
+      personaPct: smokeResult?.summary?.personaPct,
+      ceoPct: smokeResult?.summary?.ceoPct,
+      topFailures: tallyFailures(smokeResult?.failures ?? []),
+    });
+    if (!smokeOk) {
+      report.verdict = `BLOCKED — smoke failed (${smokeResult?.summary?.personaPct}% persona / ${smokeResult?.summary?.ceoPct}% CEO). Fix or re-run with --skip-smoke for full 500×5 blocks.`;
+      await writeFile(join(OUT, "summary.json"), JSON.stringify(report, null, 2));
+      console.error("\n" + report.verdict);
+      process.exit(1);
+    }
+  } else {
+    report.phases.push({ phase: "smoke", pass: true, skipped: true });
+    console.log("\n--- Skipping smoke (--skip-smoke) — running full 500 per language mode ---\n");
   }
 
   if (smokeOnly) {
