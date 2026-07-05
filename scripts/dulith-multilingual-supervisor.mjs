@@ -69,6 +69,7 @@ async function runOrchestrator({ smoke, lang, full }) {
   if (smoke) args.push("--smoke");
   if (full) args.push("--full");
   if (lang) args.push("--lang", lang);
+  if (process.env.DULITH_DELAY_MS) args.push("--delay", process.env.DULITH_DELAY_MS);
 
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, args, {
