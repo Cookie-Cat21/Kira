@@ -221,17 +221,17 @@ export const LS: Record<string, Record<string, string>> = {
   },
   repairBreakupHandDeliverIntro: {
     en: "Aiyo! 💔 Okay — here's the plan. I'll get the flowers to you, and you hand-deliver them to her. Trust me, that lands better than a courier. Here are bouquets Kapruka can ship to you today:",
-    si: "Aiyo! 💔 hari — plan eka mehemayi. Flowers oyata deliver karala, oya hand-deliver karanna eyata. Courier ekata wada better. Bouquets:",
-    ta: "Aiyo! 💔 seri — plan itho. Flowers ungalukku deliver, neengal hand-deliver avargalukku. Courier-ai vida better. Bouquets:",
+    si: "Aiyo! 💔 හරි — plan එක mehemayi. මල් ඔයාට deliver කරලා, ඔයා hand-deliver කරන්න එයාට. Courier එකට වඩා better. Bouquets:",
+    ta: "Aiyo! 💔 சரி — plan இது. Flowers உங்களுக்கு deliver, நீங்கள் hand-deliver அவர்களுக்கு. Courier-ஐ விட better. Bouquets:",
   },
   repairBreakupHandDeliverAsk: {
     en: "Aiyo! 💔 Rough one. Want me to pull roses to you so you can hand-deliver them to her? Where should Kapruka ship them?",
-    si: "Aiyo! 💔 Rough. Roses oyata ship karala hand-deliver karannada? Kapruka ship karanne koheda?",
-    ta: "Aiyo! 💔 Rough. Roses ungalukku ship panni hand-deliver seiyalama? Kapruka ship enga?",
+    si: "Aiyo! 💔 Rough. Roses ඔයාට ship කරලා hand-deliver කරන්නද? Kapruka ship කරන්නේ කොහෙද?",
+    ta: "Aiyo! 💔 Rough. Roses உங்களுக்கு ship பண்ணி hand-deliver செய்யலாமா? Kapruka ship எங்க?",
   },
   repairNoteCardOffer: {
     en: "Shall I add a note card too?",
-    si: "Note card ekak add karamuda?",
+    si: "Note card එකක් add කරමුද?",
     ta: "Note card add pannalama?",
   },
   repairBreakupSearchIntro: {

@@ -50,7 +50,7 @@ import {
   SEARCH_SPELLING_MAP,
 } from "@/lib/kira/search";
 import { sse, TOOL_STEPS } from "@/lib/kira/sse";
-import { sanitizeAssistantText } from "@/lib/kira/sanitize-response";
+import { sanitizeAssistantText, StreamingTextSanitizer, parseTextToolCalls, hasToolMarkupLeak } from "@/lib/kira/sanitize-response";
 import {
   CONCURRENT_SAFE_TOOLS,
   generateToolSummary,
@@ -664,6 +664,7 @@ export async function POST(req: NextRequest) {
               // the stream completes, so post-tool hallucinated product/price claims
               // can still be rejected instead of leaking after a short lookahead.
               const pendingBuf: string[] = [];
+              const streamSan = new StreamingTextSanitizer();
 
               const groqStream = await getGroq(keyIndex).chat.completions.create({
                 model: MODELS[modelIndex],
@@ -686,13 +687,16 @@ export async function POST(req: NextRequest) {
                 };
                 if (delta.content) {
                   sContent += delta.content;
-                  if (guardText) {
-                    pendingBuf.push(delta.content);
-                  } else if (!streamedText) {
-                    controller.enqueue(sse("token", delta.content));
-                    streamedText = true;
-                  } else {
-                    controller.enqueue(sse("token", delta.content));
+                  const safeChunk = streamSan.push(delta.content);
+                  if (safeChunk) {
+                    if (guardText) {
+                      pendingBuf.push(safeChunk);
+                    } else if (!streamedText) {
+                      controller.enqueue(sse("token", safeChunk));
+                      streamedText = true;
+                    } else {
+                      controller.enqueue(sse("token", safeChunk));
+                    }
                   }
                 }
                 if (delta.tool_calls) {
@@ -703,6 +707,15 @@ export async function POST(req: NextRequest) {
                     if (tc.function?.name) entry.name += tc.function.name;
                     if (tc.function?.arguments) entry.args += tc.function.arguments;
                   }
+                }
+              }
+
+              const streamTail = streamSan.flush();
+              if (streamTail) {
+                if (guardText) pendingBuf.push(streamTail);
+                else {
+                  controller.enqueue(sse("token", streamTail));
+                  streamedText = true;
                 }
               }
 
@@ -726,7 +739,7 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              const sToolCalls = sToolMap.size > 0
+              let sToolCalls = sToolMap.size > 0
                 ? Array.from(sToolMap.entries())
                     .sort(([a], [b]) => a - b)
                     .map(([, tc]) => ({
@@ -735,6 +748,19 @@ export async function POST(req: NextRequest) {
                       function: { name: tc.name, arguments: tc.args },
                     }))
                 : undefined;
+
+              // Model sometimes writes tool calls as visible text — recover and run them.
+              if (!sToolCalls?.length && hasToolMarkupLeak(sContent)) {
+                const leaked = parseTextToolCalls(sContent);
+                if (leaked.length > 0) {
+                  sContent = sanitizeAssistantText(sContent);
+                  sToolCalls = leaked.map((tc, i) => ({
+                    id: `text-leak-${round}-${i}`,
+                    type: "function" as const,
+                    function: { name: tc.name, arguments: tc.arguments },
+                  }));
+                }
+              }
 
               // Reconstruct ChatCompletion shape so post-loop code works unchanged.
               response = {
