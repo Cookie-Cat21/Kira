@@ -45,6 +45,7 @@
     "test:z-2500": "node scripts/dulith-multilingual-supervisor.mjs",
     "test:z-2500:supervisor": "node scripts/dulith-multilingual-supervisor.mjs",
     "test:z-2500:supervisor:smoke": "node scripts/dulith-multilingual-supervisor.mjs --smoke-only",
+    "test:z-2500:supervisor:full": "node scripts/dulith-multilingual-supervisor.mjs --skip-smoke",
     "test:judge-dry-run": "node scripts/judge-dry-run.mjs",
     "test:live-regression": "node scripts/live-regression.mjs",
     "test:live-qa": "node scripts/live-qa-loop.mjs --full",
