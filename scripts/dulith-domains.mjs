@@ -229,6 +229,40 @@ export const DOMAINS = [
     ],
   },
   {
+    id: "search-excellence",
+    title: "Search & shopping excellence (CareCart parity+)",
+    plan: "docs/SEARCH-EXCELLENCE-MASTER-PLAN.md",
+    group: "AA",
+    generator: "generate-search-excellence.mjs",
+    smoke: 40,
+    extraCriteria: [
+      {
+        id: "unified_intent",
+        weight: 2,
+        test: (t) => /resolveSearchIntent|executeSearchPlan|unified|one brain/i.test(t),
+        note: "Unified search intent resolver, not fragmented fast-paths",
+      },
+      {
+        id: "carecart_benchmark",
+        weight: 2,
+        test: (t) => /CareCart|B01|benchmark|parity/i.test(t),
+        note: "Live benchmark matrix vs CareCart",
+      },
+      {
+        id: "no_junk_fallback",
+        weight: 2,
+        test: (t) => /junk fallback|never bypass|honest empty|filter is a safety net/i.test(t),
+        note: "No unfiltered junk when category filter empties",
+      },
+      {
+        id: "results_ux",
+        weight: 1,
+        test: (t) => /CartFooter|KiraSidebar|suggestions|chips|sticky cart/i.test(t),
+        note: "Results UX parity with CareCart",
+      },
+    ],
+  },
+  {
     id: "one-tap-reorder",
     title: "One-tap reorder habit (CEO priority)",
     plan: "docs/REORDER-PLAN.md",
