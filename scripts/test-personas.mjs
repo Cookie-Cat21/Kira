@@ -33,6 +33,7 @@ import { scoreFounderLens } from "./founder-lens.mjs";
 import { validateSearchRelevance } from "./search-relevance.mjs";
 import { validateNoContextBleed, buildMessagesFromPersona } from "./context-relevance.mjs";
 import { isPreachyHandDeliver, userWantsBreakupHandDeliverFlow, hasBreakupHandDeliverTone } from "./lib/repair-tone.mjs";
+import { assertReplyLanguage } from "./lib/language-mode.mjs";
 import { FLOWER_JUNK_RE, FLOWER_BOUQUET_NAME_RE } from "./lib/flower-filter.mjs";
 
 // ─── Colour helpers ──────────────────────────────────────────────────────────
@@ -330,6 +331,7 @@ import { GROUP_U } from "./personas/generated-context-bleed.mjs";
 import { GROUP_V } from "./personas/generated-vague-intent.mjs";
 import { GROUP_W } from "./personas/generated-repair-flow.mjs";
 import { GROUP_Y } from "./personas/generated-breakup-repair.mjs";
+import { GROUP_Z } from "./personas/generated-multilingual.mjs";
 import { GROUP_X } from "./personas/generated-reorder-habit.mjs";
 
 const GROUPS = {
@@ -353,6 +355,7 @@ const GROUPS = {
   W: GROUP_W,
   X: GROUP_X,
   Y: GROUP_Y,
+  Z: GROUP_Z,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
@@ -555,6 +558,23 @@ function applyToken(token, arg, events, text, userMsg = "", messages = null) {
       return { pass: SCRIPT_RANGES[arg].test(text), reason: `Expected ${arg} Unicode in response` };
     case "noLang":
       return { pass: !SCRIPT_RANGES[arg].test(text), reason: `Found ${arg} Unicode in a non-${arg} response` };
+    case "replyLanguage": {
+      const mode = arg ?? "en";
+      const r = assertReplyLanguage(mode, text);
+      return { pass: r.pass, reason: r.reason };
+    }
+    case "noForcedGiftTone": {
+      const selfShop =
+        /\b(for myself|for me|self shopping|self-shop|not a gift|gift ne|gift illa|mata|enakku|groceries|rice|dhal|essentials|apartment)\b/i.test(
+          userMsg
+        );
+      if (!selfShop) return { pass: true, reason: "" };
+      const forced = /\b(who'?s it for|who is it for|surprise someone|gift for someone special)\b/i.test(text);
+      return {
+        pass: !forced,
+        reason: forced ? "Forced gift framing on everyday self-shopper query" : "",
+      };
+    }
     default:
       return { pass: false, reason: `Unknown check token "${token}"` };
   }

@@ -317,6 +317,25 @@ export function scoreCeoLens(group, persona, responseText, events, personaPassed
       if (WARM_RE.test(text)) excitement += 1;
       break;
     }
+    case "Z": {
+      if (LEAK_RE.test(text)) {
+        return { score: 0, excitement: 0, flags: ["prompt_leak"], pass: false, verdict: "Prompt leak — trust killer." };
+      }
+      if (personaPassed && hasProducts(events)) {
+        flags.push("z_catalog"); score += 2; excitement += 3;
+      } else if (personaPassed) {
+        flags.push("z_handled"); score += 2; excitement += 2;
+      } else {
+        score -= 2; excitement -= 2;
+      }
+      if (WARM_RE.test(text) || /machang|aiyo|mata|venum|seri|hari/i.test(text)) {
+        flags.push("local_flavour"); excitement += 1; score += 1;
+      }
+      if (personaPassed && /deliver|send|kapruka|tray|checkout/i.test(text)) {
+        flags.push("helpful_flow"); excitement += 1;
+      }
+      break;
+    }
     case "X": {
       if (events?.some((e) => e.t === "reorderCheckout")) {
         flags.push("one_tap_reorder"); score += 4; excitement += 4;

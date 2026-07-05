@@ -512,7 +512,11 @@ export function extractProductKeyword(lower: string): string | null {
     return "electronics";
   }
   if (/\bfashion|\bcloth|\bdress|\bshirt\b/.test(text)) return "clothing";
+  if (/\bgroceries\b/.test(text)) return "grocery";
   if (/\bgrocery\b/.test(text)) return "grocery";
+  if (/\b(rice|dhal|dal)\b/.test(text) && /\b(for myself|for me|deliver|need|order)\b/i.test(text)) {
+    return "grocery";
+  }
   if (/\btoy\b|\bteddy\b/.test(text)) return "soft toy";
   if (/\bsweet\b/.test(text)) return "chocolate";
   if (/\bgift\b/.test(text)) return "gift set";

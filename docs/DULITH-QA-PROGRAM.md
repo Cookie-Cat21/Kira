@@ -14,6 +14,7 @@ Each domain follows the same pattern as search routing (Group S) — no regex wh
 | vague-intent | V | ~60 | Zero-context message → premature product carousel |
 | repair-flow | W | ~60 | Angry partner → preachy "hand deliver" instead of Kapruka |
 | breakup-repair | Y | 500 | Breakup + flowers → missing hand-deliver tone / flower junk (en/si/ta) |
+| multilingual-2500 | Z | 2500 | Five language modes × 500 — reply contract + everyday shopper |
 | one-tap-reorder | X | ~60 | Reorder hidden in chat — no one-tap habit loop (CEO #1 ask) |
 
 ## Workflow per domain
@@ -34,6 +35,9 @@ npm run test:dulith-plans          # review ALL domain plans
 npm run test:dulith-qa:smoke       # smoke each domain (~15–25 cases)
 npm run test:dulith-qa             # full program (S+T+U+V+W+X+Y)
 npm run test:dulith-breakup:supervisor  # Group Y only — 500 en/si/ta breakup/repair
+npm run test:z-2500:supervisor        # Group Z — 2500 (5×500 blocks, Dulith gate)
+npm run test:z-2500:supervisor:smoke    # Group Z smoke — 125 fast
+npm run test:z-block -- --lang si       # Single 500-block re-run
 ```
 
 Output: `test-results/dulith-qa/summary.json`

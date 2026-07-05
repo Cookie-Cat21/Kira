@@ -194,6 +194,41 @@ export const DOMAINS = [
     ],
   },
   {
+    id: "multilingual-2500",
+    title: "Multilingual 2500 — en/si/ta/Singlish/Tanglish (Group Z)",
+    plan: "docs/MULTILINGUAL-2500-PLAN.md",
+    group: "Z",
+    generator: "generate-multilingual-2500.mjs",
+    smoke: 125,
+    smokePerBlock: 25,
+    extraCriteria: [
+      {
+        id: "language_contract",
+        weight: 2,
+        test: (t) => /replyLanguage|Singlish|Tanglish|script|Unicode|language mode/i.test(t),
+        note: "Five-mode reply-language contract",
+      },
+      {
+        id: "everyday_shopper",
+        weight: 2,
+        test: (t) => /everyday|groceries|self-purchase|self-shopper|main user/i.test(t),
+        note: "Everyday shopper is primary user per challenge brief",
+      },
+      {
+        id: "architectural_detection",
+        weight: 2,
+        test: (t) => /detection layer|script-aware|language-mode|architectural/i.test(t),
+        note: "No per-phrasing regex whack-a-mole",
+      },
+      {
+        id: "block_gates",
+        weight: 1,
+        test: (t) => /500.*language|block|2500|Z0001/i.test(t),
+        note: "Per-block 500-case gates",
+      },
+    ],
+  },
+  {
     id: "one-tap-reorder",
     title: "One-tap reorder habit (CEO priority)",
     plan: "docs/REORDER-PLAN.md",

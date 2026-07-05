@@ -209,8 +209,56 @@ export async function tryHandleSearchFastPath({
   }
 
   // ── Self-shopper — everyday Kapruka use (not gift concierge) ───────────
+  const SELF_SHOP_RE =
+    /\b(for myself|for me|shop(?:ping)? for myself|buy(?:ing)? for myself|something for myself|restock|ran out of|not a gift|self shopping|self-shop)\b/i;
   const SELF_SHOP_VAGUE_RE =
     /\b(for myself|for me|shop(?:ping)? for myself|buy(?:ing)? for myself|something for myself|restock|ran out of)\b/i;
+  let selfKw = extractProductKeyword(lower);
+  if (!selfKw && /\b(groceries|rice|dhal|essentials|soap|cleaning)\b/i.test(lower)) {
+    selfKw = "grocery";
+  }
+  if (SELF_SHOP_RE.test(lower) && selfKw) {
+    const productCity = extractCityHint(trimmed) ?? deliveryCity;
+    const productDate = parseRelativeDeliveryDate(trimmed) ?? deliveryDate;
+    controller.enqueue(sse("step", `Searching Kapruka for "${selfKw}"`));
+    const searchResult = await callMcpTool(mcpClient, "kapruka_search_products", {
+      params: { q: selfKw, limit: 6, in_stock_only: true, response_format: "json" },
+    });
+    const products = dedupeProducts(
+      filterProductsForSearch(extractProductsFromMcp(searchResult.content), selfKw, filterContext)
+    );
+    if (productCity && products[0]) {
+      controller.enqueue(sse("step", TOOL_STEPS.kapruka_check_delivery));
+      const deliveryResult = await callMcpTool(mcpClient, "kapruka_check_delivery", {
+        params: {
+          city: productCity,
+          product_id: products[0].id,
+          ...(productDate ? { delivery_date: productDate } : {}),
+          response_format: "json",
+        },
+      });
+      const deliveryInfo = extractDeliveryInfoFromMcp(deliveryResult.content);
+      if (deliveryInfo) controller.enqueue(sse("delivery", deliveryInfo));
+    }
+    if (products.length > 0) {
+      const cityText = productCity ? ` to ${productCity}` : "";
+      const dateText = productDate ? ` on ${productDate}` : "";
+      await streamWords(
+        controller,
+        Lf(products.length === 1 ? "searchFoundOne" : "searchFoundMany", language, {
+          n: products.length,
+          budget: "",
+          city: cityText,
+          date: dateText,
+        })
+      );
+      controller.enqueue(sse("products", products));
+    } else {
+      await streamWords(controller, Lf("searchNothingFound", language, { query: selfKw }));
+    }
+    controller.enqueue(sse("done"));
+    return true;
+  }
   if (SELF_SHOP_VAGUE_RE.test(lower) && !extractProductKeyword(lower)) {
     await streamWords(controller, L("selfShopIntro", language));
     controller.enqueue(sse("done"));

@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { assertDevServerAvailable, API_URL } from "./test-runner.mjs";
 import { DOMAINS } from "./dulith-domains.mjs";
 import { reviewDomainPlan, APPROVAL_THRESHOLD } from "./dulith-plan-review.mjs";
+import { blockForPersonaId } from "./lib/language-mode.mjs";
 
 const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ function parseArgs() {
     full: args.includes("--full"),
     target: Number(get("--target", "90")),
     domain: get("--domain", null),
+    lang: get("--lang", null),
     skipPlans: args.includes("--skip-plans"),
     delayMs: Number(get("--delay", "2200")),
   };
@@ -97,9 +99,23 @@ async function runPersonaBatch(group, ids) {
 
 async function runDomain(domain, cfg) {
   console.log(`\n========== ${domain.title} (Group ${domain.group}) ==========\n`);
+  if (cfg.lang) console.log(`Language block: ${cfg.lang}\n`);
   await runGenerator(domain.generator);
-  const allIds = await loadGroupIds(domain.group);
-  const ids = cfg.full ? allIds : allIds.slice(0, domain.smoke);
+  let allIds = await loadGroupIds(domain.group);
+  if (cfg.lang) {
+    allIds = allIds.filter((id) => blockForPersonaId(id) === cfg.lang);
+  }
+  let ids;
+  if (cfg.full) {
+    ids = allIds;
+  } else if (domain.smokePerBlock && !cfg.lang) {
+    const modes = ["en", "si", "ta", "singlish", "tanglish"];
+    ids = modes.flatMap((mode) =>
+      allIds.filter((id) => blockForPersonaId(id) === mode).slice(0, domain.smokePerBlock)
+    );
+  } else {
+    ids = allIds.slice(0, domain.smokePerBlock ?? domain.smoke);
+  }
 
   const rows = [];
   const chunk = 20;
