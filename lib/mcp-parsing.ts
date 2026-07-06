@@ -70,14 +70,11 @@ export function formatMcpContentForModel(content: unknown): string {
   return parsed.ok ? JSON.stringify(parsed.data) : parsed.text || parsed.error;
 }
 
-export function extractProductsFromMcp(content: unknown): KiraProduct[] {
+export function extractProductsFromMcp(content: unknown, limit = 6): KiraProduct[] {
   const parsed = parseMcpPayload(content);
   if (!parsed.ok) return [];
 
   const inner = parsed.data;
-  // The live MCP returns the array under `results`; tolerate `products` / `items`
-  // / `data` too so a server-side rename can't silently zero out the carousel
-  // (truncateForModel already reads all of these shapes).
   const candidates = isRecord(inner)
     ? asArray(inner.results ?? inner.products ?? inner.items ?? inner.data)
     : Array.isArray(inner)
@@ -85,7 +82,7 @@ export function extractProductsFromMcp(content: unknown): KiraProduct[] {
     : [];
 
   return candidates
-    .slice(0, 6)
+    .slice(0, limit)
     .map((item) => toKiraProduct(item))
     .filter((product): product is KiraProduct => Boolean(product));
 }

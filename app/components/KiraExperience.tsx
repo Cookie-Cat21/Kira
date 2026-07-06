@@ -32,6 +32,7 @@ import ProductQuickView from "./ProductQuickView";
 import { ThinkingLive, ThinkingDone, type LiveStep } from "./ThinkingBlock";
 import KiraChatInput from "./ui/kira-chat-input";
 import QuickReplies from "./QuickReplies";
+import KiraSidebar from "./KiraSidebar";
 import WelcomeBackReorder from "./WelcomeBackReorder";
 import CityPicker from "./CityPicker";
 import CommerceRail, { type CommerceContext } from "./CommerceRail";
@@ -54,6 +55,7 @@ import type {
   OrderTracking,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import { detectApiLanguage } from "@/lib/kira/language-detect";
 import KaprukaSmileMark from "@/app/components/brand/KaprukaSmileMark";
 
 const CITY_REGEX =
@@ -299,6 +301,7 @@ export default function KiraExperience({
   const pendingTrackingRef = useRef<OrderTracking | null>(null);
   const pendingCheckoutRef = useRef<CheckoutInfo | null>(null);
   const pendingProductsRef = useRef<KiraProduct[] | null>(null);
+  const pendingSuggestionsRef = useRef<string[] | null>(null);
   const pendingPayLinkRef = useRef<string | null>(null);
   const streamCompletedRef = useRef(false);
   const pendingStepSummaryRef = useRef<string | null>(null);
@@ -430,6 +433,7 @@ export default function KiraExperience({
       pendingTrackingRef.current = null;
       pendingCheckoutRef.current = null;
       pendingProductsRef.current = null;
+      pendingSuggestionsRef.current = null;
       pendingPayLinkRef.current = null;
       thinkingStartRef.current = Date.now();
       setLastStreamActivityAt(Date.now());
@@ -457,6 +461,9 @@ export default function KiraExperience({
       if (parsedOccasion) setOccasion(parsedOccasion);
       if (parsedRecipient) setRecipient(parsedRecipient);
       if (parsedDeliveryDate) setDeliveryDate(parsedDeliveryDate);
+
+      const requestLanguage = detectApiLanguage(trimmed, language);
+      if (requestLanguage !== language) setLanguage(requestLanguage);
 
       try {
         // Include the client-side opening bubble so the LLM knows Kira already
@@ -492,7 +499,7 @@ export default function KiraExperience({
             lastProducts: lastWithProducts?.products,
             shownProducts,
             lastOrder,
-            language,
+            language: requestLanguage,
             internationalMode: /\b(overseas|from (uk|us|australia|dubai|uae)|dollars|pounds|aud)\b/i.test(trimmed),
           }),
         });
@@ -548,6 +555,7 @@ export default function KiraExperience({
                   const pendingTracking = pendingTrackingRef.current;
                   const pendingCheckout = pendingCheckoutRef.current;
                   const pendingProducts = pendingProductsRef.current;
+                  const pendingSuggestions = pendingSuggestionsRef.current;
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -556,6 +564,7 @@ export default function KiraExperience({
                       content: payload.v as string,
                       timestamp: Date.now(),
                       ...(pendingProducts ? { products: pendingProducts } : {}),
+                      ...(pendingSuggestions ? { suggestions: pendingSuggestions } : {}),
                       ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
                       ...(pendingTracking ? { tracking: pendingTracking } : {}),
                       ...(pendingCheckout
@@ -588,6 +597,18 @@ export default function KiraExperience({
                   );
                 } else {
                   pendingProductsRef.current = payload.v as KiraProduct[];
+                }
+              } else if (payload.t === "suggestions") {
+                const suggestions = payload.v as string[];
+                const id = streamingMsgIdRef.current;
+                if (id) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === id ? { ...m, suggestions } : m
+                    )
+                  );
+                } else {
+                  pendingSuggestionsRef.current = suggestions;
                 }
               } else if (payload.t === "context") {
                 const ctx = payload.v as CommerceContext;
@@ -698,6 +719,7 @@ export default function KiraExperience({
                     const pendingTracking = pendingTrackingRef.current;
                     const pendingCheckout = pendingCheckoutRef.current;
                     const pendingProducts = pendingProductsRef.current;
+                    const pendingSuggestions = pendingSuggestionsRef.current;
                     const pendingPayLink = pendingPayLinkRef.current;
                     const hasStructuredPayload =
                       !!pendingDelivery ||
@@ -722,6 +744,7 @@ export default function KiraExperience({
                         content,
                         timestamp: Date.now(),
                         ...(pendingProducts ? { products: pendingProducts } : {}),
+                        ...(pendingSuggestions ? { suggestions: pendingSuggestions } : {}),
                         ...(pendingDelivery ? { deliveryInfo: pendingDelivery } : {}),
                         ...(pendingTracking ? { tracking: pendingTracking } : {}),
                         ...(pendingCheckout
@@ -1000,6 +1023,7 @@ export default function KiraExperience({
     occasion,
     recipient,
   };
+  const lastMission = [...messages].reverse().find((m) => m.role === "user")?.content;
   const handleCommerceContextChange = (updates: Partial<CommerceContext>) => {
     if ("city" in updates) setDeliveryCity(updates.city);
     if ("deliveryDate" in updates && updates.deliveryDate) {
@@ -1202,13 +1226,14 @@ export default function KiraExperience({
         </div>
       ) : (
         <>
-          <main
-            role="log"
-            aria-live="polite"
-            aria-label="Conversation with Kira"
-            className="relative z-10 min-h-0 flex-1 overflow-y-auto"
-            style={{ background: "transparent" }}
-          >
+          <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+            <main
+              role="log"
+              aria-live="polite"
+              aria-label="Conversation with Kira"
+              className="min-h-0 flex-1 overflow-y-auto"
+              style={{ background: "transparent" }}
+            >
             <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col px-4 py-5 sm:px-6">
               {messages.map((msg) => (
                 <div key={msg.id}>
@@ -1254,7 +1279,17 @@ export default function KiraExperience({
               )}
               <div ref={bottomRef} />
             </div>
-          </main>
+            </main>
+            <KiraSidebar
+              context={commerceContext}
+              cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+              cartTotal={cartSubtotal}
+              currency={cartCurrency}
+              deliveryInfo={latestDeliveryInfo}
+              lastMission={lastMission}
+              className="mr-4 mt-4 self-start sticky top-20"
+            />
+          </div>
 
           <div
             className="relative z-10 shrink-0"
