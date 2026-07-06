@@ -334,6 +334,7 @@ import { GROUP_W } from "./personas/generated-repair-flow.mjs";
 import { GROUP_Y } from "./personas/generated-breakup-repair.mjs";
 import { GROUP_Z } from "./personas/generated-multilingual.mjs";
 import { GROUP_X } from "./personas/generated-reorder-habit.mjs";
+import { GROUP_AA } from "./personas/generated-search-excellence.mjs";
 
 const GROUPS = {
   A: GROUP_A,
@@ -357,6 +358,7 @@ const GROUPS = {
   X: GROUP_X,
   Y: GROUP_Y,
   Z: GROUP_Z,
+  AA: GROUP_AA,
 };
 
 // --- Generic check tokens (Groups C / D / E) ---
