@@ -79,7 +79,7 @@ export async function executeSearchPlan({
   const lanes = plan.lanes.slice(0, MAX_PARALLEL_LANES);
   const onStep = (label: string) => controller.enqueue(sse("step", label));
 
-  let pool: KiraProduct[] = [];
+  const pool: KiraProduct[] = [];
   const seen = new Set<string>();
 
   for (const lane of lanes) {
@@ -116,7 +116,20 @@ export async function executeSearchPlan({
   }
 
   const filterKey = plan.filterKey ?? lanes[0] ?? "";
-  let filtered = filterProductsForSearch(pool, filterKey, userText, filterContext);
+  let filtered: KiraProduct[];
+  // Vague gift runs multiple lanes — union per-lane filters instead of first lane only.
+  if (plan.introContext?.vagueGift && lanes.length > 1) {
+    const merged = new Map<string, KiraProduct>();
+    for (const lane of lanes) {
+      for (const p of filterProductsForSearch(pool, lane, userText, filterContext)) {
+        const idKey = (p.id || p.url || p.name).toLowerCase();
+        if (!merged.has(idKey)) merged.set(idKey, p);
+      }
+    }
+    filtered = [...merged.values()];
+  } else {
+    filtered = filterProductsForSearch(pool, filterKey, userText, filterContext);
+  }
   filtered = rankProductsForQuery(filtered, filterKey, plan.maxPrice);
   let usedHamperPivot = false;
 

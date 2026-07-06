@@ -25,6 +25,7 @@
     "test:agent-loop:quick": "node scripts/agent-loop.mjs --duration 15 --batch 15 --edge 5",
     "test:product-filter": "node scripts/test-product-filter.mjs",
     "test:search-intent": "node scripts/test-search-intent.mjs",
+    "test:instant-latency": "node scripts/test-instant-latency.mjs",
     "test:search-benchmark": "node scripts/search-benchmark.mjs",
     "test:search-excellence:gen": "node scripts/generate-search-excellence.mjs",
     "test:generate-personas": "node scripts/generate-personas.mjs",

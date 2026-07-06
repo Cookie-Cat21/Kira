@@ -26,6 +26,15 @@ export async function streamWords(
     await new Promise((resolve) => setTimeout(resolve, 12));
   }
 }
+
+/** Single SSE token — no artificial per-word delay (instant fast-paths). */
+export function streamInstant(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  text: string
+) {
+  const clean = sanitizeAssistantText(text);
+  if (clean) controller.enqueue(sse("token", clean));
+}
 export const TOOL_SUMMARY_LABELS: Record<string, string> = {
   kapruka_search_products: "Searched Kapruka catalog",
   kapruka_list_categories: "Listed Kapruka categories",

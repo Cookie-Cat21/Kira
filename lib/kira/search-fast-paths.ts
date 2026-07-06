@@ -425,7 +425,7 @@ export async function tryHandleSearchFastPath({
           response_format: "json",
         },
       });
-      let batch = filterProductsForSearch(
+      const batch = filterProductsForSearch(
         extractProductsFromMcp(repairResult.content),
         q,
         filterContext
@@ -1061,7 +1061,7 @@ export async function tryHandleSearchFastPath({
         response_format: "json",
       },
     });
-    let batch = filterProductsForSearch(
+    const batch = filterProductsForSearch(
       extractProductsFromMcp(searchResult.content),
       query,
       filterContext
@@ -1091,7 +1091,7 @@ export async function tryHandleSearchFastPath({
           response_format: "json",
         },
       });
-      let batch = filterProductsForSearch(
+      const batch = filterProductsForSearch(
         extractProductsFromMcp(retryResult.content).filter(
           (p) => p.price > 0 && p.price <= contextMaxPrice!
         ),

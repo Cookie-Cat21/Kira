@@ -144,6 +144,11 @@ export const LS: Record<string, Record<string, string>> = {
     si: "හෙලෝ, මම Kira. අද කාටද gift එකක් හොයන්නේ?",
     ta: "வணக்கம், நான் Kira. இன்று யாருக்காக gift பார்க்கலாம்?",
   },
+  greetingFollowUp: {
+    en: "Hey! What are we finding today — gift, groceries, or something for yourself?",
+    si: "Hey! අද මොනවද හොයන්නේ — gift, groceries, නැත්නම් ඔයාට?",
+    ta: "Hey! இன்று என்ன பார்க்கலாம் — gift, groceries, அல்லது உங்களுக்கா?",
+  },
   vagueAsk: {
     en: "Sweet. What kind of thing are you thinking — sweets, flowers, something useful, or something to wear?",
     si: "හරි. මොන වගේ දෙයක්ද හිතන්නේ — sweets, flowers, useful දෙයක්, නැතිනම් අඳින්න දෙයක්ද?",

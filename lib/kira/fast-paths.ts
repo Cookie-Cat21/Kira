@@ -8,7 +8,6 @@ import {
   parseMcpPayload,
 } from "@/lib/mcp-parsing";
 import { handleCheckoutFillIn, isCheckoutFillInTurn } from "@/lib/kira/checkout-flow";
-import { isOutOfScopePrompt } from "@/lib/kira/out-of-scope";
 import { tryHandleSearchFastPath } from "@/lib/kira/search-fast-paths";
 import { L, Lf } from "@/lib/kira/localization";
 import {
@@ -87,140 +86,7 @@ export async function tryHandleDeterministicPrompt({
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
 
-  // ── Empty / whitespace input ─────────────────────────────────────────────
-  if (!trimmed) {
-    await streamWords(controller, L("emptyGreeting", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Bare budget only — ask before any search ─────────────────────────────
-  const BARE_BUDGET_ONLY_RE =
-    /^(?:under|below|max(?:imum)?|budget|less than|up to)\s*(?:lkr|rs\.?)?\s*([\d,]+)\s*$/i;
-  const bareBudgetOnly = BARE_BUDGET_ONLY_RE.exec(trimmed);
-  if (bareBudgetOnly) {
-    const amount = Number(bareBudgetOnly[1].replace(/,/g, ""));
-    if (amount >= 100 && amount <= 500_000) {
-      await streamWords(controller, L("budgetOnlyAsk", language));
-      controller.enqueue(sse("done"));
-      return true;
-    }
-  }
-
-  // ── Cart contents ────────────────────────────────────────────────────────
-  const CART_CONTENTS_RE =
-    /\b(what'?s in (?:my )?(?:cart|tray|basket)|show (?:my )?(?:cart|tray)|cart contents|my tray)\b/i;
-  if (CART_CONTENTS_RE.test(lower)) {
-    if (cart.length === 0) {
-      await streamWords(controller, L("checkoutEmptyCart", language));
-    } else {
-      const lines = cart
-        .map(
-          (i, idx) =>
-            `${idx + 1}. **${i.product.name}** ×${i.quantity} — LKR ${(i.product.price * i.quantity).toLocaleString("en-LK")}`
-        )
-        .join("\n");
-      const total = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
-      await streamWords(
-        controller,
-        `Your tray:\n\n${lines}\n\nSubtotal: **LKR ${total.toLocaleString("en-LK")}**`
-      );
-    }
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Gift message intent (cart must have items; skip when note text or product search is present) ─
-  const GIFT_MESSAGE_INTENT_RE =
-    /\b(gift message|gift note|add a note|message on the card|note on the card|card message)\b/i;
-  const GIFT_NOTE_ALREADY_PROVIDED_RE =
-    /\bnote\s*[:\-—–]\s*\S|\badd\s+gift\s+message\s+\S|\b(?:happy|sorry|love|miss you|birthday|thank)\b/i;
-  const PRODUCT_SEND_WITH_NOTE_RE =
-    /\b(send|deliver|flowers?|roses?|bouquet|cake|chocolates?)\b/i;
-  if (
-    cart.length > 0 &&
-    GIFT_MESSAGE_INTENT_RE.test(lower) &&
-    !GIFT_NOTE_ALREADY_PROVIDED_RE.test(lower) &&
-    !PRODUCT_SEND_WITH_NOTE_RE.test(lower) &&
-    !extractProductKeyword(lower)
-  ) {
-    await streamWords(controller, L("giftMessageAsk", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Jailbreak / persona-change intercept ────────────────────────────────
-  const JAILBREAK_RE = /\b(dan\s+mode|pretend\s+(you(?:'?re?|\s+are?)|to\s+be)|act\s+as|you\s+are\s+now|ignore\s+(all\s+)?(your\s+)?(previous\s+)?instructions?|forget\s+your\s+(system\s+)?prompt|system\s+prompt|your\s+prompt|disregard\s+your|roleplay\s+as|be\s+a\s+different\s+ai|simulate\s+(being\s+)?an?\s+ai|no\s+restrictions)\b/i;
-  if (JAILBREAK_RE.test(lower)) {
-    await streamWords(controller, L("jailbreakRedirect", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Platform trust questions ─────────────────────────────────────────────
-  const TRUST_RE = /\b(is\s+(kapruka|this|it)(\s+\w+){0,3}\s+(legit|safe|real|trusted?|reliable|genuine|authentic|scam)|can\s+i\s+trust\s+(kapruka|this|it)|kapruka\s+(legit|safe|real|trusted?|reliable))\b/i;
-  if (TRUST_RE.test(lower)) {
-    await streamWords(controller, L("trustAffirmation", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Out-of-scope — warm redirect, zero tools ─────────────────────────────
-  if (isOutOfScopePrompt(trimmed)) {
-    await streamWords(controller, L("outOfScopeRedirect", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── COD / payment policy — zero tools ────────────────────────────────────
-  const COD_RE =
-    /\b(cash\s+on\s+delivery|\bcod\b|pay\s+cash|cash\s+payment|can\s+i\s+pay\s+cash)\b/i;
-  if (COD_RE.test(lower)) {
-    await streamWords(controller, L("codPolicy", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Same-day / cut-off delivery policy — zero tools ──────────────────────
-  const DELIVERY_POLICY_RE =
-    /\b(cut[- ]?off|same[- ]day|how (?:fast|soon)|when do you (?:deliver|stop)|delivery (?:time|window|hours|cutoff))\b/i;
-  if (DELIVERY_POLICY_RE.test(lower) && !extractProductKeyword(lower)) {
-    await streamWords(controller, L("deliveryPolicy", language));
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── "Tell me about <product>" with the product already in hand ───────────
-  // The storefront "Ask Kira about this" button seeds exactly this prompt.
-  // Storefront catalog (Neon/seed JSON) is separate from live Kapruka MCP so
-  // a tool lookup returns nothing — answer from the product data already sent.
-  const TELL_ME_ABOUT_RE = /\btell\s+me\s+(?:a\s+bit\s+|more\s+)?about\b/i;
-  if (TELL_ME_ABOUT_RE.test(lower) && lastProducts?.length === 1) {
-    const target = lastProducts[0];
-    const namedTarget = target.name && lower.includes(target.name.toLowerCase());
-    const pronounTarget = /\b(it|this|that|the\s+one)\b/i.test(lower);
-    if (namedTarget || pronounTarget) {
-      let summary = (target.summary ?? "").replace(/\s+/g, " ").trim();
-      if (summary && !/[.!?]$/.test(summary)) summary += ".";
-      await streamWords(
-        controller,
-        Lf(
-          target.inStock === false ? "aboutProductOutOfStock" : "aboutProductInStock",
-          language,
-          {
-            name: target.name,
-            price: `LKR ${target.price.toLocaleString("en-LK")}`,
-            category: target.category ? ` (${target.category})` : "",
-            summary: summary ? ` ${summary}` : "",
-          }
-        )
-      );
-      controller.enqueue(sse("done"));
-      return true;
-    }
-  }
-
-  // ── Order tracking ───────────────────────────────────────────────────────
+  // ── Order tracking (MCP) ─────────────────────────────────────────────────
   // Also handles the case where the user just types an order number after Kira
   // asked for one — no "track" keyword needed in that context.
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
@@ -437,17 +303,6 @@ export async function tryHandleDeterministicPrompt({
       await streamWords(controller, Lf("reshowRealListings", language, { budget: budgetText, n: reshowProducts.length }));
       controller.enqueue(sse("products", reshowProducts));
     }
-    controller.enqueue(sse("done"));
-    return true;
-  }
-
-  // ── Checkout triggers ────────────────────────────────────────────────────
-  const CHECKOUT_INTENT_RE =
-    /\b(ready to checkout|complete the order|checkout now|want to checkout|place my order|create checkout link|proceed to payment)\b/i;
-  if (CHECKOUT_INTENT_RE.test(lower)) {
-    const message =
-      cart.length === 0 ? L("checkoutEmptyCart", language) : L("checkoutNeedName", language);
-    await streamWords(controller, message);
     controller.enqueue(sse("done"));
     return true;
   }

@@ -27,6 +27,7 @@ import { detectApiLanguage } from "@/lib/kira/language-detect";
 import { inferLastOrderLabel } from "@/lib/reorder";
 import { buildCompactSummary, trimContextIfNeeded } from "@/lib/kira/context";
 import { tryHandleDeterministicPrompt } from "@/lib/kira/fast-paths";
+import { tryHandleInstantPrompt } from "@/lib/kira/instant-paths";
 import { getGroq, getGroqKeys, hasGroqKeys, pickStartingKeyIndex } from "@/lib/kira/groq";
 import { coerceArgTypes, relaxSchema, resolveSchema } from "@/lib/kira/groq-schema";
 import { L, Lf } from "@/lib/kira/localization";
@@ -135,6 +136,21 @@ export async function POST(req: NextRequest) {
 
         if (!hasGroqKeys()) {
           controller.enqueue(sse("error", "Demo mode limited: Set GROQ_API_KEY in .env.local"));
+          controller.close();
+          return;
+        }
+
+        // Instant layer — no MCP, no Groq (greetings, policy, vague clarifiers).
+        if (
+          await tryHandleInstantPrompt({
+            text: latestUserText,
+            messages,
+            cart,
+            language,
+            controller,
+            lastProducts: safeLastProducts,
+          })
+        ) {
           controller.close();
           return;
         }
@@ -514,7 +530,7 @@ export async function POST(req: NextRequest) {
             if (toolName === "kapruka_search_products" || toolName === "kapruka_list_categories") {
               const rawForLlm = extractProductsFromMcp(resultContent);
               const queryKey = String(toolArgs.q ?? "").toLowerCase().trim();
-              let filteredForLlm = filterProductsForSearch(
+              const filteredForLlm = filterProductsForSearch(
                 rawForLlm,
                 queryKey,
                 searchFilterContext

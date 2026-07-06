@@ -16,7 +16,8 @@ const CASES = [
   { id: "B07", msg: "machang mata roses ona colombo", check: (r) => r.hasProducts && r.englishReply },
   { id: "B08", msg: "මට මල් ඕන කොළඹ", check: (r) => r.hasProducts && r.sinhalaReply, lang: "si" },
   { id: "B09", msg: "flowers and chocolates under 4000", check: (r) => r.hasProducts },
-  { id: "B10", msg: "track order KP12345", check: (r) => r.hasTracking && !r.hasProducts },
+  // VIMP34456CB2 is a documented MCP demo order with a real timeline (KP12345 is not on MCP).
+  { id: "B10", msg: "track order VIMP34456CB2", check: (r) => r.hasTracking && !r.hasProducts },
 ];
 
 const SI_RE = /[඀-෿]/;
