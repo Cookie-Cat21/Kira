@@ -40,6 +40,8 @@
     "test:dulith-qa": "node scripts/dulith-qa-orchestrator.mjs --full",
     "test:dulith-gate": "node scripts/dulith-final-gate.mjs",
     "test:dulith-gate:local": "node scripts/dulith-final-gate.mjs --with-local",
+    "test:dulith-autonomous": "node scripts/dulith-autonomous.mjs",
+    "test:dulith-autonomous:full": "node scripts/dulith-autonomous.mjs --full",
     "test:dulith-5h": "node scripts/dulith-5h-loop.mjs --duration 300",
     "test:dulith-breakup:gen": "node scripts/generate-breakup-repair.mjs",
     "test:dulith-breakup:smoke": "node scripts/generate-breakup-repair.mjs && KIRA_API_URL=https://kira-peach.vercel.app/api/chat node scripts/dulith-qa-orchestrator.mjs --domain breakup-repair --smoke --skip-plans",

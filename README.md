@@ -69,6 +69,8 @@ npm run test:e2e:reorder                # Playwright UI reorder path
 
 **Submission gate:** `npm run test:dulith-gate` — all founder phases in one command. Demo script: [`docs/JUDGE-DRY-RUN.md`](docs/JUDGE-DRY-RUN.md).
 
+**Autonomous mode (no human approval):** [`docs/DULITH-AUTONOMOUS-PLAN.md`](docs/DULITH-AUTONOMOUS-PLAN.md) — Dulith plans auto-approve at ≥9/10; agents loop fix → deploy → gate until green. One command: `npm run test:dulith-autonomous`.
+
 ## Phase 0 — MCP exploration
 
 Before working on UI, verify the Kapruka MCP end-to-end:
